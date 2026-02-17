@@ -1,0 +1,81 @@
+%!PS-Adobe-3.0 Resource-ProcSet
+%%Title: TestProcSet (Stub)
+%%Creator: PostForge Resource Management System  
+%%VMusage: 4000 80
+%%EndComments
+
+% This is a stub procedure set resource for testing PostForge resource management
+% A real ProcSet would contain useful procedures for specific applications
+
+<<
+    % ProcSet identification
+    /Title (Test Procedure Set)
+    /Version 1.0
+    /Revision 0
+    
+    % Utility procedures
+    /drawbox {
+        % width height x y drawbox -
+        % Draws a box at the given position with given dimensions
+        gsave
+        translate
+        newpath
+        0 0 moveto
+        0 exch lineto
+        dup 0 exch lineto  
+        0 0 lineto
+        closepath
+        stroke
+        grestore
+    } bind
+    
+    /fillbox {
+        % width height x y fillbox -
+        % Fills a box at the given position with given dimensions
+        gsave
+        translate
+        newpath
+        0 0 moveto
+        0 exch lineto
+        dup 0 exch lineto
+        0 0 lineto
+        closepath
+        fill
+        grestore
+    } bind
+    
+    /drawcircle {
+        % radius x y drawcircle -
+        % Draws a circle at the given position with given radius
+        gsave
+        translate
+        newpath
+        0 0 exch 0 360 arc
+        stroke
+        grestore
+    } bind
+    
+    /fillcircle {  
+        % radius x y fillcircle -
+        % Fills a circle at the given position with given radius
+        gsave
+        translate
+        newpath
+        0 0 exch 0 360 arc
+        fill
+        grestore
+    } bind
+    
+    /centertext {
+        % (string) x y centertext -
+        % Centers text at given position
+        gsave
+        translate
+        dup stringwidth pop 2 div neg 0 moveto
+        show
+        grestore
+    } bind
+    
+>> % ProcSet dictionary completed
+
+(TestProcSet resource loaded\n) print

@@ -1,0 +1,96 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "postforge"
+version = "0.9.0"
+description = "A PostScript interpreter written in Python"
+authors = [{name = "Scott Bowman", email = "scott@bowmans.org"}]
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+requires-python = ">=3.13"
+keywords = ["postscript", "interpreter", "pdf", "svg", "png", "cairo", "eps"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Interpreters",
+    "Topic :: Multimedia :: Graphics",
+]
+dependencies = [
+    "pycairo>=1.28.0,<1.30.0",
+    "psutil>=5.9.0,<6.0.0",
+    "jpeglib>=1.0.0,<2.0.0",
+    "Pillow>=10.0.0,<12.0.0",
+    "pypdf>=4.0.0,<5.0.0",
+    "numpy>=1.26.0,<3.0.0",
+]
+
+[project.scripts]
+pf = "postforge.cli:main"
+postforge = "postforge.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/AndyCappDev/postforge"
+Repository = "https://github.com/AndyCappDev/postforge"
+"Bug Tracker" = "https://github.com/AndyCappDev/postforge/issues"
+
+[project.optional-dependencies]
+qt = ["PySide6>=6.5.0,<7.0.0"]
+visual-test = [
+    "Pillow>=10.0.0,<12.0.0",
+    "PyMuPDF>=1.24.0,<2.0.0",
+]
+dev = [
+    "Cython>=3.0.0,<4.0.0",
+    "black>=23.0.0,<25.0.0",
+    "isort>=5.12.0,<6.0.0",
+    "flake8>=6.0.0,<8.0.0",
+    "pre-commit>=4.0.0,<5.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["postforge*"]
+
+[tool.setuptools.package-data]
+postforge = ["**/*.pyx"]
+
+[tool.black]
+line-length = 88
+target-version = ['py313']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | venv
+  | env
+  | _build
+  | buck-out
+  | build
+  | dist
+  | samples
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["postforge"]
+known_third_party = ["cairo"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+force_grid_wrap = 0
+combine_as_imports = true
+include_trailing_comma = true
+use_parentheses = true

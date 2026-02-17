@@ -1,0 +1,18 @@
+% Qt Interactive Display Device Resource
+% Displays PostScript graphics in a Qt window with zoom/pan support
+
+<<
+    /OutputDeviceName (qt)
+    /OutputDevice /qt
+    /PageSize [612 792]
+    /HWResolution [300 300]
+    /ColorModel /DeviceRGB
+    /LineWidthMin 1
+    /Install { .9 setflat {} settransfer /DeviceRGB setcolorspace }
+    /BeginPage {pop}
+    /EndPage { pop pop true }  % Return true for both showpage (0) and copypage (1)
+    /PageCount 0
+    /.IsPageDevice true
+    /WindowTitle (PostForge)
+    /StrokeMethod /StrokePathFill  % strokepath+fill workaround for Cairo bitmap bugs
+>>

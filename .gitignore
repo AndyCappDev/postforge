@@ -1,0 +1,39 @@
+__pycache__/
+vm/
+venv/
+page*.png
+page*.pdf
+pf_output/
+test.ps
+.gitignore~
+
+
+# Visual regression test output
+visual_tests_*
+
+# Python packaging artifacts
+*.egg-info/
+*.egg
+.eggs/
+dist/
+*.pyc
+
+# Cython build artifacts
+build/
+postforge/operators/_control_cy.c
+postforge/devices/common/_image_conv_cy.c
+*.so
+
+# Unit test temp files
+unit_tests/.test_stats.tmp
+
+# Editor directories
+.vscode/
+.idea/
+
+# Environment files
+.env
+
+# Claude Code
+CLAUDE.md
+.claude/

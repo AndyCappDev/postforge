@@ -1,0 +1,47 @@
+%% pagedevice dictionary for pdf output device
+
+<<
+    /OutputDeviceName (pdf)
+    /OutputDevice /pdf
+    /PageSize [612 792]
+    /HWResolution [300 300]
+    /Margins [0.0 0.0]
+    /PageOffset [0 0]
+    /BitsPerPixel 24
+    /NumCopies null
+    /Install {
+        %% Now override some settings
+        % only set device-dependant settings here
+        .5 setflat
+        % Identity function for debugging - should leave stack unchanged
+        {} settransfer
+        % set other things here like...
+        %   halftone screen  
+        %   color rendering dictionary
+
+        % set the color space here with setcolorspace
+        % this device is DeviceRGB
+        /DeviceRGB setcolorspace
+    }
+    /BeginPage {//pop}
+    /EndPage {//pop //pop true}
+    /InputAttributes <<>>  % from command line?
+    /OutputAttributes <<>> % from command line?
+    /ColorModel /DeviceRGB
+    /Policies <<>>
+    /PageCount 0
+    /.IsPageDevice true
+    /Separations false
+    /Supported {}
+    /RedValues 256
+    /GreenValues 256
+    /BlueValues 256
+    /GraphicBlackPt 8
+    /ImageBlackPt 8
+    /TextBlackPt 8
+    /SimulateOverprint false
+    /Colors 3
+    /LineWidthMin .001
+    /TextRenderingMode /TextObjs  % Searchable PDF text (or /GlyphPaths for path rendering)
+    /StrokeMethod /NativeStroke  % native Cairo stroke on PDF vector surface
+>>

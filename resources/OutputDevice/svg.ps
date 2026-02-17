@@ -1,0 +1,40 @@
+%% pagedevice dictionary for svg output device
+
+<<
+    /OutputDeviceName (svg)
+    /OutputDevice /svg
+    /PageSize [612 792]
+    /HWResolution [72 72]
+    /Margins [0.0 0.0]
+    /PageOffset [0 0]
+    /BitsPerPixel 24
+    /NumCopies null
+    /Install {
+        .9 setflat
+        {} settransfer
+        /DeviceRGB setcolorspace
+    }
+    /BeginPage {//pop}
+    /EndPage {
+        dup 0 eq {
+            pop (showpage: Creating SVG file for page ) print 1 add == true
+        } {
+            1 eq {
+                (copypage: Creating SVG file for page ) print 1 add == true
+            } {
+                pop false
+            } ifelse
+        } ifelse
+    }
+    /InputAttributes <<>>
+    /OutputAttributes <<>>
+    /ColorModel /DeviceRGB
+    /Policies <<>>
+    /PageCount 0
+    /.IsPageDevice true
+    /Separations false
+    /Colors 3
+    /LineWidthMin .1
+    /TextRenderingMode /TextObjs % or GlyphPaths
+    /StrokeMethod /NativeStroke
+>>

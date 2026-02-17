@@ -1,0 +1,57 @@
+%!PS-Adobe-3.0 Resource-Pattern
+%%Title: TestPattern (Stub)  
+%%Creator: PostForge Resource Management System
+%%VMusage: 2500 40
+%%EndComments
+
+% This is a stub pattern resource for testing PostForge resource management
+% A real pattern would contain actual pattern graphics
+
+<<
+    /PatternType 1
+    /PaintType 1  % Colored pattern
+    /TilingType 1  % Constant spacing
+    
+    /BBox [0 0 20 20]  % Pattern cell bounding box
+    /XStep 20
+    /YStep 20
+    
+    % PaintProc - the actual pattern content
+    /PaintProc {
+        gsave
+        
+        % Draw a simple checkerboard pattern
+        newpath
+        0 0 moveto
+        10 0 lineto
+        10 10 lineto  
+        0 10 lineto
+        closepath
+        0.8 setgray fill
+        
+        newpath
+        10 10 moveto
+        20 10 lineto
+        20 20 lineto
+        10 20 lineto
+        closepath
+        0.8 setgray fill
+        
+        % Draw grid lines
+        newpath
+        0 0 moveto 20 0 lineto
+        0 10 moveto 20 10 lineto
+        0 20 moveto 20 20 lineto
+        0 0 moveto 0 20 lineto
+        10 0 moveto 10 20 lineto
+        20 0 moveto 20 20 lineto
+        0.2 setgray
+        0.5 setlinewidth
+        stroke
+        
+        grestore
+    } bind
+    
+>> % Pattern dictionary completed
+
+(TestPattern resource loaded\n) print

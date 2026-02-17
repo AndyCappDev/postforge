@@ -1,0 +1,216 @@
+%!PS-Adobe-3.0
+%%Title: CIE Color Space Visual Test
+%%BoundingBox: 0 0 400 500
+%%EndComments
+
+% Visual test for CIEBasedABC and CIEBasedA color space support.
+% Shows colored rectangles using CIE color spaces alongside DeviceRGB
+% equivalents for comparison.
+
+/Helvetica findfont 11 scalefont setfont
+
+% --- Define CIE color spaces ---
+
+% sRGB-like CIEBasedABC (identity matrices, D65 white point)
+/CIE_sRGB [/CIEBasedABC <<
+  /WhitePoint [0.9505 1.0 1.089]
+  /RangeABC [0 1 0 1 0 1]
+>>] def
+
+% CIEBasedA grayscale (MatrixA maps A=1 to D65 white point for neutral gray)
+/CIE_Gray [/CIEBasedA <<
+  /WhitePoint [0.9505 1.0 1.089]
+  /MatrixA [0.9505 1.0 1.089]
+>>] def
+
+% CIEBasedABC with a custom MatrixABC (slight warm shift)
+/CIE_Warm [/CIEBasedABC <<
+  /WhitePoint [0.9505 1.0 1.089]
+  /RangeABC [0 1 0 1 0 1]
+  /MatrixABC [1.05 0 0  0 1.0 0  0 0 0.85]
+>>] def
+
+% --- Helper procedures ---
+
+% Draw a filled rectangle: x y w h
+/rect { 4 dict begin
+  /h exch def /w exch def /y exch def /x exch def
+  newpath x y moveto w 0 rlineto 0 h rlineto w neg 0 rlineto closepath fill
+end } def
+
+% Draw label: x y (text)
+/label { 3 dict begin
+  /txt exch def /y exch def /x exch def
+  0 0 0 setrgbcolor x y moveto txt show
+end } def
+
+% --- Page layout ---
+
+% Title
+0 0 0 setrgbcolor
+/Helvetica-Bold findfont 14 scalefont setfont
+30 470 moveto (CIEBasedABC / CIEBasedA Color Space Test) show
+/Helvetica findfont 10 scalefont setfont
+30 455 moveto (Left: CIE color space    Right: DeviceRGB equivalent) show
+
+/Helvetica findfont 11 scalefont setfont
+
+% === Row 1: CIEBasedABC primary colors vs DeviceRGB ===
+30 430 (CIEBasedABC \(sRGB wrap\) vs DeviceRGB - Primaries) label
+
+% Red
+CIE_sRGB setcolorspace 1 0 0 setcolor
+30 395 50 30 rect
+0 setgray 30 383 (CIE R) label
+
+1 0 0 setrgbcolor
+90 395 50 30 rect
+0 setgray 90 383 (RGB R) label
+
+% Green
+CIE_sRGB setcolorspace 0 1 0 setcolor
+155 395 50 30 rect
+0 setgray 155 383 (CIE G) label
+
+0 1 0 setrgbcolor
+215 395 50 30 rect
+0 setgray 215 383 (RGB G) label
+
+% Blue
+CIE_sRGB setcolorspace 0 0 1 setcolor
+280 395 50 30 rect
+0 setgray 280 383 (CIE B) label
+
+0 0 1 setrgbcolor
+340 395 50 30 rect
+0 setgray 340 383 (RGB B) label
+
+% === Row 2: Mixed colors ===
+30 365 (CIEBasedABC vs DeviceRGB - Mixed Colors) label
+
+% Yellow (1,1,0)
+CIE_sRGB setcolorspace 1 1 0 setcolor
+30 330 50 30 rect
+0 setgray 30 318 (CIE Y) label
+
+1 1 0 setrgbcolor
+90 330 50 30 rect
+0 setgray 90 318 (RGB Y) label
+
+% Cyan (0,1,1)
+CIE_sRGB setcolorspace 0 1 1 setcolor
+155 330 50 30 rect
+0 setgray 155 318 (CIE C) label
+
+0 1 1 setrgbcolor
+215 330 50 30 rect
+0 setgray 215 318 (RGB C) label
+
+% Magenta (1,0,1)
+CIE_sRGB setcolorspace 1 0 1 setcolor
+280 330 50 30 rect
+0 setgray 280 318 (CIE M) label
+
+1 0 1 setrgbcolor
+340 330 50 30 rect
+0 setgray 340 318 (RGB M) label
+
+% === Row 3: Warm-shifted CIEBasedABC ===
+30 298 (CIEBasedABC \(warm MatrixABC\) vs DeviceRGB) label
+
+CIE_Warm setcolorspace 0.8 0.8 0.8 setcolor
+30 263 50 30 rect
+0 setgray 30 251 (CIE .8) label
+
+0.8 0.8 0.8 setrgbcolor
+90 263 50 30 rect
+0 setgray 90 251 (RGB .8) label
+
+CIE_Warm setcolorspace 1 0.5 0.2 setcolor
+155 263 50 30 rect
+0 setgray 155 251 (CIE) label
+
+1 0.5 0.2 setrgbcolor
+215 263 50 30 rect
+0 setgray 215 251 (RGB) label
+
+CIE_Warm setcolorspace 0.2 0.6 0.9 setcolor
+280 263 50 30 rect
+0 setgray 280 251 (CIE) label
+
+0.2 0.6 0.9 setrgbcolor
+340 263 50 30 rect
+0 setgray 340 251 (RGB) label
+
+% === Row 4: CIEBasedA grayscale ramp ===
+30 231 (CIEBasedA Grayscale Ramp) label
+
+CIE_Gray setcolorspace
+0 1 10 {
+  /i exch def
+  /val i 10 div def
+  val setcolor
+  30 i 35 mul add 196 35 30 rect
+} for
+0 setgray 30 184 (0.0) label
+0 setgray 345 184 (1.0) label
+
+% === Row 5: CIEBasedA vs DeviceGray comparison ===
+30 164 (CIEBasedA vs DeviceGray) label
+
+CIE_Gray setcolorspace 0.25 setcolor
+30 129 80 30 rect
+0 setgray 30 117 (CIE 0.25) label
+
+0.25 setgray
+120 129 80 30 rect
+0 setgray 120 117 (Gray 0.25) label
+
+CIE_Gray setcolorspace 0.5 setcolor
+210 129 80 30 rect
+0 setgray 210 117 (CIE 0.5) label
+
+0.5 setgray
+300 129 80 30 rect
+0 setgray 300 117 (Gray 0.5) label
+
+% === Row 6: CIEBasedABC gradient strip ===
+30 97 (CIEBasedABC Hue Sweep \(R -> G -> B -> R\)) label
+
+CIE_sRGB setcolorspace
+0 1 59 {
+  /i exch def
+  /t i 59 div def
+
+  % Simple hue sweep: 0=red, 0.33=green, 0.67=blue, 1=red
+  t 0.333 lt {
+    /s t 0.333 div def
+    1 s sub s 0 setcolor
+  } {
+    t 0.667 lt {
+      /s t 0.333 sub 0.334 div def
+      0 1 s sub s setcolor
+    } {
+      /s t 0.667 sub 0.333 div def
+      s 0 1 s sub setcolor
+    } ifelse
+  } ifelse
+
+  30 i 5.67 mul add 62 5.67 30 rect
+} for
+
+% === Row 7: Stroke test ===
+30 42 (CIE Stroke Test) label
+
+CIE_sRGB setcolorspace
+3 setlinewidth
+1 0 0 setcolor
+newpath 30 20 moveto 120 20 lineto stroke
+
+0 0.7 0 setcolor
+newpath 130 20 moveto 220 20 lineto stroke
+
+0 0 1 setcolor
+newpath 230 20 moveto 320 20 lineto stroke
+
+showpage

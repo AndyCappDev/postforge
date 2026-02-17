@@ -1,0 +1,56 @@
+%!PS-Adobe-3.0 Resource-ColorRendering
+%%Title: TestColorRendering (Stub)  
+%%Creator: PostForge Resource Management System
+%%VMusage: 3000 50
+%%EndComments
+
+% This is a stub color rendering dictionary for testing PostForge resource management
+% A real CRD would contain actual color rendering transformation data
+
+<<
+    /ColorRenderingType 1  % CRD type
+    
+    % White and black points
+    /WhitePoint [0.9505 1.0000 1.0890]  % D65
+    /BlackPoint [0.0000 0.0000 0.0000]
+    
+    % Viewing conditions
+    /MatrixPQR [
+        0.8951  0.2664 -0.1614
+       -0.7502  1.7135  0.0367
+        0.0389 -0.0685  1.0296
+    ]
+    
+    /RangePQR [0.0 1.0 0.0 1.0 0.0 1.0]
+    
+    /TransformPQR [
+        { dup 0.0 le { pop 0.0 } { 0.5 exp } ifelse } bind
+        { dup 0.0 le { pop 0.0 } { 0.5 exp } ifelse } bind  
+        { dup 0.0 le { pop 0.0 } { 0.5 exp } ifelse } bind
+    ]
+    
+    % LMN transformation
+    /MatrixLMN [
+        1.0 0.0 0.0
+        0.0 1.0 0.0  
+        0.0 0.0 1.0
+    ]
+    
+    /EncodeABC [
+        { dup 0.0 le { pop 0.0 } { 0.5 exp } ifelse } bind
+        { dup 0.0 le { pop 0.0 } { 0.5 exp } ifelse } bind
+        { dup 0.0 le { pop 0.0 } { 0.5 exp } ifelse } bind  
+    ]
+    
+    /RenderTable [
+        % Simplified render table for testing
+        17 17 17
+        [0 1 0 1 0 1]  % Domain
+        [0 1 0 1 0 1]  % Range
+        % Table data would go here in real implementation
+        <000000ffffff808080404040c0c0c0000000ffffff808080404040c0c0c0>
+    ]
+    
+>> % ColorRendering dictionary completed
+
+(TestColorRendering resource loaded\n) print

@@ -1,0 +1,190 @@
+% the OutputDevice Category
+
+currentglobal
+true setglobal
+    systemdict begin
+        /.createresourcecategory {
+            %% category instancetype resourcedir resourceextension <createresourcecategory> -
+            %% Must be called with vm allocation mode set to true
+            currentglobal not {/createresourcecategory /invalidaccess .error} if
+            /Generic /Category findresource
+            dup length 4 add dict copy
+            exch 1 index exch /ResourceExtension exch put
+            exch 1 index exch /ResourceDir exch put
+
+            1 index type /nulltype eq { %ifelse
+                exch pop
+            } {
+                % define the InstanceType if it is not null
+                exch 1 index exch /InstanceType exch put
+            } ifelse
+
+            1 index 1 index exch /Category exch put
+            /Category defineresource pop
+        } bind noaccess def
+    end
+setglobal
+
+currentglobal
+true setglobal
+
+/OutputDevice /dicttype (resources/OutputDevice) (.ps) createresourcecategory
+
+% Standard PostScript Level 2 Categories
+% Load custom Font category instead of generic one
+(resources/Init/fontcategory.ps) run
+/Encoding /arraytype (resources/Encoding) (.ps) createresourcecategory
+/Form /dicttype (resources/Form) (.ps) createresourcecategory
+/Pattern /dicttype (resources/Pattern) (.ps) createresourcecategory
+/ProcSet /dicttype (resources/ProcSet) (.ps) createresourcecategory
+/ColorSpace /arraytype (resources/ColorSpace) (.ps) createresourcecategory
+
+% CID Font Categories
+/CMap /dicttype (resources/CMap) (.ps) createresourcecategory
+/CIDFont /dicttype (resources/CIDFont) (.ps) createresourcecategory
+
+% Font Set Category (CFF font loading)
+/FontSet /dicttype (resources/FontSet) (.ps) createresourcecategory
+
+% Level 2/3 Color Management Categories
+/Halftone /dicttype (resources/Halftone) (.ps) createresourcecategory
+/ColorRendering /dicttype (resources/ColorRendering) (.ps) createresourcecategory
+
+setglobal
+
+% ============================================================
+% Implicit Resource Categories (PLRM Table 3.8)
+%
+% Implicit resources represent built-in interpreter capabilities.
+% findresource returns the key itself; resourcestatus returns 0 0 true
+% for valid instances and false otherwise.
+% ============================================================
+
+currentglobal
+true setglobal
+
+systemdict begin
+    /createimplicitcategory {
+        %% instances_dict category_name createimplicitcategory -
+        %% Creates an implicit resource category from a dict of valid instances.
+        %% instances_dict maps valid keys (integers or names) to true.
+        currentglobal not {/createimplicitcategory /invalidaccess .error} if
+
+        exch                                    % category_name instances_dict
+        /Generic /Category findresource         % category_name instances_dict generic_dict
+        dup length 6 add dict copy              % category_name instances_dict new_dict
+        dup 3 -1 roll /Instances exch put       % category_name new_dict
+
+        % FindResource: return key itself if valid instance
+        dup /FindResource {
+            Instances 1 index known not {
+                /findresource /undefinedresource .error
+            } if
+        } bind put
+
+        % ResourceStatus: return 0 0 true if valid, false if not
+        dup /ResourceStatus {
+            Instances 1 index known {
+                pop 0 0 true
+            } {
+                pop false
+            } ifelse
+        } bind put
+
+        % ResourceForAll: enumerate valid instances
+        dup /ResourceForAll {
+            /rfa_scratch exch def
+            /rfa_proc exch def
+            /rfa_template exch def
+            rfa_template (*) eq {
+                % Wildcard - enumerate all instances
+                Instances {
+                    pop
+                    rfa_scratch cvs
+                    rfa_proc exec
+                } forall
+            } {
+                % Non-wildcard - check each instance against template
+                Instances {
+                    pop
+                    rfa_scratch cvs
+                    dup rfa_template eq {
+                        rfa_proc exec
+                    } {
+                        pop
+                    } ifelse
+                } forall
+            } ifelse
+            currentdict /rfa_template undef
+            currentdict /rfa_proc undef
+            currentdict /rfa_scratch undef
+        } bind put
+
+        % Store category name in the dict and register
+        % Stack: category_name new_dict
+        1 index 1 index exch /Category exch put
+        % Stack still: category_name new_dict (dict now has /Category entry)
+        /Category defineresource pop
+    } bind def
+end
+
+% --- Integer-keyed implicit categories ---
+
+% FontType: supported font dictionary types
+<< 0 true 1 true 2 true 3 true 42 true >>
+/FontType createimplicitcategory
+
+% FormType: supported form dictionary types
+<< 1 true >>
+/FormType createimplicitcategory
+
+% ImageType: supported image dictionary types
+<< 1 true 3 true >>
+/ImageType createimplicitcategory
+
+% PatternType: supported pattern dictionary types
+<< 1 true 2 true >>
+/PatternType createimplicitcategory
+
+% HalftoneType: supported halftone dictionary types
+<< 1 true >>
+/HalftoneType createimplicitcategory
+
+% ColorRenderingType: supported color rendering dictionary types
+<< 1 true >>
+/ColorRenderingType createimplicitcategory
+
+% FMapType: supported composite font mapping types
+<< 2 true 3 true 4 true 5 true 6 true 7 true 8 true 9 true >>
+/FMapType createimplicitcategory
+
+% --- Name-keyed implicit categories ---
+
+% Filter: supported filter algorithms
+<<
+    /ASCIIHexEncode true /ASCIIHexDecode true
+    /ASCII85Encode true /ASCII85Decode true
+    /LZWEncode true /LZWDecode true
+    /FlateEncode true /FlateDecode true
+    /RunLengthEncode true /RunLengthDecode true
+    /CCITTFaxEncode true /CCITTFaxDecode true
+    /DCTEncode true /DCTDecode true
+    /NullEncode true /SubFileDecode true /ReusableStreamDecode true
+>>
+/Filter createimplicitcategory
+
+% ColorSpaceFamily: supported color space families
+<<
+    /DeviceGray true /DeviceRGB true /DeviceCMYK true
+    /CIEBasedA true /CIEBasedABC true
+    /CIEBasedDEF true /CIEBasedDEFG true
+    /ICCBased true
+    /Indexed true /Separation true /DeviceN true /Pattern true
+>>
+/ColorSpaceFamily createimplicitcategory
+
+% Emulator: no emulators supported
+<< >>
+/Emulator createimplicitcategory
+
+setglobal

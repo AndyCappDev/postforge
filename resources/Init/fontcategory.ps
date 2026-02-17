@@ -1,0 +1,386 @@
+%!PS-Adobe-3.0
+%%Title: Font Category Implementation with Multi-Extension Support
+%%Creator: PostForge Resource Management System
+%%EndComments
+
+currentglobal
+true setglobal
+
+% Font Category with custom DefineResource that validates and syncs FontDirectory
+/Font <<
+    /InstanceType /dicttype
+    /ResourceDir (resources/Font)
+    /ResourceExtensions [(.t1) (.pfa) (.pfb) (.t3) (.ps) (.ttf) (.otf)]  % Priority order: Type 1 first, then Type 3
+    /ResourceExtension (.t1)  % Default for backward compatibility
+    /Category /Font
+    /DefaultFont /Helvetica  % Fallback font when requested font is not found
+    /FallbackInProgress false  % Guard against infinite recursion during fallback
+    /WarnedFonts 50 dict  % Track fonts we've already warned about (print warning only once)
+    
+    % Font-specific DefineResource with validation and FontDirectory sync
+    /DefineResource {
+        % Stack: key instance
+        
+        % Font validation
+        dup type /dicttype ne {
+            end % have to pop the Font dictionary off the dictionary stack
+            /defineresource /typecheck .error
+        } if
+
+        % Validate FontType existance
+        dup /FontType known not {
+            end % have to pop the Font dictionary off the dictionary stack
+            /defineresource /invalidfont .error
+        } if
+        
+        % Validate FontType (integer type)
+        dup /FontType get type /integertype ne {
+            end % have to pop the Font dictionary off the dictionary stack
+            /defineresource /invalidfont .error
+        } if
+
+        % Validate FontType Value (0, 1, 2, 3, or 42)
+        % Type 0: Composite font (references other fonts via FDepVector, used for CID)
+        % Type 1: Standard PostScript outline font
+        % Type 2: CFF (Compact Font Format) font with Type 2 charstrings
+        % Type 3: User-defined font with PostScript procedures
+        % Type 42: TrueType font embedded in PostScript (used by PDF-to-PS converters)
+        /valid_font_type false def
+        dup /FontType get
+        dup 0 eq { /valid_font_type true def } if
+        dup 1 eq { /valid_font_type true def } if
+        dup 2 eq { /valid_font_type true def } if
+        dup 3 eq { /valid_font_type true def } if
+        42 eq { /valid_font_type true def } if
+        valid_font_type not {
+            end % have to pop the Font dictionary off the dictionary stack
+            /defineresource /invalidfont .error
+        } if
+        
+        % Validate FontMatrix existance
+        dup /FontMatrix known not {
+            end % have to pop the Font dictionary off the dictionary stack
+            /defineresource /invalidfont .error
+        } if
+        
+        % Validate FontMatrix type
+        dup /FontMatrix get type /arraytype ne {
+            end % have to pop the Font dictionary off the dictionary stack
+            /defineresource /invalidfont .error
+        } if
+
+        % Validate FontMatrix (6-element number array)
+        dup /FontMatrix get length 6 ne {
+            end % have to pop the Font dictionary off the dictionary stack
+            /defineresource /invalidfont .error
+        } if
+
+        dup mark exch /FontMatrix get
+        {
+            type dup /integertype ne exch /realtype ne and {
+                cleartomark
+                end % have to pop the Font dictionary off the dictionary stack
+                /defineresource /invalidfont .error
+            } if
+        } forall
+        pop % pop the mark
+
+        % Insert FID per PLRM: "definefont inserts an additional entry whose key
+        % is FID and whose value is an object of type fontID" (PLRM Section 5.2).
+        % In Level 2+, if the font was already registered (has FID), do not alter it.
+        dup /FID known not {
+            dup .nextfid /FID exch put
+        } if
+
+        % Store the font in the resource system per PLRM VM allocation semantics
+        % PLRM 8293: "If the instance is in local VM but the current VM allocation mode is global, 
+        % an invalidaccess error occurs. This is analogous to storing a local object into a global dictionary."
+        1 index 1 index
+        
+        % Check the font object's actual VM allocation using gcheck
+        dup gcheck {
+            % Font object is in global VM - store in global resource dictionary
+            /Font globalresourcedict {
+                3 1 roll put
+            } {
+                end % have to pop the Font dictionary off the dictionary stack
+                /defineresource /undefinedresource .error
+            } ifelse
+        } {
+            % Font object is in local VM - check for invalidaccess condition
+            currentglobal {
+                % Current mode is global but object is local - PLRM invalidaccess error
+                end % have to pop the Font dictionary off the dictionary stack
+                /defineresource /invalidaccess .error
+            } {
+                % Current mode is local and object is local - store in local resource dictionary
+                /Font localresourcedict {
+                    3 1 roll put
+                } {
+                    end % have to pop the Font dictionary off the dictionary stack
+                    /defineresource /undefinedresource .error
+                } ifelse
+            } ifelse
+        } ifelse
+
+        % Add to FontDirectory and GlobalFontDirectory for Level 1 compatibility
+        % Stack: key instance
+        % Note: During global VM mode, FontDirectory is rebound to GlobalFontDirectory,
+        % so we add to both explicitly to ensure fonts are visible in all VM modes.
+
+        % Check if the top item (instance) has FontName
+        dup type /dicttype eq {
+            dup /FontName known {
+                % Store in FontDirectory: FontDirectory[fontname] = font_dict
+                dup /FontName get  % Stack: instance key fontname
+                FontDirectory exch  % Stack: instance key FontDirectory fontname
+                2 index put  % FontDirectory[fontname] = instance, Stack: instance key
+
+                % Also add to GlobalFontDirectory if font is in global VM
+                dup gcheck {
+                    % Font is in global VM - add to GlobalFontDirectory
+                    dup /FontName get  % Stack: key instance fontname
+                    GlobalFontDirectory exch  % Stack: instance key GlobalFontDirectory fontname
+                    2 index put  % GlobalFontDirectory[fontname] = instance, Stack: instance key
+                } {
+                    % Font is in local VM - only add to FontDirectory
+                } ifelse
+            } {
+  
+            } ifelse
+        } {
+        } ifelse
+        
+        % Stack should now have: key instance (key at bottom, instance at top)
+        % DefineResource should return: instance
+        % Instance is already at top, just remove the key below it
+        exch pop
+    } bind
+    
+    % Helper to handle font fallback when a font is not found
+    % Stack: original_font_name -> font_dict (or error if fallback also fails)
+    /FontFallback {
+        FallbackInProgress {
+            % Already in fallback - can't recurse further, throw error
+            /findresource /undefinedresource .error
+        } {
+            % Not in fallback - try substituting DefaultFont
+            % Only print warning once per font
+            dup WarnedFonts exch known not {
+                (Warning: Font ) print dup =string cvs print ( not found, substituting ) print
+                DefaultFont =string cvs print (\n) print
+                WarnedFonts exch true put  % Mark as warned
+            } {
+                pop  % Already warned, just remove font name
+            } ifelse
+            /FallbackInProgress true def
+            DefaultFont /Font findresource
+            /FallbackInProgress false def
+        } ifelse
+    } bind
+
+    % Try loading a font from the system font cache, fall back to FontFallback
+    % Uses font_name and original_font_name from the enclosing FindResource scope
+    /TrySystemOrFallback {
+        font_name .loadsystemfont {
+            % Stack: path_string — PS-runnable system font file found
+            /sys_path exch def
+            currentglobal true setglobal
+            (Loading System Font: ) print font_name //== exec
+            sys_path run
+            setglobal
+            font_name /Font globalresourcedict pop exch get
+        } {
+            % Try binary fonts (OTF/TTF)
+            font_name .loadbinarysystemfont {
+                (Loading System Font: ) print font_name //== exec
+                font_name /Font globalresourcedict pop exch get
+            } {
+                % Nothing found — fall back to default
+                original_font_name FontFallback
+            } ifelse
+        } ifelse
+    } bind
+
+    % Font FindResource — search order:
+    %   1. Already loaded (in-memory resource dicts)
+    %   2. resources/Font/ directory
+    %   3. System font cache
+    %   4. Fallback to DefaultFont
+    /FindResource {
+        % Stack: key
+        12 dict begin
+
+        /original_font_name exch def
+
+        % Apply font substitution if mapping exists
+        FontSubstitutions original_font_name known {
+            FontSubstitutions original_font_name get
+        } {
+            original_font_name
+        } ifelse
+        /font_name exch def
+
+        /loaded_font null def
+
+        % ---- STEP 1: Return font if already loaded ----
+        currentglobal not {
+            Category localresourcedict {
+                dup font_name known {
+                    font_name get /loaded_font exch def
+                } { pop } ifelse
+            } if
+        } if
+
+        loaded_font null eq {
+            Category globalresourcedict {
+                dup font_name known {
+                    font_name get /loaded_font exch def
+                } { pop } ifelse
+            } if
+        } if
+
+        % ---- STEP 2: Search resources/Font/ directory ----
+        loaded_font null eq {
+            /use_global_vm true def
+            /is_binary_font false def
+            /file_path null def
+
+            ResourceExtensions {
+                /ext exch def
+                (/) [ResourceDir () [font_name =fstring cvs ext] =fstring join] =fstring join
+                dup status {
+                    4 {pop} repeat
+                    ext (.t3) eq ext (.ps) eq or {
+                        /use_global_vm false def
+                    } {
+                        ext (.ttf) eq ext (.otf) eq or {
+                            /is_binary_font true def
+                        } if
+                        /use_global_vm true def
+                    } ifelse
+                    /file_path exch def
+                    exit
+                } {
+                    pop
+                } ifelse
+            } forall
+
+            file_path null ne {
+                % Load font from resources/Font/ file
+                is_binary_font {
+                    font_name file_path .loadbinaryfontfile {
+                        (Loading Font: ) print font_name //== exec
+                    } if
+                } {
+                    use_global_vm {
+                        currentglobal true setglobal
+                        (Loading Font: ) print font_name //== exec file_path run
+                        setglobal
+                    } {
+                        (Loading Font: ) print font_name //== exec file_path run
+                    } ifelse
+                } ifelse
+
+                % Retrieve the now-registered font from the resource dict
+                use_global_vm currentglobal or {
+                    Category globalresourcedict {
+                        dup font_name known {
+                            font_name get /loaded_font exch def
+                        } { pop } ifelse
+                    } if
+                } {
+                    Category localresourcedict {
+                        dup font_name known {
+                            font_name get /loaded_font exch def
+                        } { pop } ifelse
+                    } if
+                } ifelse
+            } if
+        } if
+
+        % ---- STEP 3: System font cache / fallback ----
+        loaded_font null eq {
+            TrySystemOrFallback /loaded_font exch def
+        } if
+
+        loaded_font
+
+        % FontName rewriting for transparent font substitution
+        original_font_name font_name ne {
+            dup type /dicttype eq {
+                dup length dict copy
+                /font_dict exch def
+                FontDirectory font_name font_dict put
+                FontDirectory original_font_name font_dict put
+                font_dict gcheck {
+                    GlobalFontDirectory font_name font_dict put
+                    GlobalFontDirectory original_font_name font_dict put
+                } if
+                font_dict /FontName original_font_name put
+                font_dict
+            } if
+        } if
+
+        end
+    } bind
+    
+    % Custom UndefineResource with PLRM-compliant VM mode behavior and FontDirectory sync
+    /UndefineResource {
+        % Stack: key -> -
+        % PLRM 11540-11544: VM mode determines removal behavior
+        
+        /font_key exch def  % Save key for multiple operations
+        
+        currentglobal {
+            % Global VM mode: Remove from BOTH local and global resource dictionaries
+            % PLRM: "Global-undefineresource removes a local definition, a global definition, or both"
+            
+            % Remove from local resource dictionary if it exists
+            /Font localresourcedict {
+                font_key .systemundef
+            } if
+            
+            % Remove from global resource dictionary if it exists  
+            /Font globalresourcedict {
+                font_key .systemundef
+            } if
+            
+            % Remove from FontDirectory and GlobalFontDirectory (complete removal)
+            FontDirectory font_key .systemundef
+            GlobalFontDirectory font_key .systemundef
+            
+        } {
+            % Local VM mode: Remove from local resource dictionary only
+            % PLRM: "Local-undefineresource removes a local definition if there is one"
+            % Global definition may reappear if it exists
+            
+            /Font localresourcedict {
+                font_key .systemundef
+            } if
+            % Note: Do NOT remove from global resource dictionary in local mode
+            
+            % FontDirectory management: Only remove if no global version exists
+            /Font globalresourcedict {
+                font_key known not {
+                    % No global version - safe to remove from FontDirectory
+                    FontDirectory font_key .systemundef
+                } if
+            } {
+                % No global resource dict - remove from FontDirectory
+                FontDirectory font_key .systemundef
+            } ifelse
+            
+            % Never remove from GlobalFontDirectory in local mode - global fonts should persist
+        } ifelse
+        
+        % Clean up the saved variable
+        currentdict /font_key .systemundef
+    } bind
+    
+    /ResourceStatus {/Generic /Category findresource /ResourceStatus get exec}
+    /ResourceForAll //resourceforall
+    
+>> /Category defineresource pop
+
+setglobal
