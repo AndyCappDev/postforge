@@ -1330,11 +1330,14 @@ class PDFInjector:
             ctm = text_obj.ctm
             ca, cb, cc, cd = ctm[0], ctm[1], ctm[2], ctm[3]
 
-            ctm_det = ca * cd - cb * cc
             fm = text_obj.font_matrix
-            fm_det = (fm[0] * fm[3] - fm[1] * fm[2]) if fm else 1.0
-            if ctm_det * fm_det > 0:
-                cc, cd = -cc, -cd
+
+            # The PDF content stream is in Y-down space (Cairo's initial cm
+            # provides the Y-flip from PDF's native Y-up).  The CTM already
+            # encodes the correct Y direction for this space — d < 0 means
+            # text is right-side up, d > 0 means upside down.  No adjustment
+            # is needed.  (The Cairo renderer DOES adjust because it applies
+            # the CTM as a coordinate transform where the semantics differ.)
 
             # Compose font matrix with CTM for the PDF text matrix (Tm).
             # FontMatrix provides per-axis scaling (e.g., [40 0 0 15 0 0] for
@@ -1438,10 +1441,6 @@ class PDFInjector:
 
         ctm = actual_text.ctm
         ca, cb, cc, cd = ctm[0], ctm[1], ctm[2], ctm[3]
-
-        ctm_det = ca * cd - cb * cc
-        if ctm_det > 0:
-            cc, cd = -cc, -cd
 
         font_size = actual_text.font_size
         bbox = actual_text.font_bbox

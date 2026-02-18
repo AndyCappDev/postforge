@@ -250,14 +250,17 @@ def _inject_text_into_tree(root, deferred_text_objs, scale_x, scale_y):
         fm = text_obj.font_matrix
 
         if abs(det) > 1e-10:
-            # Check if CTM is simple (no rotation/skew, uniform scaling)
-            # AND font matrix is uniform (no non-uniform makefont)
+            # Check if CTM is simple: standard PS orientation (det < 0),
+            # no rotation/skew, uniform scaling, no non-uniform makefont.
+            # Flipped text (e.g., -1 1 scale) has det > 0 and requires
+            # the general path with an SVG transform matrix.
             fm_is_uniform = (fm is None or
                              (abs(fm[1]) < 1e-10 and abs(fm[2]) < 1e-10
                               and abs(abs(fm[0]) - abs(fm[3])) < 1e-10 * max(abs(fm[0]), 1)))
             is_simple = (fm_is_uniform
                          and abs(b) < 1e-10 and abs(c) < 1e-10
-                         and abs(abs(a) - abs(d)) < 1e-10 * max(abs(a), abs(d), 1))
+                         and abs(abs(a) - abs(d)) < 1e-10 * max(abs(a), abs(d), 1)
+                         and det < 0)
 
             if is_simple:
                 # Simple case: uniform scale + Y-flip, use plain x,y positioning
@@ -269,12 +272,12 @@ def _inject_text_into_tree(root, deferred_text_objs, scale_x, scale_y):
             else:
                 # General case: rotation, skew, anisotropic scaling, or
                 # non-uniform font matrix (e.g., [40 0 0 15 0 0] makefont).
-                # Strip Y-reflection from CTM for SVG text rendering.
-                fm_det = (fm[0] * fm[3] - fm[1] * fm[2]) if fm else 1.0
-                if det * fm_det < 0:
-                    c_adj, d_adj = -c, -d
-                else:
-                    c_adj, d_adj = c, d
+                # Strip the standard Y-reflection from the CTM.  The PS
+                # CTM maps Y-up to Y-down (device space).  SVG text also
+                # renders Y-down, so applying the full CTM would double-flip.
+                # Negating c,d removes exactly one Y-flip, regardless of
+                # whether the CTM also contains horizontal flips or rotations.
+                c_adj, d_adj = -c, -d
 
                 # Compose font matrix with adjusted CTM
                 if fm:
