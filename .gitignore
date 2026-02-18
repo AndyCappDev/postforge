@@ -8,8 +8,9 @@ test.ps
 .gitignore~
 
 
-# Visual regression test output
+# Visual regression test output (but not .conf files)
 visual_tests_*
+!visual_tests_*.conf
 
 # Python packaging artifacts
 *.egg-info/
