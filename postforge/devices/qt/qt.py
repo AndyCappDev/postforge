@@ -424,13 +424,16 @@ def _wait_for_keypress(ctxt):
         _app.processEvents()
 
 
-def showpage(ctxt: ps.Context, pd: dict) -> None:
-    """
-    Render the current page to the Qt window.
+def _render_to_window(ctxt: ps.Context, pd: dict) -> None:
+    """Render the current display list to the Qt window.
+
+    This is the shared rendering core used by both showpage and flushpage.
+    It creates the Cairo surface, renders the display list, converts to
+    QImage, and updates the window.
 
     Args:
-        ctxt: PostScript context with display_list to render
-        pd: Page device dictionary containing MediaSize, PageCount, LineWidthMin, etc.
+        ctxt: PostScript context with display_list to render.
+        pd: Page device dictionary.
     """
     global _surface, _qimage, _page_width, _page_height, _zoom_level, _pan_x, _pan_y, _ctxt
 
@@ -503,8 +506,25 @@ def showpage(ctxt: ps.Context, pd: dict) -> None:
 
     # Ensure window exists and update (use page dimensions in points for aspect ratio)
     _ensure_window(_page_width, _page_height, _qimage.width(), _qimage.height())
+
     _canvas.update()
+    # Process events multiple times to ensure the window fully paints.
+    # A single processEvents() isn't always enough — Qt needs cycles for
+    # show, resize, and paint events, especially on first window creation.
     _app.processEvents()
+    _canvas.repaint()
+    _app.processEvents()
+
+
+def showpage(ctxt: ps.Context, pd: dict) -> None:
+    """
+    Render the current page to the Qt window and wait for user input.
+
+    Args:
+        ctxt: PostScript context with display_list to render
+        pd: Page device dictionary containing MediaSize, PageCount, LineWidthMin, etc.
+    """
+    _render_to_window(ctxt, pd)
 
     # Wait for user input before continuing to next page
     _wait_for_keypress(ctxt)
@@ -513,6 +533,20 @@ def showpage(ctxt: ps.Context, pd: dict) -> None:
     if _window_closed:
         # Push executable /quit onto execution stack
         ctxt.e_stack.append(ps.Name(b"quit", attrib=ps.ATTRIB_EXEC))
+
+
+def flushpage(ctxt: ps.Context, pd: dict) -> None:
+    """
+    Render the current page to the Qt window without waiting or stealing focus.
+
+    Used by interactive PS programs that redefine showpage as {flushpage}
+    to get live display updates while keeping terminal input active.
+
+    Args:
+        ctxt: PostScript context with display_list to render
+        pd: Page device dictionary.
+    """
+    _render_to_window(ctxt, pd)
 
 
 def refresh_display(ctxt: ps.Context) -> None:

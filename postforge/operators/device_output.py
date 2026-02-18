@@ -428,19 +428,47 @@ def flushpage(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
     """
     **flushpage** -
 
-    Forces immediate display of the current page contents on an interactive
-    display device. This is a Display PostScript (DPS) operator that ensures
-    any buffered graphics are rendered immediately without erasing the page
-    or advancing to the next page.
+    Forces immediate rendering of the current page contents to the output
+    device without erasing the page, advancing the page count, or
+    reinitializing the graphics state. Unlike **showpage**, **flushpage**
+    does not call EndPage/BeginPage procedures.
 
-    In batch processing (non-interactive) environments like PostForge, this
-    operator is a no-op since there is no real-time display to update.
+    This is commonly used in interactive PostScript programs that redefine
+    **showpage** as ``{flushpage}`` to get live display updates without
+    page advancement (e.g. PSChess, interactive viewers).
 
-    Note: This is not part of standard Level 2 PostScript, but is commonly
-    used in interactive PostScript programs.
+    **Errors**: none
+    **See Also**: **showpage**, **copypage**, **erasepage**
     """
-    # No-op for batch processing - there's no interactive display to flush
-    pass
+    pd = ctxt.gstate.page_device
+
+    # Null device: output operators do nothing
+    if b".NullDevice" in pd:
+        return
+
+    if pd[b"OutputDevice"].TYPE == ps.T_STRING:
+        device_name = pd[b"OutputDevice"].python_string()
+    else:
+        device_name = pd[b"OutputDevice"].val.decode("ascii")
+
+    try:
+        device = importlib.import_module(f"postforge.devices.{device_name}")
+    except (ModuleNotFoundError, ImportError):
+        return
+
+    try:
+        # Use device-specific flushpage if available (e.g. Qt renders
+        # without waiting for keypress or stealing focus), otherwise
+        # fall back to showpage for basic rendering.
+        if hasattr(device, 'flushpage'):
+            device.flushpage(ctxt, pd)
+        else:
+            device.showpage(ctxt, pd)
+    except Exception:
+        pass
+    finally:
+        if "device" in locals():
+            del device
 
 
 def nulldevice(ctxt: "ps.Context", ostack: "ps.Stack") -> None:

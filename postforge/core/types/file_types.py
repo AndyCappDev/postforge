@@ -81,6 +81,13 @@ class File(Stream):
 
     def open(self) -> Union[None, int]:
         if self.name == "%statementedit":
+            # Flush Qt events before blocking on terminal input so the
+            # display window actually paints (e.g. PSChess board display).
+            # Multiple rounds needed: show → resize → paint.
+            ctxt = contexts[self.ctxt_id] if self.ctxt_id is not None else None
+            if ctxt and hasattr(ctxt, 'event_loop_callback') and ctxt.event_loop_callback:
+                ctxt.event_loop_callback()
+                ctxt.event_loop_callback()
             try:
                 st = input()
             except (EOFError, KeyboardInterrupt):
@@ -101,6 +108,13 @@ class File(Stream):
         elif self.name == "%lineedit":
             # Similar to %statementedit but for single line input
             # Read a single line instead of a complete statement
+            # Flush Qt events before blocking on terminal input so the
+            # display window actually paints (e.g. PSChess board display).
+            # Multiple rounds needed: show → resize → paint.
+            ctxt = contexts[self.ctxt_id] if self.ctxt_id is not None else None
+            if ctxt and hasattr(ctxt, 'event_loop_callback') and ctxt.event_loop_callback:
+                ctxt.event_loop_callback()
+                ctxt.event_loop_callback()
             try:
                 line = sys.stdin.readline()
                 if not line:  # EOF
