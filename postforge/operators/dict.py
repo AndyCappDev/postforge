@@ -516,13 +516,11 @@ def dict_from_mark(ctxt, ostack):
         ):
             return ps_error.e(ctxt, ps_error.INVALIDACCESS, ">>")
 
-        key = d.create_key(key)
-
         # if this is a string being def'd, set it's is_defined flag to True
         if val.TYPE == ps.T_STRING:
             val.is_defined = True
 
-        d.val[key] = val
+        d.put(key, val)
 
     d.max_length = len(d.val) + 10
     d._access = ps.ACCESS_UNLIMITED
@@ -691,12 +689,7 @@ def ps_def(ctxt, ostack):
         else:
             ostack[-1].name = bytes(str(key.val if isinstance(key, ps.PSObject) else key), "ascii")
 
-    if not d.is_global and hasattr(d, '_cow_check'):
-        d._cow_check()
-    d.val[key] = ostack[-1]
-
-    if len(d.val) == d.max_length:
-        d.max_length += 10
+    d.put(ostack[-2], ostack[-1])
 
     if (
         ctxt.initializing
@@ -989,11 +982,7 @@ def store(ctxt, ostack):
     if def_to.is_global and ostack[-1].is_composite and not ostack[-1].is_global:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, store.__name__)
 
-    if not def_to.is_global and hasattr(def_to, '_cow_check'):
-        def_to._cow_check()
-    def_to.val[key] = ostack[-1]
-    if len(def_to.val) == def_to.max_length:
-        def_to.max_length += 10
+    def_to.put(ostack[-2], ostack[-1])
     ostack.pop()
     ostack.pop()
 

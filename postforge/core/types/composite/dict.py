@@ -27,11 +27,39 @@ from ..constants import (
 
 # Import primitive types and context infrastructure
 from ..primitive import Bool, Int, Real, Null
-from ..context import contexts
+from ..context import contexts, global_resources
 
-# Forward reference for Name class used in string representation
-# Will be resolved by composite package __init__.py
+# Forward references - resolved by composite package __init__.py
 Name = None
+String = None
+
+
+def _copy_string_key(key):
+    """Create an independent copy of a String for use as a dict key.
+
+    Per PLRM: 'If key is a string, put first makes a copy of key
+    and uses the copy as the key in dict.'
+
+    This ensures the stored key has stable byte_string() and __hash__(),
+    even if the original string's underlying storage is later modified
+    (e.g., string literals in procedure bodies reused across loop iterations).
+    """
+    src_bytes = key.byte_string()
+    if key.is_global:
+        storage = global_resources.global_strings
+    else:
+        storage = contexts[key.ctxt_id].local_strings
+    offset = len(storage)
+    storage += src_bytes
+    return String(
+        key.ctxt_id,
+        offset,
+        len(src_bytes),
+        start=0,
+        access=key._access,
+        attrib=key.attrib,
+        is_global=key.is_global,
+    )
 
 
 class Dict(PSObject):
@@ -174,6 +202,10 @@ class Dict(PSObject):
 
     def put(self, key: 'PSObject', value: 'PSObject') -> Tuple[bool, None]:
         self._cow_check()
+        # PLRM: "If key is a string, put first makes a copy of key
+        # and uses the copy as the key in dict."
+        if String is not None and isinstance(key, String):
+            key = _copy_string_key(key)
         self.val[self.create_key(key)] = value
         if len(self.val) == self.max_length:
             # increase the max_length by 10 if we have reached the limit

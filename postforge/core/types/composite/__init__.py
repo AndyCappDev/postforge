@@ -50,6 +50,7 @@ from . import dict as dict_module
 string.Name = Name        # String.__eq__ method needs Name class for isinstance check
 name.String = String      # Name.__eq__ method needs String class for isinstance check
 dict_module.Name = Name   # Dict.__str__ method needs Name class for key representation
+dict_module.String = String  # Dict.put() needs String class for PLRM string key copy
 
 # =============================================================================
 # PUBLIC API - All composite types available at package level
