@@ -13,6 +13,49 @@ from ..core.binary_token import _SYSTEM_NAME_TABLE
 from ..core.tokenizer import FORM_FEED, LINE_FEED, RETURN
 
 
+def _resolve_filename(ctxt, filename):
+    """Resolve a relative filename against likely directories.
+
+    PostForge changes CWD to the project root for internal resource resolution,
+    so relative paths in user PS files won't resolve against the user's directory.
+    This helper tries multiple locations in order:
+
+    1. As-is (works for absolute paths and project-relative resource files)
+    2. Relative to the directory of the currently executing file (e_stack walk)
+    3. Relative to the user's original working directory
+
+    Args:
+        ctxt: PostScript execution context.
+        filename: The filename string from PostScript code.
+
+    Returns:
+        Resolved filename path (may be the original if nothing matched).
+    """
+    # Absolute paths or already-resolvable files need no fixup
+    if os.path.isabs(filename) or os.path.exists(filename):
+        return filename
+
+    # Try relative to the directory of the currently executing file
+    for item in reversed(ctxt.e_stack):
+        if isinstance(item, (ps.File, ps.Run)):
+            if hasattr(item, 'name') and item.name and item.is_real_file:
+                parent_dir = os.path.dirname(os.path.abspath(item.name))
+                candidate = os.path.join(parent_dir, filename)
+                if os.path.exists(candidate):
+                    return candidate
+                break  # only check the innermost real file
+
+    # Try relative to user's original CWD
+    user_cwd = getattr(ctxt, 'user_cwd', None)
+    if user_cwd:
+        candidate = os.path.join(user_cwd, filename)
+        if os.path.exists(candidate):
+            return candidate
+
+    # Return original — let the caller handle the error
+    return filename
+
+
 def closefile(ctxt, ostack):
     """
     file **closefile** -
@@ -197,10 +240,11 @@ def ps_file(ctxt, ostack):
             return ps_error.e(ctxt, err, op)
         
     else:
-        # Regular file - create new file object as before
+        # Regular file - resolve relative paths against user's CWD
+        resolved = _resolve_filename(ctxt, filename)
         file_obj = ps.File(
             ctxt.id,
-            filename,
+            resolved,
             access,
             attrib=ps.ATTRIB_LIT,
             is_global=ctxt.vm_alloc_mode,
@@ -824,9 +868,10 @@ def run(ctxt, ostack):
     if not isinstance(ostack[-1], ps.String):
         return ps_error.e(ctxt, ps_error.TYPECHECK, run.__name__)
 
+    resolved = _resolve_filename(ctxt, ostack[-1].python_string())
     f = ps.Run(
         ctxt.id,
-        ostack[-1].python_string(),
+        resolved,
         "r",
         attrib=ps.ATTRIB_EXEC,
         is_global=ctxt.vm_alloc_mode,
@@ -861,27 +906,7 @@ def runlibfile(ctxt, ostack):
     if not isinstance(ostack[-1], ps.String):
         return ps_error.e(ctxt, ps_error.TYPECHECK, runlibfile.__name__)
 
-    filename = ostack[-1].python_string()
-    resolved_path = None
-
-    # Search order:
-    # 1. Current working directory (as-is)
-    if os.path.isfile(filename):
-        resolved_path = filename
-    else:
-        # 2. Directory of the currently executing file
-        # Search the execution stack for a file object to get its directory
-        for item in reversed(ctxt.e_stack):
-            if isinstance(item, (ps.File, ps.Run)):
-                if hasattr(item, 'name') and item.name and item.is_real_file:
-                    parent_dir = os.path.dirname(os.path.abspath(item.name))
-                    candidate = os.path.join(parent_dir, filename)
-                    if os.path.isfile(candidate):
-                        resolved_path = candidate
-                        break
-
-    if resolved_path is None:
-        return ps_error.e(ctxt, ps_error.UNDEFINEDFILENAME, runlibfile.__name__)
+    resolved_path = _resolve_filename(ctxt, ostack[-1].python_string())
 
     # Create and open the file for execution
     f = ps.Run(
@@ -964,8 +989,9 @@ def status(ctxt, ostack):
                 ostack[-1] = ps.Bool(True)
     else:
         try:
-            st = os.stat(ostack[-1].python_string())
-            ctime = int(os.path.getctime(ostack[-1].python_string()))
+            resolved = _resolve_filename(ctxt, ostack[-1].python_string())
+            st = os.stat(resolved)
+            ctime = int(os.path.getctime(resolved))
             ostack[-1] = ps.Int((st.st_size // 512) + 1)
             ostack.append(ps.Int(st.st_size))
             ostack.append(ps.Int(int(st.st_atime)))
@@ -1362,17 +1388,21 @@ def renamefile(ctxt, ostack):
     
     oldname = ostack[-2].python_string()
     newname = ostack[-1].python_string()
-    
+
     # Check for special file names that cannot be renamed
     special_files = ["%stdin", "%stdout", "%stderr", "%statementedit", "%lineedit"]
     if oldname in special_files or newname in special_files:
         return ps_error.e(ctxt, ps_error.INVALIDFILEACCESS, renamefile.__name__)
-    
+
     try:
+        # Resolve relative paths against user's CWD
+        oldname = _resolve_filename(ctxt, oldname)
+        newname = _resolve_filename(ctxt, newname)
+
         # Check if source file exists
         if not os.path.exists(oldname):
             return ps_error.e(ctxt, ps_error.UNDEFINEDFILENAME, renamefile.__name__)
-        
+
         # Perform the rename operation
         os.rename(oldname, newname)
         
@@ -1413,16 +1443,19 @@ def deletefile(ctxt, ostack):
     # Pop filename
     filename_obj = ostack.pop()
     filename = filename_obj.python_string()
-    
+
     # Check for special file names that cannot be deleted
     if filename in ["%stdin", "%stdout", "%stderr", "%statementedit", "%lineedit"]:
         return ps_error.e(ctxt, ps_error.INVALIDFILEACCESS, deletefile.__name__)
-    
+
     try:
+        # Resolve relative paths against user's CWD
+        filename = _resolve_filename(ctxt, filename)
+
         # Check if file exists
         if not os.path.exists(filename):
             return ps_error.e(ctxt, ps_error.UNDEFINEDFILENAME, deletefile.__name__)
-        
+
         # Try to delete the file
         os.remove(filename)
         

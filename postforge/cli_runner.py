@@ -512,6 +512,11 @@ def run(args, inputfiles, stdin_temp, user_cwd, project_dir,
         print(err_string)
         quit()
 
+    # Store user's original CWD so file operators (run, file, etc.) can
+    # resolve relative paths against where the user invoked PostForge,
+    # not the project root we chdir'd to above.
+    ctxt.user_cwd = user_cwd
+
     # Take memory snapshot after context initialization
     if memory_profile:
         ps_memory.take_memory_snapshot("context_initialized", ctxt)
