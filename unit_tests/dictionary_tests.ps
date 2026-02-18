@@ -76,6 +76,21 @@ systemdict /true /get [true] assert
     mydict /put [mydict /stackunderflow] assert
     1 123 /put [1 123 /stackunderflow] assert
     mydict [] 123 /put [mydict [] 123 /typecheck] assert
+    % PLRM: string keys must be copied on put (not stored by reference)
+    % Test that modifying a string after put does not corrupt the dict key
+    /sd 5 dict def
+    /s (A) def sd s 100 put s 0 97 put sd (A) /known [true] assert
+    % Test that string keys from a shared literal in a loop produce independent entries
+    % This reproduces the PSChess bug: ( ) inside a proc body shares storage
+    /sd2 5 dict def
+    [(P) (N) (B)] { /orig exch def sd2 ( ) dup 0 orig 0 get put 1 put } forall
+    sd2 {length} [3] assert
+    sd2 (P) /known [true] assert
+    sd2 (N) /known [true] assert
+    sd2 (B) /known [true] assert
+    % Test string key lookup with getinterval matches stored key
+    /sd3 << (hello) 42 >> def
+    sd3 (helloworld) 0 5 getinterval /known [true] assert
 
 
 %% where %%
