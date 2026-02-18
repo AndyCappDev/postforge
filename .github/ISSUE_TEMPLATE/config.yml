@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions & Help
+    url: https://github.com/AndyCappDev/postforge/discussions/categories/q-a
+    about: Ask questions about using PostForge in Discussions
+  - name: PostScript Help
+    url: https://github.com/AndyCappDev/postforge/discussions/categories/postscript-help
+    about: Get help with PostScript language questions
+  - name: Ideas
+    url: https://github.com/AndyCappDev/postforge/discussions/categories/ideas
+    about: Suggest ideas and discuss them with the community

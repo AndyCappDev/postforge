@@ -1,0 +1,81 @@
+name: Bug Report
+description: Report a rendering issue or unexpected behavior
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please provide as much detail as possible to help reproduce the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What went wrong?
+      placeholder: Describe the issue...
+    validations:
+      required: true
+
+  - type: textarea
+    id: ps-file
+    attributes:
+      label: PostScript file or snippet
+      description: Attach the PS/EPS file or paste a minimal snippet that reproduces the issue.
+      render: postscript
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected output
+      description: What should it look like? Attach a screenshot or describe the expected result. GhostScript output is a good reference.
+    validations:
+      required: false
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual output
+      description: What does PostForge produce? Attach a screenshot or describe what you see.
+    validations:
+      required: false
+
+  - type: input
+    id: command
+    attributes:
+      label: Command used
+      description: The exact command you ran.
+      placeholder: "./postforge.sh -d png myfile.ps"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: output-device
+    attributes:
+      label: Output device
+      options:
+        - PNG
+        - PDF
+        - SVG
+        - Qt display
+        - Interactive mode
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: PostForge version
+      description: Run `./postforge.sh --version` or check the banner.
+      placeholder: "0.9.0"
+    validations:
+      required: false
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "Ubuntu 24.04 / Windows 11 / macOS 15"
+    validations:
+      required: false
