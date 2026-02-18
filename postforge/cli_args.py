@@ -171,6 +171,11 @@ def build_argument_parser(available_devices: list) -> argparse.ArgumentParser:
         help="Set anti-aliasing mode for Cairo rendering (default: gray)"
     )
     parser.add_argument(
+        "--text-as-paths", action="store_true",
+        help="Render text as path outlines instead of native text objects (primarily affects PDF/SVG; "
+             "bitmap devices already render text as paths)"
+    )
+    parser.add_argument(
         "--no-icc", action="store_true",
         help="Disable ICC color management (use PLRM formulas)"
     )
@@ -180,7 +185,7 @@ def build_argument_parser(available_devices: list) -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--rebuild-font-cache", action="store_true",
-        help="Force rebuild of system font cache and exit"
+        help="Force rebuild of the system font discovery cache (font name to file path mapping) and exit"
     )
 
     return parser

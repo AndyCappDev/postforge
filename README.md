@@ -163,6 +163,9 @@ pf -o result.png --output-dir renders samples/tiger.ps
 # Render only specific pages from a multi-page document
 pf -d pdf --pages 1-3,7 document.ps
 
+# SVG with text rendered as path outlines instead of <text> elements
+pf --text-as-paths -d svg samples/tiger.ps
+
 # Pipe PostScript from stdin
 cat document.ps | pf -d png -
 ```

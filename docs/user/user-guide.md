@@ -95,6 +95,7 @@ Type `quit` or press Ctrl-D to exit.
 | `-r`, `--resolution` | Device resolution in DPI (default: 300 for PNG, 72 for PDF/SVG, screen resolution for Qt) |
 | `--pages` | Page range to output (e.g., `1-5`, `3`, `1-3,7,10-12`) |
 | `--antialias` | Anti-aliasing mode: `none`, `fast`, `good`, `best`, `gray`, `subpixel` (default: `gray`) |
+| `--text-as-paths` | Render text as path outlines instead of native text objects. Primarily affects PDF and SVG output; bitmap devices (PNG, Qt) already render text as paths by default. |
 
 ### Color Management
 
@@ -144,6 +145,7 @@ pf -d png -r 600 document.ps            # 600 DPI
 
 Renders each page to a PDF file with embedded fonts. Type 1, TrueType
 (Type 42), CID, and Type 3 fonts are embedded with subsetting.
+Use `--text-as-paths` to render text as path outlines instead of embedded fonts.
 
 ```bash
 pf -d pdf document.ps
@@ -154,8 +156,17 @@ pf -d pdf document.ps
 Renders each page to a separate SVG file.
 Text is preserved as selectable text elements with CSS font-family fallbacks.
 
+Because SVG does not embed fonts, any PostScript font not installed on the
+viewer's system will be substituted by the browser or SVG viewer — often
+with a generic serif or sans-serif font that changes spacing, line breaks,
+and overall layout. Use `--text-as-paths` to convert all text to path
+outlines, which guarantees pixel-perfect rendering regardless of which fonts
+are installed. The trade-off is that the text is no longer selectable or
+searchable, and file sizes may increase.
+
 ```bash
-pf -d svg document.ps
+pf -d svg document.ps                   # Selectable text (needs matching fonts)
+pf --text-as-paths -d svg document.ps   # Path outlines (always looks correct)
 ```
 
 ### Qt Display (`-d qt`)

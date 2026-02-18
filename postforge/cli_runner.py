@@ -251,6 +251,10 @@ def _configure_page_device(ctxt, args, inputfiles, user_cwd, device):
             # Auto-calculate DPI so the rendered image fits in ~85% of screen
             _auto_set_qt_resolution(ctxt)
 
+        # Override TextRenderingMode if --text-as-paths flag was provided
+        if args.text_as_paths:
+            ctxt.gstate.page_device[b"TextRenderingMode"] = ps.Name(b"GlyphPaths")
+
         # Store anti-aliasing mode if --antialias flag was provided
         if args.antialias:
             aa_bytes = bytes(args.antialias, "ascii")
