@@ -518,8 +518,9 @@ CID/TrueType extraction, and subsetting.
 
 **SVG** (`postforge/devices/svg/svg.py`) — Renders to a Cairo SVGSurface,
 then post-processes the SVG to convert text from outlines to selectable `<text>`
-elements with CSS font-family fallback chains. Each page produces a separate
-`.svg` file.
+elements with CSS font-family fallback chains. This can be overridden with
+`--text-as-paths` to render text as path outlines instead. Each page produces
+a separate `.svg` file.
 
 **Qt** (`postforge/devices/qt/qt.py`) — Interactive display window. Renders to
 a Cairo ImageSurface and displays it in a Qt widget. In interactive mode, the
