@@ -16,6 +16,7 @@ at 300 DPI). All three are tested by default.
 
 ## Quick Start
 
+*Linux/Mac:*
 ```bash
 # 1. Generate baseline images (all devices)
 ./visual_test.sh --baseline
@@ -24,14 +25,22 @@ at 300 DPI). All three are tested by default.
 ./visual_test.sh
 ```
 
+*Windows:*
+```cmd
+visual_test.bat --baseline
+visual_test.bat
+```
+
 The comparison renders all samples fresh, diffs them against the baseline,
 and generates an HTML report for each device plus a combined report at
 `visual_tests_report.html`.
 
 ## Command Reference
 
-All commands are run from the project root directory using `./visual_test.sh`,
-which handles virtual environment activation automatically.
+All commands are run from the project root directory using `./visual_test.sh`
+(Linux/Mac) or `visual_test.bat` (Windows), which handles virtual environment
+activation automatically. The examples below use `./visual_test.sh` but
+`visual_test.bat` accepts the same arguments.
 
 ### Generate Baseline
 
@@ -232,7 +241,8 @@ visual_tests_png.conf       # Per-sample thresholds for PNG
 visual_tests_pdf.conf       # Per-sample thresholds for PDF
 visual_tests_svg.conf       # Per-sample thresholds for SVG
 visual_test.py              # Test script
-visual_test.sh              # Launcher (activates venv)
+visual_test.sh              # Launcher for Linux/Mac (activates venv)
+visual_test.bat             # Launcher for Windows (activates venv)
 ```
 
 The `visual_tests_*` directories are in `.gitignore` as the generated images
