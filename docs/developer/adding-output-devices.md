@@ -509,7 +509,7 @@ The Qt device has additional hooks beyond `showpage`:
 - **`_process_qt_events()`** — Registered as `ctxt.event_loop_callback` to keep
   the GUI responsive during PostScript execution
 
-These hooks are registered in `cli.py` when the Qt device is active.
+These hooks are registered in `cli_runner.py` when the Qt device is active.
 
 
 ## Existing Devices as Reference

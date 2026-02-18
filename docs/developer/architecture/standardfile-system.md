@@ -31,7 +31,7 @@ any pickleable structure.
 
 ### How It Fits Together
 
-During context creation (`postforge/cli.py`), actual StandardFile objects
+During context creation (`postforge/core/context_init.py`), actual StandardFile objects
 are created and registered with the manager. The context stores only the
 proxy:
 

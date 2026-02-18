@@ -18,8 +18,9 @@ PostScript Source ──► Tokenizer ──► Execution ──► │ Display 
 ```
 
 1. **Source** — PostScript code arrives as a file, string, or interactive input.
-   The CLI (`postforge/cli.py`) parses arguments, creates a `Context`, and pushes
-   the input onto the execution stack.
+   The CLI (`postforge/cli.py`) parses arguments, creates a `Context`
+   (via `postforge/core/context_init.py`), and pushes the input onto the
+   execution stack.
 
 2. **Tokenizer** (`postforge/core/tokenizer.py`) — Reads bytes from a stream one
    at a time, recognizing numbers, names, strings, procedures (delimited by `{}`),
@@ -618,7 +619,10 @@ A quick reference to the directory structure:
 
 | Path | Purpose |
 |------|---------|
-| `postforge/cli.py` | Entry point, argument parsing, context creation |
+| `postforge/cli.py` | Entry point, argument parsing, orchestration |
+| `postforge/cli_args.py` | CLI argument parser definition, page range parsing, output naming |
+| `postforge/cli_runner.py` | Execution logic — device setup, batch jobs, interactive mode |
+| `postforge/core/context_init.py` | PostScript context creation (`init_system_params`, `create_context`) |
 | `postforge/core/types/` | Type system — PSObject, all PS types, Context, GraphicsState |
 | `postforge/core/tokenizer.py` | Byte-stream tokenizer |
 | `postforge/core/error.py` | PostScript error handling |
