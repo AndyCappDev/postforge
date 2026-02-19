@@ -68,7 +68,6 @@ body:
     attributes:
       label: PostForge version
       description: Run `pf` and check the version in the startup banner.
-      placeholder: "0.9.1"
     validations:
       required: false
 
