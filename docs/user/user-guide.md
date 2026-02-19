@@ -45,6 +45,7 @@ pf input_file.ps                         # Render to Qt display window
 pf -d png input_file.ps                  # Render to PNG files
 pf -d pdf input_file.ps                  # Render to PDF
 pf -d svg input_file.ps                  # Render to SVG
+pf --version                             # Print version and exit
 ```
 
 The launcher scripts `./postforge.sh` (Linux/Mac) and `postforge.bat` (Windows)
