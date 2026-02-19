@@ -67,7 +67,7 @@ body:
     id: version
     attributes:
       label: PostForge version
-      description: Run `pf` and check the version in the startup banner.
+      description: Run `pf --version`.
     validations:
       required: false
 
