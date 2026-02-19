@@ -241,6 +241,21 @@ def _configure_page_device(ctxt, args, inputfiles, user_cwd, device):
             is_global=True,
         )
 
+        # For EPS files, pre-set PageSize to BoundingBox dimensions so that
+        # DPI auto-calculation (below) uses the actual content size, not the
+        # default letter page.  execjob will also call setpagedevice with
+        # the same dimensions, but the DPI must be right before that.
+        if inputfiles and inputfiles[0].lower().endswith('.eps'):
+            bbox = ps_control._read_eps_bounding_box(inputfiles[0])
+            if bbox:
+                llx, lly, urx, ury = bbox
+                eps_w = urx - llx
+                eps_h = ury - lly
+                if eps_w > 0 and eps_h > 0:
+                    page_size = ps.Array(ctxt.id)
+                    page_size.setval([ps.Real(eps_w), ps.Real(eps_h)])
+                    ctxt.gstate.page_device[b"PageSize"] = page_size
+
         # Override HWResolution if --resolution flag was provided
         if args.resolution:
             hw_res = ps.Array(ctxt.id)
