@@ -21,7 +21,7 @@ than raw speed. Its modular architecture makes it well suited for education,
 PostScript development, and embedding in Python workflows.
 
 The interpreter covers the full Level 2 specification and includes PDF font
-embedding, ICC color management, and a Cython-accelerated execution loop.
+embedding/subsetting, ICC color management, and a Cython-accelerated execution loop.
 
 ## Sample Output
 

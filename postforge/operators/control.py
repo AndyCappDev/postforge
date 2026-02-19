@@ -1110,11 +1110,27 @@ def exec_exec(ctxt: "ps.Context", o_stack: "ps.Stack", e_stack: "ps.Stack") -> N
                                 glyph_name = b'.notdef'
                             metrics = current_font.val.get(b'Metrics')
                             char_strings = current_font.val.get(b'CharStrings')
-                            # Try Metrics dict first
-                            if metrics and metrics.TYPE == ps.T_DICT and glyph_name in metrics.val:
-                                w = metrics.val[glyph_name]
-                                if hasattr(w, 'val'):
-                                    wx = float(w.val) if not isinstance(w.val, (list, dict)) else 0.0
+                            # Try Metrics dict first (PLRM 5.9.2)
+                            # Check int char code (DVIPS) then glyph name (PLRM standard)
+                            w = None
+                            if metrics and metrics.TYPE == ps.T_DICT:
+                                w = metrics.val.get(char_code)
+                                if w is None:
+                                    w = metrics.val.get(glyph_name)
+                            if w is not None and hasattr(w, 'TYPE'):
+                                if w.TYPE in ps.NUMERIC_TYPES:
+                                    mw = float(w.val)
+                                elif w.TYPE in ps.ARRAY_TYPES and len(w.val) >= 2:
+                                    mw = float(w.val[0].val) if w.val[0].TYPE in ps.NUMERIC_TYPES else None
+                                else:
+                                    mw = None
+                                if mw is not None:
+                                    # Convert character space to user space via FontMatrix[0]
+                                    fm = current_font.val.get(b'FontMatrix')
+                                    if fm and fm.TYPE in ps.ARRAY_TYPES and fm.val:
+                                        wx = mw * float(fm.val[0].val)
+                                    else:
+                                        wx = mw * 0.001
                         except Exception:
                             pass
 

@@ -227,6 +227,65 @@ def _render_type3_character(ctxt, font_dict, char_code):
         ctxt._font_cache_mode = False
 
 
+def _get_metrics_width(font_dict, glyph_name, char_code):
+    """Get character width override from Metrics dictionary (PLRM 5.9.2).
+
+    When a font has a Metrics dictionary, its entries override the advance
+    widths specified by setcachedevice/setcharwidth during CharString execution.
+
+    Supports both PLRM-standard glyph name keys and DVIPS-style integer
+    character code keys.
+
+    Args:
+        font_dict: Font dictionary that may contain a Metrics entry
+        glyph_name: Glyph name (bytes) from the font's Encoding
+        char_code: Character code (int)
+
+    Returns:
+        Width in user space (float), or None if no Metrics override
+    """
+    metrics = font_dict.val.get(b'Metrics')
+    if not metrics or getattr(metrics, 'TYPE', None) != ps.T_DICT:
+        return None
+
+    # Try integer char code (DVIPS) first, then glyph name (PLRM standard)
+    w = metrics.val.get(char_code)
+    if w is None and glyph_name is not None:
+        w = metrics.val.get(glyph_name)
+    if w is None:
+        return None
+
+    # Extract numeric width from Metrics entry
+    # PLRM formats: wx | [wx wy] | [llx lly wx wy]
+    if not hasattr(w, 'TYPE'):
+        return None
+
+    if w.TYPE in ps.NUMERIC_TYPES:
+        wx = float(w.val)
+    elif w.TYPE in ps.ARRAY_TYPES:
+        arr = w.val
+        if len(arr) == 4:
+            # [llx lly wx wy]
+            wx = float(arr[2].val) if arr[2].TYPE in ps.NUMERIC_TYPES else None
+        elif len(arr) >= 2:
+            # [wx wy]
+            wx = float(arr[0].val) if arr[0].TYPE in ps.NUMERIC_TYPES else None
+        else:
+            return None
+        if wx is None:
+            return None
+    else:
+        return None
+
+    # Convert from character space to user space via FontMatrix[0]
+    font_matrix = font_dict.val.get(b'FontMatrix')
+    if font_matrix and getattr(font_matrix, 'TYPE', None) in ps.ARRAY_TYPES:
+        fm_vals = font_matrix.val
+        if fm_vals and hasattr(fm_vals[0], 'val'):
+            return wx * float(fm_vals[0].val)
+    return wx * 0.001  # Default FontMatrix[0]
+
+
 def _render_type1_character(ctxt, font_dict, char_code):
     """Render a Type 1 font character with bitmap cache support.
 
@@ -280,6 +339,11 @@ def _render_type1_character(ctxt, font_dict, char_code):
 
     private_dict = font_dict.val.get(b'Private')
     char_width = charstring_to_width(encrypted_charstring, ctxt, private_dict, font_dict)
+
+    # Apply Metrics override if present (PLRM 5.9.2)
+    metrics_width = _get_metrics_width(font_dict, glyph_name, char_code)
+    if metrics_width is not None:
+        char_width = metrics_width
 
     if cache_enabled and cache_key is not None and char_width is not None and ctxt.display_list:
         ctxt.display_list.append(ps.GlyphEnd())
@@ -378,6 +442,11 @@ def _render_type2_character(ctxt, font_dict, char_code):
         default_width_x, nominal_width_x,
         local_subrs, global_subrs,
         width_only=width_only)
+
+    # Apply Metrics override if present (PLRM 5.9.2)
+    metrics_width = _get_metrics_width(font_dict, glyph_name, char_code)
+    if metrics_width is not None:
+        char_width = metrics_width
 
     if cache_enabled and cache_key is not None and char_width is not None and ctxt.display_list:
         ctxt.display_list.append(ps.GlyphEnd())
@@ -484,8 +553,13 @@ def _render_type42_character(ctxt, font_dict, char_code):
         fm_scale = 1.0
     width_scale = em_scale * fm_scale
 
+    # Check for Metrics override (PLRM 5.9.2)
+    metrics_width = _get_metrics_width(font_dict, glyph_name, char_code)
+
     if glyf_data is None or len(glyf_data) < 10:
         # Empty glyph (space, etc.) — just return width
+        if metrics_width is not None:
+            return metrics_width
         return advance_width * width_scale
 
     # Emit GlyphStart for cache capture
@@ -502,6 +576,10 @@ def _render_type42_character(ctxt, font_dict, char_code):
     char_width = _render_truetype_glyf(
         ctxt, font_dict, gid, glyf_data, type0_font=None,
         glyf_resolver=lambda comp_gid: _get_glyf_data_from_sfnts(font_data, comp_gid))
+
+    # Apply Metrics override if present (PLRM 5.9.2)
+    if metrics_width is not None:
+        char_width = metrics_width
 
     # Emit GlyphEnd and cache
     if cache_enabled and cache_key is not None and char_width is not None and ctxt.display_list:

@@ -71,6 +71,7 @@ def show(ctxt, ostack):
     if isinstance(text_bytes, str):
         text_bytes = text_bytes.encode('latin-1')
 
+
     # TextObjs mode: emit TextObj to display list instead of rendering glyph paths
     type3_actual_text = False
     if text_mode == b'TextObjs':
@@ -1663,6 +1664,11 @@ def charpath(ctxt, ostack):
 
                     # Advance current point by character width (like show would do)
                     if char_width is not None:
+                        # Apply Metrics override if present (PLRM 5.9.2)
+                        metrics_width = font_rendering._get_metrics_width(
+                            current_font, glyph_name, char_code)
+                        if metrics_width is not None:
+                            char_width = metrics_width
                         _advance_current_point(ctxt, currentpoint, char_width, current_font)
 
                 except Exception:
@@ -1946,9 +1952,15 @@ def _calculate_string_width(text_bytes, current_font, ctxt):
             if gid_obj is None:
                 continue
             gid = int(gid_obj.val) if gid_obj.TYPE in ps.NUMERIC_TYPES else 0
-            advance_width = font_rendering._get_truetype_advance_width(current_font, gid)
-            if advance_width is not None:
-                total_width_x += advance_width * width_scale
+            # Check Metrics override first (PLRM 5.9.2)
+            metrics_width = font_rendering._get_metrics_width(
+                current_font, glyph_name, char_code)
+            if metrics_width is not None:
+                total_width_x += metrics_width
+            else:
+                advance_width = font_rendering._get_truetype_advance_width(current_font, gid)
+                if advance_width is not None:
+                    total_width_x += advance_width * width_scale
 
         return total_width_x, total_width_y
 
@@ -1993,6 +2005,11 @@ def _calculate_string_width(text_bytes, current_font, ctxt):
                         current_font.val.get(b'Private'), current_font, width_only=True)
 
                 if char_width is not None:
+                    # Apply Metrics override if present (PLRM 5.9.2)
+                    metrics_width = font_rendering._get_metrics_width(
+                        current_font, glyph_name, char_code)
+                    if metrics_width is not None:
+                        char_width = metrics_width
                     total_width_x += char_width
                     total_width_y += 0  # Assuming horizontal text
 
