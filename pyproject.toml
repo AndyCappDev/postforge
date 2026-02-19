@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "postforge"
-version = "0.9.0"
+version = "0.9.1"
 description = "A PostScript interpreter written in Python"
 authors = [{name = "Scott Bowman", email = "scott@bowmans.org"}]
 readme = "README.md"

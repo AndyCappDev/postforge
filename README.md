@@ -3,7 +3,7 @@
 <p align="center"><strong>A modern, open-source PostScript interpreter written in Python.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/AndyCappDev/postforge/releases"><img src="https://img.shields.io/badge/Version-0.9.0-green.svg" alt="Version 0.9.0"></a>
+  <a href="https://github.com/AndyCappDev/postforge/releases"><img src="https://img.shields.io/badge/Version-0.9.1-green.svg" alt="Version 0.9.0"></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.13%2B-blue.svg" alt="Python 3.13+"></a>
 </p>
