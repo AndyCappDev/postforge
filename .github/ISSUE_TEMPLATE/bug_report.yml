@@ -46,7 +46,7 @@ body:
     attributes:
       label: Command used
       description: The exact command you ran.
-      placeholder: "./postforge.sh -d png myfile.ps"
+      placeholder: "pf -d png myfile.ps"
     validations:
       required: false
 
@@ -67,8 +67,8 @@ body:
     id: version
     attributes:
       label: PostForge version
-      description: Run `./postforge.sh --version` or check the banner.
-      placeholder: "0.9.0"
+      description: Run `pf` and check the version in the startup banner.
+      placeholder: "0.9.1"
     validations:
       required: false
 
