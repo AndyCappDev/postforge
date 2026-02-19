@@ -198,6 +198,7 @@ class Context(object):
         # Called periodically during execution to keep GUI responsive
         self.event_loop_callback = None                     # Set by device to a callable
         self._event_loop_counter = 0                        # Counter for periodic callback
+        self._interactive_painting = False                   # Toggled by _setinteractivepaint operator
 
         # Exit code for shell propagation (set by .quitwithcode operator)
         self.exit_code = 0

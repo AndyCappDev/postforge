@@ -132,6 +132,18 @@ def echo(ctxt, ostack):
     ctxt.echo = ostack.pop().val
 
 
+def _setinteractivepaint(ctxt, ostack):
+    """Internal operator: enable/disable live paint callback for executive mode."""
+    if len(ostack) < 1:
+        return ps_error.e(ctxt, ps_error.STACKUNDERFLOW, ".setinteractivepaint")
+    if ostack[-1].TYPE != ps.T_BOOL:
+        return ps_error.e(ctxt, ps_error.TYPECHECK, ".setinteractivepaint")
+    ctxt._interactive_painting = ostack.pop().val
+    # When enabling, trigger an initial refresh to show the Qt window
+    if ctxt._interactive_painting and ctxt.on_paint_callback:
+        ctxt.on_paint_callback(ctxt, None)
+
+
 def usertime(ctxt, ostack):
     """
     - **usertime** int

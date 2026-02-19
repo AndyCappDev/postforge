@@ -312,6 +312,7 @@ def create_system_dict(ctxt, name: bytes) -> dict:
         ("transform", ps.Operator, ps_matrix.transform),
         ("translate", ps.Operator, ps_matrix.translate),
         # misc operators
+        (".setinteractivepaint", ps.Operator, ps_misc._setinteractivepaint),
         ("bind", ps.Operator, ps_misc.bind),
         ("echo", ps.Operator, ps_misc.echo),
         ("eexec", ps.Operator, ps_misc.eexec),

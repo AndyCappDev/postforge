@@ -740,9 +740,11 @@ end % statusdict
 /execdict 20 dict def
 execdict begin
     /execdepth 0 def
+    /continueflag false def
 
     /checkquit { %def
         quitflag {exit} if
+        continueflag {exit} if
     } bind def
 
     /cvsprint {=string cvs print} bind def
@@ -755,10 +757,20 @@ systemdict begin
         (PF[) print countexecstack 1 add cvsprint ( ) print countdictstack 1 sub cvsprint ( ) print count cvsprint (]) print execdepth { (>) print } repeat ( ) print
     } bind def
 
+    /continue { %def
+        //execdict /continueflag true put
+    } bind def
+
+    /cont { %def
+        //execdict /continueflag true put
+    } bind def
+
     /executive { %def
             true { % nested executive levels allowed
                 //execdict begin
                 /execdepth execdepth 1 add def
+                /continueflag false def
+                true .setinteractivepaint
                 execdepth 1 eq {
                     product print ( ) print (Version ) print revisionstring print ( \() print revisiondate print (\)\n) print
                     (Copyright \(C\) ) print revisiondate 0 4 getinterval print ( Scott Bowman, All rights reserved.\n) print
@@ -794,11 +806,20 @@ systemdict begin
                     } ifelse
                     checkquit
                 } loop
-                /quitflag false def
-                /execdepth execdepth 1 sub def
-            end % execdict
-            //$error /doclose false put
-            stop
+                false .setinteractivepaint
+                continueflag { %if
+                    % Continue: exit executive and resume the calling file
+                    /continueflag false def
+                    /execdepth execdepth 1 sub def
+                end % execdict
+                } { %else
+                    % Quit: terminate the job
+                    /quitflag false def
+                    /execdepth execdepth 1 sub def
+                end % execdict
+                    //$error /doclose false put
+                    stop
+                } ifelse
         } {
             (Only one level of executive allowed\n) print
         } ifelse

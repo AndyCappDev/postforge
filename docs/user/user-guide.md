@@ -23,6 +23,20 @@ cd postforge
 The install script checks for Python 3.13+ and Cairo, creates a virtual
 environment, installs all dependencies, and installs the `pf` command.
 
+### Updating
+
+To update PostForge to the latest version:
+
+```bash
+cd postforge
+git pull
+./install.sh        # Linux/macOS
+install.bat         # Windows
+```
+
+The install script will update dependencies and rebuild the Cython accelerator
+as needed. Your configuration and font cache are preserved.
+
 ### Running PostForge
 
 ```bash
@@ -73,10 +87,39 @@ PF[8 3 0]> quit
 ```
 
 The prompt `PF[8 3 0]>` shows the current interpreter state: execution stack
-depth, dictionary stack depth, and operand stack item count. As you push values
-onto the operand stack, the third number updates accordingly.
+depth, dictionary stack depth, and operand stack item count. The numbers are
+updated accordingly when items are pushed onto these stacks.
 
 Type `quit` or press Ctrl-D to exit.
+
+#### Entering Interactive Mode from a Program
+
+A PostScript program can drop into the interactive prompt at any point by
+calling the `executive` operator. This is useful for debugging — you can
+inspect stacks, query graphics state, or run arbitrary PostScript while the
+program is paused:
+
+```postscript
+% Inside a .ps file:
+/myvar 42 def
+executive          % drops into interactive prompt here
+myvar ==           % continues after you type 'continue'
+```
+
+When using `executive` from within a file, the Qt display window updates
+live as you enter drawing commands, just as it does in normal interactive
+mode.
+
+Two commands exit the interactive prompt:
+
+| Command | Effect |
+|---------|--------|
+| `continue` (or `cont`) | Exit the prompt and resume the calling file |
+| `quit` | Exit the prompt and terminate the entire job |
+
+The `executive` operator is re-entrant: calling it from within the
+interactive prompt opens a nested level, shown by additional `>` characters
+in the prompt.
 
 ## Command Line Reference
 

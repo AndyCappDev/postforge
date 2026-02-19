@@ -180,7 +180,7 @@ To update PostForge to the latest version:
 cd postforge
 git pull
 ./install.sh        # Linux/macOS
-install.bat          # Windows
+install.bat         # Windows
 ```
 
 The install script will update dependencies and rebuild the Cython accelerator

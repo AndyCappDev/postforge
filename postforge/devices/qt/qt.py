@@ -20,6 +20,7 @@ Keyboard shortcuts:
 """
 
 import cairo
+import signal
 import time
 
 # Anti-aliasing mode for Cairo rendering (also used by glyph bitmap cache).
@@ -79,6 +80,7 @@ _waiting_for_key = False
 _key_pressed = False
 _window_closed = False
 _user_advanced = False  # Track if user pressed key to advance (for auto-quit on last page)
+_showpage_called = False  # Track if showpage was ever called (for auto-close on enter_event_loop)
 _busy_mode = False  # Track busy state for cursor restoration on window re-entry
 
 # Page dimensions (device space)
@@ -524,6 +526,8 @@ def showpage(ctxt: ps.Context, pd: dict) -> None:
         ctxt: PostScript context with display_list to render
         pd: Page device dictionary containing MediaSize, PageCount, LineWidthMin, etc.
     """
+    global _showpage_called
+    _showpage_called = True
     _render_to_window(ctxt, pd)
 
     # Wait for user input before continuing to next page
@@ -661,6 +665,9 @@ def enter_event_loop():
     This keeps the window open until the user closes it, allowing
     viewing of the final rendered result. However, if the user pressed
     a key to advance past the last page, auto-quit instead of waiting.
+    If showpage was never called (e.g., window was created by live
+    paint callbacks during an executive session), auto-close since
+    there is no final page to display.
     """
     global _window_closed
 
@@ -679,6 +686,16 @@ def enter_event_loop():
         if _user_advanced:
             _window.close()
             return
+
+        # If showpage was never called, the window was created by live
+        # paint callbacks (e.g., during an executive session). There is
+        # no final rendered page to display, so auto-close.
+        if not _showpage_called:
+            _window.close()
+            return
+
+        # Restore default SIGINT so Ctrl+C terminates the process
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
 
         _window.setWindowTitle("PostForge - Press Q or close window to exit")
         # Ensure canvas has focus for keyboard events

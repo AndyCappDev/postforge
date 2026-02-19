@@ -199,14 +199,23 @@ def _configure_page_device(ctxt, args, inputfiles, user_cwd, device):
         user_cwd: User's original working directory.
         device: Resolved device name (may be None).
     """
-    # Register live rendering callback for Qt device (only in interactive mode)
-    if device == "qt" and not inputfiles:
+    # Register Qt callbacks for live rendering and event processing
+    if device == "qt":
         try:
             from .devices.qt import refresh_display, _process_qt_events, qt_module
-            ctxt.on_paint_callback = lambda ctxt, elem: refresh_display(ctxt)
-            # Set up context reference and event loop callback for quit signaling
             qt_module._ctxt = ctxt
             ctxt.event_loop_callback = _process_qt_events
+            if inputfiles:
+                # Batch mode: only refresh on paint operations when executive
+                # is active (the _interactive_painting flag is toggled by
+                # the _setinteractivepaint operator called from executive)
+                def _conditional_paint(ctxt, elem):
+                    if getattr(ctxt, '_interactive_painting', False):
+                        refresh_display(ctxt)
+                ctxt.on_paint_callback = _conditional_paint
+            else:
+                # Interactive mode: always refresh on paint operations
+                ctxt.on_paint_callback = lambda ctxt, elem: refresh_display(ctxt)
         except ImportError:
             pass
 
