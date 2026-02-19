@@ -172,6 +172,20 @@ cat document.ps | pf -d png -
 
 For complete command line options, see the [User Guide](docs/user/user-guide.md).
 
+### Updating
+
+To update PostForge to the latest version:
+
+```bash
+cd postforge
+git pull
+./install.sh        # Linux/macOS
+install.bat          # Windows
+```
+
+The install script will update dependencies and rebuild the Cython accelerator
+as needed. Your configuration and font cache are preserved.
+
 ### Uninstalling
 
 **Linux/macOS:**
