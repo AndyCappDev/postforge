@@ -250,6 +250,7 @@ most rendering tasks.*
 - [Level 2 Compliance Assessment](docs/design/level2-compliance-assessment.md)
 - [Detailed Gap Analysis](docs/design/detailed-gap-analysis.md)
 - [Sample Gallery](docs/samples.md)
+- [Background](docs/background.md) — Author history and how PostForge came to be
 
 ## Contributing
 
