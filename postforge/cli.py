@@ -71,12 +71,11 @@ def main() -> int:
 
     # Remember user's working directory — file paths on the command line
     # and in interactive mode should resolve relative to where pf was invoked
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_dir = os.path.dirname(script_dir)
+    package_dir = os.path.dirname(os.path.abspath(__file__))  # postforge/
     user_cwd = os.getcwd()
 
     # Get available devices from OutputDevice directory
-    device_dir = os.path.join(project_dir, "resources", "OutputDevice")
+    device_dir = os.path.join(package_dir, "resources", "OutputDevice")
 
     available_devices = []
     if os.path.exists(device_dir):
@@ -111,8 +110,7 @@ def main() -> int:
         print(f"System font cache rebuilt: {cache.font_count()} fonts found")
         return 0
 
-    # Resolve input file paths to absolute (relative to user's CWD) before
-    # we chdir to the project root for PS resource file resolution.
+    # Resolve input file paths to absolute (relative to user's CWD)
     inputfiles = [f if f == "-" else (os.path.join(user_cwd, f) if not os.path.isabs(f) else f)
                   for f in args.inputfiles]
     device = args.device
@@ -155,7 +153,7 @@ def main() -> int:
         inputfiles = [stdin_temp.name if f == "-" else f for f in inputfiles]
 
     try:
-        return run(args, inputfiles, stdin_temp, user_cwd, project_dir,
+        return run(args, inputfiles, stdin_temp, user_cwd, package_dir,
                    available_devices, device, memory_profile,
                    gc_analysis, leak_analysis, performance_profile,
                    profile_type, profile_output, page_filter)

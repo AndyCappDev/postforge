@@ -57,7 +57,10 @@ where = ["."]
 include = ["postforge*"]
 
 [tool.setuptools.package-data]
-postforge = ["**/*.pyx"]
+postforge = [
+    "**/*.pyx",
+    "resources/**/*",
+]
 
 [tool.black]
 line-length = 88

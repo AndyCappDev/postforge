@@ -37,7 +37,7 @@ python -m postforge samples/tiger.ps  # After pip install -e .
 | `postforge/operators/` | PostScript language operators organized by functional area |
 | `postforge/devices/` | Output devices (PNG, PDF, SVG, Qt) |
 | `postforge/utils/` | System utilities (memory analysis, profiling) |
-| `resources/` | PostScript resource files (fonts, encodings, initialization scripts, device configs) |
+| `postforge/resources/` | PostScript resource files (fonts, encodings, initialization scripts, device configs) |
 | `unit_tests/` | PostScript-based test suite |
 
 See [Architecture Overview](architecture-overview.md) for a full description of
@@ -156,7 +156,7 @@ including visual regression testing.
 
 An output device consists of two parts:
 
-1. **PostScript resource file** (`resources/OutputDevice/<name>.ps`) — a page
+1. **PostScript resource file** (`postforge/resources/OutputDevice/<name>.ps`) — a page
    device dictionary that configures page size, resolution, and rendering mode
 2. **Python module** (`postforge/devices/<name>/`) — implements
    `showpage(ctxt, pd)` to render the display list

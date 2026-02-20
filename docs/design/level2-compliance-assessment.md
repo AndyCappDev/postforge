@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-09
 **Reference:** PostScript Language Reference Manual, Second Edition (PLRM2)
-**Methodology:** Systematic cross-reference of PLRM2 Chapter 8 operator summary and Chapters 3-6 feature specifications against PostForge source code (both Python `postforge/operators/*.py` and PostScript `resources/*.ps` implementations).
+**Methodology:** Systematic cross-reference of PLRM2 Chapter 8 operator summary and Chapters 3-6 feature specifications against PostForge source code (both Python `postforge/operators/*.py` and PostScript `postforge/resources/*.ps` implementations).
 
 ---
 

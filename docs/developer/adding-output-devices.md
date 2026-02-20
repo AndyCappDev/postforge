@@ -22,7 +22,7 @@ this guide.
 
 A device consists of two files:
 
-1. **PostScript resource file** (`resources/OutputDevice/<name>.ps`) — a page
+1. **PostScript resource file** (`postforge/resources/OutputDevice/<name>.ps`) — a page
    device dictionary that configures the device from the PostScript side
 2. **Python module** (`postforge/devices/<name>/`) — a Python package that
    renders the display list to output
@@ -58,7 +58,7 @@ dictionary. PostForge dynamically imports the Python package matching that name.
 ### Device Discovery
 
 When PostScript code calls `setpagedevice` with an `/OutputDevice` name,
-PostForge loads the matching `.ps` file from `resources/OutputDevice/` via the
+PostForge loads the matching `.ps` file from `postforge/resources/OutputDevice/` via the
 resource system. This file evaluates to a dictionary that becomes the page
 device dictionary — the configuration and state bridge between PostScript and
 Python.
@@ -66,7 +66,7 @@ Python.
 
 ## Creating the PostScript Resource File
 
-Create `resources/OutputDevice/<name>.ps`. This file must evaluate to a
+Create `postforge/resources/OutputDevice/<name>.ps`. This file must evaluate to a
 dictionary (using `<< >>` syntax). Here is a minimal template based on the PNG
 device:
 
@@ -559,7 +559,7 @@ busy/waiting cursor states, event loop integration.
 Follow these steps to add a new output device end-to-end:
 
 1. **Create the PostScript resource file**
-   `resources/OutputDevice/<name>.ps` — define the page device dictionary with
+   `postforge/resources/OutputDevice/<name>.ps` — define the page device dictionary with
    at minimum: `/OutputDeviceName`, `/OutputDevice`, `/PageSize`,
    `/HWResolution`, `/Install`, `/BeginPage`, `/EndPage`, `/PageCount`,
    `/.IsPageDevice`, `/LineWidthMin`, `/TextRenderingMode`, `/StrokeMethod`

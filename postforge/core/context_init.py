@@ -12,6 +12,7 @@ virtual memory, graphics state, system dictionaries, and standard file objects.
 import os
 import random
 import sys
+import tempfile
 import time
 from typing import Any, Dict, Optional, Tuple
 
@@ -35,33 +36,30 @@ def init_system_params() -> Dict[str, Any]:
 
     Returns:
         Dict[str, Any]: System parameters dictionary containing:
+            - PackageDir: Path to the postforge package directory
             - ByteOrder: Boolean indicating byte order (True for big-endian)
             - CurrDisplayList: Current display list index
             - FontResourceDir: Path to font resources
-            - GenericResourceDir: Path to generic resources
             - OutputDeviceResourceDir: Path to output device definitions
-            - VMDir: Path for virtual memory storage
+            - VMDir: Path for virtual memory storage (temp directory)
             - PageCount: Initial page count
             - PrinterName: Default printer name
             - RealFormat: Real number format ('IEE')
             - Revision: PostScript language revision level
     """
 
-    # Get the directory containing the postforge package
-    script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    # Get the parent directory (main project directory)
-    project_dir = os.path.dirname(script_dir)
+    # Get the postforge package directory (postforge/)
+    package_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     return {
-        "ProjectDir": project_dir,
+        "PackageDir": package_dir,
         "ByteOrder": True,
         "CurrDisplayList": 0,
-        "FontResourceDir": os.path.join(project_dir, "resources", "Font"),
-        "GenericResourceDir": os.path.join(project_dir, "generic_resources"),
+        "FontResourceDir": os.path.join(package_dir, "resources", "Font"),
         "OutputDeviceResourceDir": os.path.join(
-            project_dir, "resources", "OutputDevice"
+            package_dir, "resources", "OutputDevice"
         ),
-        "VMDir": os.path.join(project_dir, "vm"),
+        "VMDir": tempfile.mkdtemp(prefix="postforge_vm_"),
         "PageCount": 0,
         "PrinterName": "PostForge",
         "RealFormat": "IEE",
@@ -276,7 +274,7 @@ def create_context(
     #
     # add the filename to ctxt.strings
     # Use absolute path so PostForge works from any working directory
-    file_name = os.path.join(system_params["ProjectDir"], "resources", "Init", "sysdict.ps")
+    file_name = os.path.join(system_params["PackageDir"], "resources", "Init", "sysdict.ps")
     # Use forward slashes — backslashes are PS escape characters
     # (\r in \resources becomes carriage return, corrupting the path)
     file_name = file_name.replace("\\", "/")

@@ -16,13 +16,12 @@ from ..core.tokenizer import FORM_FEED, LINE_FEED, RETURN
 def _resolve_filename(ctxt, filename):
     """Resolve a relative filename against likely directories.
 
-    PostForge changes CWD to the project root for internal resource resolution,
-    so relative paths in user PS files won't resolve against the user's directory.
-    This helper tries multiple locations in order:
+    Tries multiple locations in order:
 
-    1. As-is (works for absolute paths and project-relative resource files)
-    2. Relative to the directory of the currently executing file (e_stack walk)
-    3. Relative to the user's original working directory
+    1. As-is (works for absolute paths and files relative to CWD)
+    2. Relative to the package directory (resolves resources/Init/... etc.)
+    3. Relative to the directory of the currently executing file (e_stack walk)
+    4. Relative to the user's original working directory (safety net)
 
     Args:
         ctxt: PostScript execution context.
@@ -34,6 +33,13 @@ def _resolve_filename(ctxt, filename):
     # Absolute paths or already-resolvable files need no fixup
     if os.path.isabs(filename) or os.path.exists(filename):
         return filename
+
+    # Try relative to the package directory (where postforge/ lives)
+    package_dir = ctxt.system_params.get("PackageDir")
+    if package_dir:
+        candidate = os.path.join(package_dir, filename)
+        if os.path.exists(candidate):
+            return candidate
 
     # Try relative to the directory of the currently executing file
     for item in reversed(ctxt.e_stack):

@@ -470,7 +470,7 @@ box.
 
 Output devices render the display list into a final format. Each device
 consists of two parts that work together: a PostScript configuration file
-in `resources/OutputDevice/` (e.g., `png.ps`) that defines the page device
+in `postforge/resources/OutputDevice/` (e.g., `png.ps`) that defines the page device
 dictionary, and a Python module in `postforge/devices/` that implements a
 `showpage(ctxt, pd)` function to perform the actual rendering. The built-in
 devices use a shared Cairo rendering backend, but this is a convenience, not
@@ -575,7 +575,7 @@ lvm["resource"]["Font"]         →  Dict of local font resources
 ...
 ```
 
-The `resources/` directory on disk contains the resource files organized by
+The `postforge/resources/` directory on disk contains the resource files organized by
 category:
 
 | Directory | Contents |
@@ -595,8 +595,8 @@ category:
 When `findfont` is called, the resource system searches:
 
 1. `FontDirectory` (in-memory cache of already-loaded fonts)
-2. Font resource files on disk (`resources/Font/`)
-3. System fonts via font mapping (`resources/Init/fontmapping.ps`)
+2. Font resource files on disk (`postforge/resources/Font/`)
+3. System fonts via font mapping (`postforge/resources/Init/fontmapping.ps`)
 4. If all else fails, Helvetica is used as the fallback font
 
 Font programs are PostScript files that, when executed, call `definefont` to
@@ -606,12 +606,12 @@ CID-keyed fonts), and Type 42 (TrueType wrapped in PostScript).
 
 ### Initialization
 
-At startup, `resources/Init/sysdict.ps` is executed. This PostScript program
+At startup, `postforge/resources/Init/sysdict.ps` is executed. This PostScript program
 defines operators and data structures that are more naturally expressed in
 PostScript than Python — error handlers, encoding vectors, resource category
 setup, device initialization procedures, and the interactive executive. The
 resource category infrastructure is bootstrapped by
-`resources/Init/resourcecategories.ps`.
+`postforge/resources/Init/resourcecategories.ps`.
 
 
 ## Module Map
@@ -653,7 +653,7 @@ A quick reference to the directory structure:
 | `postforge/devices/pdf/` | PDF output device + font embedding |
 | `postforge/devices/qt/` | Interactive Qt display |
 | `postforge/utils/` | Memory analysis, profiling |
-| `resources/Init/` | PostScript initialization scripts |
-| `resources/Font/` | Type 1 font programs |
-| `resources/OutputDevice/` | Device configuration dictionaries |
+| `postforge/resources/Init/` | PostScript initialization scripts |
+| `postforge/resources/Font/` | Type 1 font programs |
+| `postforge/resources/OutputDevice/` | Device configuration dictionaries |
 | `unit_tests/` | PostScript-based test suite |

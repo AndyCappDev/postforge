@@ -91,7 +91,7 @@ def get_output_base_name(outputfile: str, inputfiles: list) -> str:
 def _get_version() -> str:
     """Read the PostForge version from sysdict.ps (sole source of truth)."""
     sysdict = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           os.pardir, "resources", "Init", "sysdict.ps")
+                           "resources", "Init", "sysdict.ps")
     with open(sysdict, "r") as f:
         for line in f:
             m = re.search(r'/revisionstring\s+\(([^)]+)\)', line)

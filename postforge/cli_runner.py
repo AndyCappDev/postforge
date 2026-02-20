@@ -222,8 +222,7 @@ def _configure_page_device(ctxt, args, inputfiles, user_cwd, device):
     # Set output naming parameters in page device
     if ctxt.gstate.page_device:
         base_name = get_output_base_name(args.outputfile, inputfiles)
-        # Make output dir absolute relative to user's original CWD,
-        # since PS execution runs with CWD set to the project root.
+        # Make output dir absolute relative to user's CWD
         output_dir = args.output_dir
         if not os.path.isabs(output_dir):
             output_dir = os.path.join(user_cwd, output_dir)
@@ -478,7 +477,7 @@ def _run_interactive(ctxt, memory_profile, performance_profile, perf_profiler):
         print("\n" + ps_memory.generate_memory_report())
 
 
-def run(args, inputfiles, stdin_temp, user_cwd, project_dir,
+def run(args, inputfiles, stdin_temp, user_cwd, package_dir,
         available_devices, device, memory_profile, gc_analysis,
         leak_analysis, performance_profile, profile_type,
         profile_output, page_filter):
@@ -492,7 +491,7 @@ def run(args, inputfiles, stdin_temp, user_cwd, project_dir,
         inputfiles: List of resolved input file paths.
         stdin_temp: Temporary file for stdin input (or None).
         user_cwd: User's original working directory.
-        project_dir: PostForge project root directory.
+        package_dir: PostForge package directory (postforge/).
         available_devices: List of available device names.
         device: Explicitly requested device name (or None).
         memory_profile: Whether memory profiling is enabled.
@@ -529,11 +528,6 @@ def run(args, inputfiles, stdin_temp, user_cwd, project_dir,
     # Initialize the global system params
     system_params = init_system_params()
 
-    # Set CWD to project root for the entire session. PS resource files
-    # (fonts, devices, encodings) use relative paths like resources/Font/...
-    # that must resolve from the project root. Input file paths and output
-    # directories are made absolute (relative to user_cwd) before use.
-    os.chdir(project_dir)
     ctxt, err_string = create_context(system_params)
 
     if err_string:
@@ -541,8 +535,7 @@ def run(args, inputfiles, stdin_temp, user_cwd, project_dir,
         quit()
 
     # Store user's original CWD so file operators (run, file, etc.) can
-    # resolve relative paths against where the user invoked PostForge,
-    # not the project root we chdir'd to above.
+    # resolve relative paths against where the user invoked PostForge.
     ctxt.user_cwd = user_cwd
 
     # Take memory snapshot after context initialization
