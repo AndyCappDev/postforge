@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 Qt Interactive Display Device
 
@@ -38,7 +40,7 @@ ANTIALIAS_MAP = {
 }
 
 
-def _get_antialias_mode(pd):
+def _get_antialias_mode(pd: dict) -> int:
     if b"AntiAliasMode" in pd:
         return ANTIALIAS_MAP.get(pd[b"AntiAliasMode"].python_string(), ANTIALIAS_MODE)
     return ANTIALIAS_MODE
@@ -91,7 +93,7 @@ _page_height = 792
 class PostForgeCanvas(QWidget if PYSIDE6_AVAILABLE else object):
     """Custom widget for rendering PostScript output with zoom/pan support."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         if not PYSIDE6_AVAILABLE:
             return
         super().__init__()
@@ -101,7 +103,7 @@ class PostForgeCanvas(QWidget if PYSIDE6_AVAILABLE else object):
         self._dragging = False
         self._last_mouse_pos = None
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: object) -> None:
         """Paint the rendered image to the widget."""
         global _qimage
         if _qimage is None:
@@ -128,7 +130,7 @@ class PostForgeCanvas(QWidget if PYSIDE6_AVAILABLE else object):
         painter.scale(effective_scale, effective_scale)
         painter.drawImage(0, 0, _qimage)
 
-    def wheelEvent(self, event: QWheelEvent):
+    def wheelEvent(self, event: QWheelEvent) -> None:
         """Handle mouse wheel for zooming, centered on mouse position."""
         global _zoom_level, _pan_x, _pan_y
 
@@ -175,7 +177,7 @@ class PostForgeCanvas(QWidget if PYSIDE6_AVAILABLE else object):
 
         self.update()
 
-    def keyPressEvent(self, event: QKeyEvent):
+    def keyPressEvent(self, event: QKeyEvent) -> None:
         """Handle keyboard shortcuts for zoom/pan and navigation."""
         global _zoom_level, _pan_x, _pan_y, _key_pressed, _window_closed
         key = event.key()
@@ -220,7 +222,7 @@ class PostForgeCanvas(QWidget if PYSIDE6_AVAILABLE else object):
 
         self.update()
 
-    def mouseDoubleClickEvent(self, event: QMouseEvent):
+    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
         """Handle double-click to reset zoom and pan."""
         global _zoom_level, _pan_x, _pan_y
         if event.button() == Qt.LeftButton:
@@ -228,14 +230,14 @@ class PostForgeCanvas(QWidget if PYSIDE6_AVAILABLE else object):
             _pan_x = _pan_y = 0
             self.update()
 
-    def mousePressEvent(self, event: QMouseEvent):
+    def mousePressEvent(self, event: QMouseEvent) -> None:
         """Handle mouse press to start panning."""
         if event.button() == Qt.LeftButton:
             self._dragging = True
             self._last_mouse_pos = event.position()
             self.setCursor(Qt.ClosedHandCursor)
 
-    def mouseReleaseEvent(self, event: QMouseEvent):
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         """Handle mouse release to stop panning."""
         if event.button() == Qt.LeftButton:
             self._dragging = False
@@ -243,7 +245,7 @@ class PostForgeCanvas(QWidget if PYSIDE6_AVAILABLE else object):
             # Unset widget cursor to let override cursor show through
             self.unsetCursor()
 
-    def mouseMoveEvent(self, event: QMouseEvent):
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
         """Handle mouse move for panning."""
         global _pan_x, _pan_y
         if self._dragging and self._last_mouse_pos is not None:
@@ -260,7 +262,7 @@ class PostForgeCanvas(QWidget if PYSIDE6_AVAILABLE else object):
 class PostForgeWindow(QMainWindow if PYSIDE6_AVAILABLE else object):
     """Main window for PostForge interactive display."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         if not PYSIDE6_AVAILABLE:
             return
         super().__init__()
@@ -269,7 +271,7 @@ class PostForgeWindow(QMainWindow if PYSIDE6_AVAILABLE else object):
         self.setCentralWidget(self._canvas)
         self.resize(800, 600)
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: object) -> None:
         """Handle window close event."""
         global _window_closed, _key_pressed, _busy_mode
         _window_closed = True
@@ -283,7 +285,7 @@ class PostForgeWindow(QMainWindow if PYSIDE6_AVAILABLE else object):
         os._exit(0)
 
 
-def _ensure_app():
+def _ensure_app() -> object:
     """Ensure Qt application exists."""
     global _app
     if _app is None:
@@ -293,7 +295,7 @@ def _ensure_app():
     return _app
 
 
-def _ensure_window(page_width=None, page_height=None, image_width=None, image_height=None):
+def _ensure_window(page_width: float | None = None, page_height: float | None = None, image_width: int | None = None, image_height: int | None = None) -> PostForgeWindow:
     """
     Ensure window exists and optionally resize it based on page aspect ratio.
 
@@ -358,7 +360,7 @@ def _ensure_window(page_width=None, page_height=None, image_width=None, image_he
     return _window
 
 
-def _cairo_surface_to_qimage(surface):
+def _cairo_surface_to_qimage(surface: cairo.ImageSurface) -> QImage:
     """Convert Cairo ImageSurface to QImage."""
     width = surface.get_width()
     height = surface.get_height()
@@ -370,7 +372,7 @@ def _cairo_surface_to_qimage(surface):
     return QImage(data, width, height, stride, QImage.Format_RGB32).copy()
 
 
-def _process_qt_events():
+def _process_qt_events() -> None:
     """Process Qt events to keep GUI responsive during interpretation.
 
     Called periodically from the PostScript execution loop.
@@ -385,7 +387,7 @@ def _process_qt_events():
             _ctxt.e_stack.append(ps.Name(b"quit", attrib=ps.ATTRIB_EXEC))
 
 
-def _wait_for_keypress(ctxt):
+def _wait_for_keypress(ctxt: ps.Context) -> None:
     """Block until user presses a key in the Qt window.
 
     Tracks the wait time in ctxt.user_wait_time so it can be excluded
@@ -658,7 +660,7 @@ def refresh_display(ctxt: ps.Context) -> None:
         ctxt.e_stack.append(ps.Name(b"quit", attrib=ps.ATTRIB_EXEC))
 
 
-def enter_event_loop():
+def enter_event_loop() -> None:
     """
     Enter Qt event loop after PostScript execution completes.
 

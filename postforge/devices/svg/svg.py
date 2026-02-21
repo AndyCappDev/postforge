@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 SVG Output Device
 
@@ -140,7 +142,7 @@ def showpage(ctxt: ps.Context, pd: dict) -> None:
         f.write(svg_bytes)
 
 
-def _post_process_svg(svg_bytes, deferred_text_objs, scale_x, scale_y):
+def _post_process_svg(svg_bytes: bytes, deferred_text_objs: list, scale_x: float, scale_y: float) -> bytes:
     """
     Parse Cairo's SVG output and apply post-processing fixes.
 
@@ -166,7 +168,7 @@ def _post_process_svg(svg_bytes, deferred_text_objs, scale_x, scale_y):
     return ET.tostring(root, encoding='unicode', xml_declaration=True).encode('utf-8')
 
 
-def _inject_text_into_tree(root, deferred_text_objs, scale_x, scale_y):
+def _inject_text_into_tree(root: ET.Element, deferred_text_objs: list, scale_x: float, scale_y: float) -> None:
     """
     Append native <text> elements to an already-parsed SVG tree.
 
@@ -345,7 +347,7 @@ def _inject_text_into_tree(root, deferred_text_objs, scale_x, scale_y):
         text_elem.text = text_str
 
 
-def _build_cid_tounicode_maps(deferred_text_objs):
+def _build_cid_tounicode_maps(deferred_text_objs: list) -> dict:
     """
     Build CID → Unicode maps for all CID (Type 0) fonts in the deferred text.
 
@@ -390,7 +392,7 @@ def _build_cid_tounicode_maps(deferred_text_objs):
     return maps
 
 
-def _cid_text_to_unicode(text_bytes, font_dict, cid_tounicode_maps):
+def _cid_text_to_unicode(text_bytes: bytes, font_dict: ps.Dict, cid_tounicode_maps: dict) -> str:
     """
     Convert CID font text bytes (2-byte CID codes) to Unicode string.
 
@@ -415,7 +417,7 @@ def _cid_text_to_unicode(text_bytes, font_dict, cid_tounicode_maps):
     return ''.join(result)
 
 
-def _fmt(value):
+def _fmt(value: float) -> str:
     """Format a float for SVG attribute output, stripping trailing zeros."""
     if value == int(value):
         return str(int(value))
@@ -424,7 +426,7 @@ def _fmt(value):
     return formatted
 
 
-def _rgb_to_hex(r, g, b):
+def _rgb_to_hex(r: float, g: float, b: float) -> str:
     """Convert RGB floats (0.0-1.0) to hex color string."""
     ri = max(0, min(255, int(round(r * 255))))
     gi = max(0, min(255, int(round(g * 255))))

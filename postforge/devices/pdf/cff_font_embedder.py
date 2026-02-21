@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 CFF Font Embedder Module
 
@@ -22,7 +24,7 @@ from ...operators.cff_ops import _cff_registry
 class CFFEmbedder:
     """Extract CFF font data and glyph widths for PDF embedding."""
 
-    def get_font_file_data(self, font_dict):
+    def get_font_file_data(self, font_dict: ps.Dict) -> bytes | None:
         """
         Get the raw CFF binary data for embedding.
 
@@ -41,7 +43,7 @@ class CFFEmbedder:
             return _cff_registry.get(id(char_strings.val))
         return None
 
-    def get_glyph_widths(self, font_dict, glyphs_used):
+    def get_glyph_widths(self, font_dict: ps.Dict, glyphs_used: set[int]) -> dict[int, int]:
         """
         Get character widths for all used glyphs via Type 2 charstring execution.
 
@@ -112,7 +114,7 @@ class CFFEmbedder:
         return widths
 
 
-def _get_glyph_name_for_code(encoding, char_code):
+def _get_glyph_name_for_code(encoding: object, char_code: int) -> bytes | None:
     """Get glyph name bytes for a character code from encoding.
 
     Args:

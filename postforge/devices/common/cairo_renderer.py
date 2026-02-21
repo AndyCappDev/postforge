@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 Shared Cairo Rendering Module
 
@@ -509,8 +511,10 @@ _PS_TO_SYSTEM_FONT = {
 }
 
 
-def _render_text_obj(text_obj, cairo_ctx, page_height, deferred_text_objs=None,
-                     clip_path=None, clip_winding=None, defer_all_text=False):
+def _render_text_obj(text_obj: ps.TextObj, cairo_ctx: cairo.Context, page_height: int,
+                     deferred_text_objs: list | None = None,
+                     clip_path: object = None, clip_winding: object = None,
+                     defer_all_text: bool = False) -> None:
     """
     Render TextObj using Cairo's native text APIs or defer for PDF/SVG injection.
 
@@ -565,7 +569,7 @@ def _render_text_obj(text_obj, cairo_ctx, page_height, deferred_text_objs=None,
     _render_standard_text_obj(text_obj, cairo_ctx, page_height)
 
 
-def _render_standard_text_obj(text_obj, cairo_ctx, page_height):
+def _render_standard_text_obj(text_obj: ps.TextObj, cairo_ctx: cairo.Context, page_height: int) -> None:
     """
     Render text using Cairo's native text APIs.
 
@@ -658,14 +662,14 @@ class _GlyphCaptureState:
     """Tracks state between GlyphStart and GlyphEnd for bitmap capture."""
     __slots__ = ('cache_key', 'position_x', 'position_y', 'start_index')
 
-    def __init__(self, cache_key, position_x, position_y, start_index):
+    def __init__(self, cache_key: object, position_x: float, position_y: float, start_index: int) -> None:
         self.cache_key = cache_key
         self.position_x = position_x
         self.position_y = position_y
         self.start_index = start_index
 
 
-def _render_glyph_ref_vector(glyph_ref, cairo_ctx):
+def _render_glyph_ref_vector(glyph_ref: ps.GlyphRef, cairo_ctx: cairo.Context) -> None:
     """Replay cached glyph display elements as vector paths (for PDF surfaces).
 
     Looks up the PS-level glyph cache for the normalized display elements
@@ -712,7 +716,7 @@ def _render_glyph_ref_vector(glyph_ref, cairo_ctx):
             _render_imagemask_element(elem, cairo_ctx, 0)
 
 
-def _render_glyph_ref(glyph_ref, cairo_ctx):
+def _render_glyph_ref(glyph_ref: ps.GlyphRef, cairo_ctx: cairo.Context) -> None:
     """Blit a cached glyph bitmap to the main surface.
 
     If the bitmap hasn't been captured yet (e.g., the page that would have
@@ -742,7 +746,7 @@ def _render_glyph_ref(glyph_ref, cairo_ctx):
     _render_glyph_ref_by_key(glyph_ref.cache_key, glyph_ref.position_x, glyph_ref.position_y, cairo_ctx)
 
 
-def _render_glyph_ref_by_key(cache_key, position_x, position_y, cairo_ctx):
+def _render_glyph_ref_by_key(cache_key: object, position_x: float, position_y: float, cairo_ctx: cairo.Context) -> None:
     """Blit a cached glyph bitmap at the given position.
 
     The bitmap origin was computed relative to the floor'd (pixel-aligned)
@@ -774,7 +778,7 @@ def _render_glyph_ref_by_key(cache_key, position_x, position_y, cairo_ctx):
     cairo_ctx.restore()
 
 
-def _capture_glyph_bitmap(cairo_ctx, display_list, end_index, state):
+def _capture_glyph_bitmap(cairo_ctx: cairo.Context, display_list: list, end_index: int, state: _GlyphCaptureState) -> None:
     """Capture the glyph region rendered between GlyphStart and GlyphEnd to a bitmap.
 
     Uses RecordingSurface to get ink extents, then renders directly to an
@@ -796,8 +800,9 @@ def _capture_glyph_bitmap(cairo_ctx, display_list, end_index, state):
                             glyph_elements, cairo_ctx)
 
 
-def _capture_glyph_elements(cache_key, position_x, position_y, glyph_elements, cairo_ctx,
-                            origin_offset_x=0.0, origin_offset_y=0.0):
+def _capture_glyph_elements(cache_key: object, position_x: float, position_y: float,
+                            glyph_elements: list, cairo_ctx: cairo.Context,
+                            origin_offset_x: float = 0.0, origin_offset_y: float = 0.0) -> None:
     """Capture glyph display elements to a bitmap and store in the bitmap cache.
 
     Renders the elements to a RecordingSurface to determine ink extents, then
@@ -889,7 +894,7 @@ def _capture_glyph_elements(cache_key, position_x, position_y, glyph_elements, c
     bitmap_cache.put(cache_key, bitmap)
 
 
-def _replay_glyph_elements(ctx, elements):
+def _replay_glyph_elements(ctx: cairo.Context, elements: list) -> None:
     """Replay a sequence of display list elements (Path, Fill, Stroke, ImageMask, etc.) to a Cairo context."""
     for elem in elements:
         if isinstance(elem, ps.Path):

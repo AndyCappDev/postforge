@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 Font Embedder Module
 
@@ -67,7 +69,7 @@ class FontEmbedder:
     Reconstruct Type 1 fonts from PostScript font dictionaries for PDF embedding.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize font embedder."""
         # eexec encryption constants
         self.EEXEC_R = 55665
@@ -75,8 +77,10 @@ class FontEmbedder:
         self.EEXEC_C2 = 22719
         self.EEXEC_RANDOM_BYTES = 4
 
-    def get_font_file_data(self, font_dict, unique_font_name=None, glyphs_used=None,
-                           subrs_override=None):
+    def get_font_file_data(self, font_dict: ps.Dict,
+                           unique_font_name: str | bytes | None = None,
+                           glyphs_used: set[int] | None = None,
+                           subrs_override: object = None) -> tuple[bytes, int, int, int] | None:
         """
         Reconstruct Type 1 font file data from font dictionary.
 
@@ -120,7 +124,8 @@ class FontEmbedder:
             traceback.print_exc()
             return None
 
-    def _build_clear_text(self, font_dict, unique_font_name=None):
+    def _build_clear_text(self, font_dict: ps.Dict,
+                           unique_font_name: str | bytes | None = None) -> bytes:
         """Build the clear text (unencrypted) portion of the font."""
         lines = []
 
@@ -176,8 +181,10 @@ class FontEmbedder:
 
         return b'\n'.join(lines) + b'\n'
 
-    def _build_encrypted_section(self, font_dict, unique_font_name=None, glyphs_used=None,
-                                   subrs_override=None):
+    def _build_encrypted_section(self, font_dict: ps.Dict,
+                                   unique_font_name: str | bytes | None = None,
+                                   glyphs_used: set[int] | None = None,
+                                   subrs_override: object = None) -> bytes:
         """Build and encrypt the Private dict and CharStrings."""
         # Note: unique_font_name is not used here - the eexec section uses
         # "dup /FontName get exch definefont" which reads from the dict
@@ -193,8 +200,9 @@ class FontEmbedder:
         # ASCIIHexDecode filter is declared on the stream.
         return encrypted
 
-    def _build_private_and_charstrings(self, font_dict, glyphs_used=None,
-                                        subrs_override=None):
+    def _build_private_and_charstrings(self, font_dict: ps.Dict,
+                                        glyphs_used: set[int] | None = None,
+                                        subrs_override: object = None) -> bytes:
         """Build the Private dict and CharStrings as plaintext (to be encrypted)."""
         lines = []
 
@@ -269,7 +277,7 @@ class FontEmbedder:
 
         return b'\n'.join(lines)
 
-    def _build_subrs(self, subrs):
+    def _build_subrs(self, subrs: object) -> bytes:
         """Build Subrs array."""
         lines = []
         count = len(subrs.val)
@@ -285,7 +293,8 @@ class FontEmbedder:
         lines.append(b'ND')
         return b'\n'.join(lines)
 
-    def _build_charstrings_entries(self, char_strings, needed_names=None):
+    def _build_charstrings_entries(self, char_strings: ps.Dict,
+                                      needed_names: set[bytes] | None = None) -> bytes:
         """
         Build CharStrings entries (without dict wrapper).
 
@@ -323,7 +332,8 @@ class FontEmbedder:
 
         return b'\n'.join(lines)
 
-    def _get_needed_glyph_names(self, font_dict, glyphs_used):
+    def _get_needed_glyph_names(self, font_dict: ps.Dict,
+                                  glyphs_used: set[int]) -> set[bytes]:
         """
         Get the set of glyph names needed for subsetting.
 
@@ -349,7 +359,8 @@ class FontEmbedder:
 
         return needed
 
-    def _resolve_seac_dependencies(self, font_dict, needed_names):
+    def _resolve_seac_dependencies(self, font_dict: ps.Dict,
+                                      needed_names: set[bytes]) -> None:
         """
         Add base and accent glyphs referenced by seac instructions to the subset.
 
@@ -390,7 +401,8 @@ class FontEmbedder:
                 break
             needed_names.update(new_deps)
 
-    def _find_seac_dependencies(self, encrypted_charstring, len_iv=4):
+    def _find_seac_dependencies(self, encrypted_charstring: bytes,
+                                  len_iv: int = 4) -> set[bytes]:
         """
         Find glyph dependencies from seac instructions in a CharString.
 
@@ -489,13 +501,13 @@ class FontEmbedder:
 
         return deps
 
-    def _build_footer(self):
+    def _build_footer(self) -> bytes:
         """Build the font file footer."""
         # 512 ASCII zeros followed by cleartomark per PDF spec.
         # The zeros are the character '0' (0x30), not null bytes.
         return b'0' * 512 + b'\ncleartomark\n'
 
-    def _build_font_info(self, font_info):
+    def _build_font_info(self, font_info: ps.Dict) -> bytes:
         """Build FontInfo dictionary."""
         lines = [b'/FontInfo 10 dict dup begin']
 
@@ -509,7 +521,7 @@ class FontEmbedder:
         lines.append(b'end readonly def')
         return b'\n'.join(lines)
 
-    def _build_encoding(self, encoding):
+    def _build_encoding(self, encoding: object) -> bytes:
         """Build Encoding array."""
         if encoding.TYPE == ps.T_NAME:
             # Named encoding like StandardEncoding
@@ -529,7 +541,7 @@ class FontEmbedder:
         lines.append(b'readonly def')
         return b'\n'.join(lines)
 
-    def _eexec_encrypt(self, plaintext):
+    def _eexec_encrypt(self, plaintext: bytes) -> bytes:
         """Encrypt data using Adobe eexec encryption."""
         # Use zeros for the prefix bytes (same as original URW fonts and Adobe examples).
         # Random bytes can cause parsing issues with some interpreters.
@@ -546,14 +558,14 @@ class FontEmbedder:
 
         return bytes(encrypted)
 
-    def _get_font_name_bytes(self, font_dict):
+    def _get_font_name_bytes(self, font_dict: ps.Dict) -> bytes:
         """Get font name as bytes."""
         font_name = font_dict.val.get(b'FontName', ps.Name(b'Unknown'))
         if font_name.TYPE == ps.T_NAME:
             return font_name.val
         return b'Unknown'
 
-    def _get_string_bytes(self, string_obj):
+    def _get_string_bytes(self, string_obj: object) -> bytes:
         """Get raw bytes from a PostScript string object."""
         # PostForge String objects use byte_string() method
         if hasattr(string_obj, 'byte_string'):
@@ -573,7 +585,7 @@ class FontEmbedder:
                 return bytes(val)
         return b''
 
-    def _value_to_bytes(self, val):
+    def _value_to_bytes(self, val: object) -> bytes:
         """Convert a PostScript value to its string representation as bytes."""
         if val.TYPE == ps.T_INT:
             return str(val.val).encode()
@@ -593,7 +605,7 @@ class FontEmbedder:
             return self._array_to_string(val)
         return b''
 
-    def _array_to_string(self, arr):
+    def _array_to_string(self, arr: object) -> bytes:
         """Convert a PostScript array to its string representation."""
         if not arr.TYPE in ps.ARRAY_TYPES:
             return b'[]'
@@ -605,7 +617,8 @@ class FontEmbedder:
             return b'{' + b' '.join(parts) + b'}'
         return b'[' + b' '.join(parts) + b']'
 
-    def get_glyph_widths(self, font_dict, glyphs_used):
+    def get_glyph_widths(self, font_dict: ps.Dict,
+                          glyphs_used: set[int]) -> dict[int, int]:
         """
         Get character widths for all used glyphs.
 
@@ -667,7 +680,8 @@ class FontEmbedder:
 
         return widths
 
-    def _get_glyph_name_for_code(self, encoding, char_code):
+    def _get_glyph_name_for_code(self, encoding: object,
+                                   char_code: int) -> bytes | None:
         """Get glyph name for a character code from encoding."""
         if encoding is None:
             return None
@@ -686,7 +700,8 @@ class FontEmbedder:
 
         return None
 
-    def _decrypt_charstring(self, encrypted_data, len_iv=4):
+    def _decrypt_charstring(self, encrypted_data: bytes,
+                              len_iv: int = 4) -> bytes | None:
         """
         Decrypt a CharString and strip lenIV prefix bytes.
 
@@ -712,7 +727,9 @@ class FontEmbedder:
 
         return bytes(decrypted[len_iv:])
 
-    def _extract_charstring_width(self, encrypted_charstring, len_iv=4, decrypted_subrs=None):
+    def _extract_charstring_width(self, encrypted_charstring: bytes,
+                                    len_iv: int = 4,
+                                    decrypted_subrs: list[bytes | None] | None = None) -> float | None:
         """
         Extract width from a CharString without full interpretation.
 
@@ -737,7 +754,11 @@ class FontEmbedder:
 
         return self._parse_width(data, decrypted_subrs)
 
-    def _parse_width(self, data, decrypted_subrs, stack=None, ps_stack=None, depth=0):
+    def _parse_width(self, data: bytes | None,
+                      decrypted_subrs: list[bytes | None] | None,
+                      stack: list | None = None,
+                      ps_stack: list | None = None,
+                      depth: int = 0) -> float | None:
         """
         Parse decrypted CharString data looking for hsbw/sbw width commands.
 
@@ -867,7 +888,8 @@ class FontEmbedder:
         return None
 
 
-def generate_tounicode_cmap(tounicode_map, font_name='Unknown'):
+def generate_tounicode_cmap(tounicode_map: dict[int, str],
+                            font_name: str = 'Unknown') -> bytes:
     """
     Generate a ToUnicode CMap stream for PDF embedding.
 

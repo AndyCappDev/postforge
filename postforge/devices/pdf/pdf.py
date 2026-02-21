@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PDF Output Device
 
@@ -40,7 +42,7 @@ class PDFDocumentState:
     across all pages for final injection at document end.
     """
 
-    def __init__(self, file_path, width_pdf, height_pdf):
+    def __init__(self, file_path: str, width_pdf: float, height_pdf: float) -> None:
         """
         Initialize PDF document state.
 
@@ -70,7 +72,7 @@ class PDFDocumentState:
         self.scale_x = None
         self.scale_y = None
 
-    def start_new_page(self, width_pdf, height_pdf, scale_x, scale_y):
+    def start_new_page(self, width_pdf: float, height_pdf: float, scale_x: float, scale_y: float) -> None:
         """
         Start a new page in the document.
 
@@ -100,11 +102,11 @@ class PDFDocumentState:
         # Reset context transformation for new page
         self.context.set_matrix(cairo.Matrix(scale_x, 0, 0, scale_y, 0, 0))
 
-    def finish_page(self):
+    def finish_page(self) -> None:
         """Mark the current page as complete."""
         self.pages_written += 1
 
-    def finalize(self):
+    def finalize(self) -> None:
         """
         Finalize the PDF document.
 
@@ -225,7 +227,7 @@ def showpage(ctxt: ps.Context, pd: dict) -> None:
     pdf_state.finish_page()
 
 
-def _compress_pdf(file_path):
+def _compress_pdf(file_path: str) -> None:
     """Compress content streams in a Cairo-generated PDF.
 
     Cairo writes uncompressed content streams. This reads the PDF with pypdf,

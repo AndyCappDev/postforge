@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PNG Output Device
 
@@ -31,7 +33,7 @@ ANTIALIAS_MAP = {
 }
 
 
-def _get_antialias_mode(pd):
+def _get_antialias_mode(pd: dict) -> int:
     if b"AntiAliasMode" in pd:
         return ANTIALIAS_MAP.get(pd[b"AntiAliasMode"].python_string(), ANTIALIAS_MODE)
     return ANTIALIAS_MODE

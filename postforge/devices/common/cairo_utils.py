@@ -2,10 +2,12 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """Shared Cairo rendering utilities."""
 
 
-def _safe_rgb(color):
+def _safe_rgb(color: list[float] | None) -> tuple[float, float, float]:
     """Normalize a color list to an (r, g, b) tuple, defaulting to black."""
     if not color:
         return (0, 0, 0)

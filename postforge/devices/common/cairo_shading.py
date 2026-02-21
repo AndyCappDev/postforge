@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 Cairo Gradient/Shading Rendering Module
 
@@ -16,7 +18,7 @@ import cairo
 from ...core import types as ps
 
 
-def _render_axial_shading(item, cairo_ctx):
+def _render_axial_shading(item: ps.AxialShadingFill, cairo_ctx: cairo.Context) -> None:
     """Render an axial (linear) gradient shading fill."""
     cairo_ctx.save()
     try:
@@ -80,7 +82,7 @@ def _render_axial_shading(item, cairo_ctx):
         cairo_ctx.restore()
 
 
-def _render_radial_shading(item, cairo_ctx):
+def _render_radial_shading(item: ps.RadialShadingFill, cairo_ctx: cairo.Context) -> None:
     """Render a radial (circular) gradient shading fill."""
     cairo_ctx.save()
     try:
@@ -115,7 +117,7 @@ def _render_radial_shading(item, cairo_ctx):
         cairo_ctx.restore()
 
 
-def _render_mesh_shading_batch(items, cairo_ctx):
+def _render_mesh_shading_batch(items: list[ps.MeshShadingFill], cairo_ctx: cairo.Context) -> None:
     """Render multiple Type 4/5 triangle mesh shadings using a single Cairo MeshPattern.
 
     This batches consecutive MeshShadingFill items with the same CTM into a single
@@ -176,7 +178,7 @@ def _render_mesh_shading_batch(items, cairo_ctx):
         cairo_ctx.restore()
 
 
-def _render_mesh_shading(item, cairo_ctx):
+def _render_mesh_shading(item: ps.MeshShadingFill, cairo_ctx: cairo.Context) -> None:
     """Render a single Type 4/5 triangle mesh shading.
 
     Delegates to _render_mesh_shading_batch for consistency.
@@ -184,7 +186,7 @@ def _render_mesh_shading(item, cairo_ctx):
     _render_mesh_shading_batch([item], cairo_ctx)
 
 
-def _render_patch_shading(item, cairo_ctx):
+def _render_patch_shading(item: ps.PatchShadingFill, cairo_ctx: cairo.Context) -> None:
     """Render a Type 6/7 Coons or tensor-product patch shading using Cairo MeshPattern.
 
     Cairo natively supports Coons patches. Tensor-product patches (Type 7)
@@ -260,7 +262,7 @@ def _render_patch_shading(item, cairo_ctx):
         cairo_ctx.restore()
 
 
-def _render_function_shading(item, cairo_ctx):
+def _render_function_shading(item: ps.FunctionShadingFill, cairo_ctx: cairo.Context) -> None:
     """Render a Type 1 function-based shading fill.
 
     The shading has been pre-rasterized to an ARGB32 pixel buffer.
@@ -321,7 +323,7 @@ def _render_function_shading(item, cairo_ctx):
         cairo_ctx.restore()
 
 
-def _add_gradient_stops(gradient, func, color_space):
+def _add_gradient_stops(gradient: cairo.LinearGradient | cairo.RadialGradient, func: ps.Dict, color_space: str) -> None:
     """Add color stops to a gradient based on a PostScript function."""
     func_type = int(func.val.get(b'FunctionType', ps.Int(0)).val)
 

@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 Cairo Pattern Fill Rendering Module
 
@@ -16,7 +18,7 @@ from .cairo_shading import _add_gradient_stops
 from .cairo_utils import _safe_rgb
 
 
-def _render_pattern_fill(item, cairo_ctx, ctxt):
+def _render_pattern_fill(item: ps.PatternFill, cairo_ctx: cairo.Context, ctxt: ps.Context) -> None:
     """
     Render a pattern fill using Cairo surface patterns.
 
@@ -240,7 +242,7 @@ def _render_pattern_fill(item, cairo_ctx, ctxt):
     cairo_ctx.fill()
 
 
-def _render_shading_pattern_fill(item, cairo_ctx, impl):
+def _render_shading_pattern_fill(item: ps.PatternFill, cairo_ctx: cairo.Context, impl: dict) -> None:
     """
     Render a Type 2 (shading) pattern fill.
 

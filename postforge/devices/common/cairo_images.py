@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 Cairo Image Rendering Module
 
@@ -51,7 +53,7 @@ _imagemask_cache_hits = 0
 _imagemask_cache_misses = 0
 
 
-def get_imagemask_cache_stats():
+def get_imagemask_cache_stats() -> dict:
     """Return imagemask surface cache statistics."""
     total = _imagemask_cache_hits + _imagemask_cache_misses
     return {
@@ -63,7 +65,7 @@ def get_imagemask_cache_stats():
     }
 
 
-def clear_imagemask_cache():
+def clear_imagemask_cache() -> None:
     """Clear the imagemask surface cache."""
     global _imagemask_surface_cache, _imagemask_cache_hits, _imagemask_cache_misses
     _imagemask_surface_cache.clear()
@@ -71,7 +73,7 @@ def clear_imagemask_cache():
     _imagemask_cache_misses = 0
 
 
-def _render_image_element(image_element: ps.ImageElement, cairo_ctx, page_height):
+def _render_image_element(image_element: ps.ImageElement, cairo_ctx: cairo.Context, page_height: int) -> None:
     """Render PostScript image using Cairo with correct matrix handling"""
 
     try:
@@ -168,7 +170,7 @@ def _render_image_element(image_element: ps.ImageElement, cairo_ctx, page_height
         print(f"Image element rendering failed: {e}")
 
 
-def _apply_stencil_mask(pixel_data, img_width, img_height, mask_data, mask_width, mask_height, polarity):
+def _apply_stencil_mask(pixel_data: bytearray, img_width: int, img_height: int, mask_data: bytes | bytearray, mask_width: int, mask_height: int, polarity: bool) -> None:
     """Apply a 1-bit stencil mask to ARGB32 pixel data, setting alpha=0 for masked pixels.
 
     The mask is 1-bit per sample, row-padded to byte boundaries.
@@ -216,7 +218,7 @@ def _apply_stencil_mask(pixel_data, img_width, img_height, mask_data, mask_width
                     pixel_data[pixel_offset + 3] = 0
 
 
-def _render_imagemask_element(mask_element: ps.ImageMaskElement, cairo_ctx, page_height):
+def _render_imagemask_element(mask_element: ps.ImageMaskElement, cairo_ctx: cairo.Context, page_height: int) -> None:
     """Render PostScript imagemask with pre-baked color surface caching.
 
     Caches ARGB32 surfaces with color already applied. This eliminates:
@@ -323,7 +325,7 @@ def _render_imagemask_element(mask_element: ps.ImageMaskElement, cairo_ctx, page
         print(f"Imagemask element rendering failed: {e}")
 
 
-def _render_colorimage_element(color_element: ps.ColorImageElement, cairo_ctx, page_height):
+def _render_colorimage_element(color_element: ps.ColorImageElement, cairo_ctx: cairo.Context, page_height: int) -> None:
     """Render PostScript colorimage using Cairo color formats"""
 
     try:
@@ -440,7 +442,7 @@ def _render_colorimage_element(color_element: ps.ColorImageElement, cairo_ctx, p
 
 # Sample Data Conversion Helper Functions
 
-def _select_cairo_format(bits_per_component, components):
+def _select_cairo_format(bits_per_component: int, components: int) -> int:
     """Select appropriate Cairo format based on PostScript image parameters
 
     Note: For grayscale images (components=1), we always use ARGB32 because
@@ -452,7 +454,7 @@ def _select_cairo_format(bits_per_component, components):
     return cairo.FORMAT_ARGB32
 
 
-def _convert_samples_to_cairo_format(sample_data, bits_per_component, width, height, decode_array, components, color_space=None, mask_color=None):
+def _convert_samples_to_cairo_format(sample_data: bytes | bytearray, bits_per_component: int, width: int, height: int, decode_array: list, components: int, color_space: list | None = None, mask_color: list | None = None) -> bytearray | None:
     """Convert PostScript sample data to Cairo pixel format with color space transformation
 
     mask_color: For ImageType 4 color key masking. Array of n integers (exact match) or
@@ -557,7 +559,7 @@ def _convert_samples_to_cairo_format(sample_data, bits_per_component, width, hei
         return None
 
 
-def _apply_color_key_mask(pixel_data, sample_data, bits_per_component, width, height, components, mask_color):
+def _apply_color_key_mask(pixel_data: bytearray, sample_data: bytes | bytearray, bits_per_component: int, width: int, height: int, components: int, mask_color: list) -> None:
     """Apply ImageType 4 color key masking - set alpha=0 for matching pixels.
 
     PLRM: Comparison occurs BEFORE decode mapping, using raw sample values.
@@ -701,7 +703,7 @@ def _apply_color_key_mask(pixel_data, sample_data, bits_per_component, width, he
         print(f"Color key mask error: {e}")
 
 
-def _is_identity_decode(decode_array, components):
+def _is_identity_decode(decode_array: list, components: int) -> bool:
     """Check if decode array is the identity mapping [0,1] repeated per component."""
     expected = [0, 1] * components
     if len(decode_array) != len(expected):
@@ -709,7 +711,7 @@ def _is_identity_decode(decode_array, components):
     return all(decode_array[i] == expected[i] for i in range(len(expected)))
 
 
-def _build_decode_lut(d_min, d_max):
+def _build_decode_lut(d_min: float, d_max: float) -> bytearray:
     """Build a 256-byte LUT for an 8-bit decode mapping."""
     lut = bytearray(256)
     for i in range(256):
@@ -718,7 +720,7 @@ def _build_decode_lut(d_min, d_max):
     return lut
 
 
-def _convert_indexed_image(sample_data, bits_per_component, width, height, decode_array, color_space, mask_color):
+def _convert_indexed_image(sample_data: bytes | bytearray, bits_per_component: int, width: int, height: int, decode_array: list, color_space: list, mask_color: list | None) -> bytearray | None:
     """Convert Indexed color space image to Cairo BGRX format.
 
     Indexed images have single-component samples that are indices into a color palette.
@@ -957,7 +959,7 @@ def _convert_indexed_image(sample_data, bits_per_component, width, height, decod
         return None
 
 
-def _is_identity_cie(cie_dict, space_name):
+def _is_identity_cie(cie_dict: dict, space_name: str) -> bool:
     """Check if a CIE color space is effectively identity sRGB (no transforms).
 
     For CIEBasedABC: identity MatrixABC, identity MatrixLMN, no decode procedures,
@@ -998,8 +1000,9 @@ def _is_identity_cie(cie_dict, space_name):
     return False
 
 
-def _convert_cie_image(sample_data, bits_per_component, width, height, decode_array,
-                       color_space, components, mask_color):
+def _convert_cie_image(sample_data: bytes | bytearray, bits_per_component: int, width: int, height: int,
+                       decode_array: list, color_space: list, components: int,
+                       mask_color: list | None) -> bytearray | None:
     """Convert CIEBasedABC or CIEBasedA image samples to Cairo BGRX format.
 
     For the common case where CIE wraps identity sRGB, delegates to the fast
@@ -1143,7 +1146,7 @@ def _convert_cie_image(sample_data, bits_per_component, width, height, decode_ar
         return None
 
 
-def _preconvert_cie_def_table(cie_dict):
+def _preconvert_cie_def_table(cie_dict: dict) -> tuple | None:
     """Pre-convert all CIEBasedDEF Table entries through the full CIE→sRGB pipeline.
 
     Evaluates DecodeABC, MatrixABC, DecodeLMN, MatrixLMN, XYZ→sRGB once per table
@@ -1209,8 +1212,9 @@ def _preconvert_cie_def_table(cie_dict):
     return (r_table, g_table, b_table, m1, m2, m3)
 
 
-def _convert_cie_def_image(sample_data, bits_per_component, width, height, decode_array,
-                           color_space, components, mask_color):
+def _convert_cie_def_image(sample_data: bytes | bytearray, bits_per_component: int, width: int, height: int,
+                           decode_array: list, color_space: list, components: int,
+                           mask_color: list | None) -> bytearray | None:
     """Convert CIEBasedDEF or CIEBasedDEFG image samples to Cairo BGRX format.
 
     Pre-converts the CIE Table to sRGB once, then uses fast trilinear interpolation
@@ -1345,7 +1349,7 @@ def _convert_cie_def_image(sample_data, bits_per_component, width, height, decod
         return None
 
 
-def _convert_grayscale_samples(sample_data, bits_per_component, width, height, decode_array, color_space=None):
+def _convert_grayscale_samples(sample_data: bytes | bytearray, bits_per_component: int, width: int, height: int, decode_array: list, color_space: list | None = None) -> bytearray | None:
     """Convert grayscale PostScript samples to Cairo format with color space transformation"""
     try:
         if bits_per_component == 8:
@@ -1495,7 +1499,7 @@ def _convert_grayscale_samples(sample_data, bits_per_component, width, height, d
         return None
 
 
-def _convert_mask_to_cairo_a1(mask_data, width, height, polarity):
+def _convert_mask_to_cairo_a1(mask_data: bytes | bytearray, width: int, height: int, polarity: bool) -> bytearray | None:
     """Convert 1-bit PostScript mask data to Cairo A1 format"""
     try:
         if polarity:
@@ -1511,7 +1515,7 @@ def _convert_mask_to_cairo_a1(mask_data, width, height, polarity):
         return None
 
 
-def _convert_rgb_samples(sample_data, bits_per_component, width, height, decode_array):
+def _convert_rgb_samples(sample_data: bytes | bytearray, bits_per_component: int, width: int, height: int, decode_array: list) -> bytearray | None:
     """Convert RGB PostScript samples to Cairo RGB24 format"""
     try:
         if bits_per_component == 8:
@@ -1701,7 +1705,7 @@ def _convert_rgb_samples(sample_data, bits_per_component, width, height, decode_
         return None
 
 
-def _convert_cmyk_to_rgb(sample_data, bits_per_component, width, height, decode_array):
+def _convert_cmyk_to_rgb(sample_data: bytes | bytearray, bits_per_component: int, width: int, height: int, decode_array: list) -> bytearray | None:
     """Convert CMYK PostScript samples to RGB for Cairo rendering"""
     try:
         # Try default ICC bulk conversion (8-bit only)

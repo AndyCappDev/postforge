@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 CID Font Embedder Module
 
@@ -25,7 +27,7 @@ class CIDFontEmbedder:
     Extract TrueType data from CID fonts and generate PDF embedding structures.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize CID font embedder."""
         # Cache sfnts data by dict identity to avoid re-concatenation
         self._sfnts_cache = {}
@@ -34,7 +36,7 @@ class CIDFontEmbedder:
         # Cache parsed table directories
         self._table_cache = {}
 
-    def get_sfnts_data(self, font_dict):
+    def get_sfnts_data(self, font_dict: ps.Dict) -> bytes | None:
         """
         Navigate Type 0 -> FDepVector[0] -> sfnts and concatenate string
         segments into a single TrueType binary.
@@ -99,7 +101,9 @@ class CIDFontEmbedder:
         self._sfnts_cache[cache_key] = result
         return result
 
-    def _reconstruct_truetype(self, raw_sfnts, cidfont_dict, old_tables):
+    def _reconstruct_truetype(self, raw_sfnts: bytearray,
+                                cidfont_dict: ps.Dict,
+                                old_tables: dict) -> bytes | None:
         """
         Reconstruct a valid TrueType font by adding glyf/loca tables
         built from the PostScript GlyphDirectory.
@@ -183,7 +187,7 @@ class CIDFontEmbedder:
         # Reassemble the TrueType binary
         return self._assemble_truetype(keep_tables)
 
-    def _assemble_truetype(self, table_dict):
+    def _assemble_truetype(self, table_dict: dict[bytes, bytes]) -> bytes:
         """
         Assemble a TrueType font binary from a dictionary of table data.
 
@@ -243,7 +247,7 @@ class CIDFontEmbedder:
         return bytes(result)
 
     @staticmethod
-    def _calc_table_checksum(data):
+    def _calc_table_checksum(data: bytes) -> int:
         """Calculate TrueType table checksum (sum of uint32 values)."""
         # Pad to 4 bytes
         padded = data + b'\x00' * ((4 - len(data) % 4) % 4)
@@ -252,7 +256,7 @@ class CIDFontEmbedder:
             total += int.from_bytes(padded[i:i + 4], 'big')
         return total & 0xFFFFFFFF
 
-    def _get_cidfont(self, font_dict):
+    def _get_cidfont(self, font_dict: ps.Dict) -> ps.Dict | None:
         """
         Get the CIDFont descendant from a Type 0 font dictionary.
 
@@ -269,7 +273,7 @@ class CIDFontEmbedder:
             return None
         return fdep_vector.val[0]
 
-    def _parse_table_directory(self, font_data):
+    def _parse_table_directory(self, font_data: bytes) -> dict[bytes, tuple[int, int]]:
         """
         Parse TrueType offset table and return table directory.
 
@@ -300,7 +304,8 @@ class CIDFontEmbedder:
         self._table_cache[cache_key] = tables
         return tables
 
-    def _get_unicode_to_gid(self, font_data, tables):
+    def _get_unicode_to_gid(self, font_data: bytes,
+                              tables: dict) -> dict[int, int]:
         """
         Get Unicode -> GID mapping from TrueType cmap table.
 
@@ -328,7 +333,8 @@ class CIDFontEmbedder:
 
         return unicode_to_gid
 
-    def get_cid_to_gid_dict(self, font_dict, glyphs_used):
+    def get_cid_to_gid_dict(self, font_dict: ps.Dict,
+                              glyphs_used: set[int]) -> dict[int, int]:
         """
         Compute CID -> GID mapping dict for used glyphs.
 
@@ -375,7 +381,8 @@ class CIDFontEmbedder:
 
         return cid_to_gid
 
-    def get_glyph_widths(self, font_dict, glyphs_used, cid_to_gid=None):
+    def get_glyph_widths(self, font_dict: ps.Dict, glyphs_used: set[int],
+                          cid_to_gid: dict[int, int] | None = None) -> dict[int, int]:
         """
         Get glyph widths for used CIDs, scaled to PDF 1000-unit space.
 
@@ -431,7 +438,7 @@ class CIDFontEmbedder:
 
         return widths
 
-    def build_w_array(self, glyph_widths):
+    def build_w_array(self, glyph_widths: dict[int, int]) -> list:
         """
         Build compact PDF /W array for CID font widths.
 
@@ -470,7 +477,8 @@ class CIDFontEmbedder:
 
         return result
 
-    def build_tounicode_map(self, font_dict, glyphs_used, cid_to_gid=None):
+    def build_tounicode_map(self, font_dict: ps.Dict, glyphs_used: set[int],
+                              cid_to_gid: dict[int, int] | None = None) -> dict[int, str]:
         """
         Build CID -> Unicode mapping for ToUnicode CMap.
 
@@ -524,7 +532,8 @@ class CIDFontEmbedder:
 
         return tounicode
 
-    def _infer_tounicode_from_gid_layout(self, font_data, tables, glyphs_used):
+    def _infer_tounicode_from_gid_layout(self, font_data: bytes, tables: dict,
+                                            glyphs_used: set[int]) -> dict[int, str]:
         """
         Infer CID -> Unicode mapping for CUPS-style fonts without cmap.
 
@@ -597,7 +606,8 @@ class CIDFontEmbedder:
 
         return tounicode
 
-    def build_cid_to_gid_map(self, font_dict, glyphs_used, cid_to_gid=None):
+    def build_cid_to_gid_map(self, font_dict: ps.Dict, glyphs_used: set[int],
+                               cid_to_gid: dict[int, int] | None = None) -> bytes | None:
         """
         Build CIDToGIDMap stream bytes for PDF embedding.
 
@@ -631,8 +641,10 @@ class CIDFontEmbedder:
 
         return bytes(result)
 
-    def _build_cid_to_gid_from_glyph_directory(self, font_dict, font_data,
-                                                 tables, glyphs_used):
+    def _build_cid_to_gid_from_glyph_directory(self, font_dict: ps.Dict,
+                                                 font_data: bytes,
+                                                 tables: dict,
+                                                 glyphs_used: set[int]) -> dict[int, int]:
         """
         Build CID→GID mapping by matching GlyphDirectory entries against
         the loca/glyf tables in the sfnts.
@@ -741,7 +753,8 @@ class CIDFontEmbedder:
 
         return cid_to_gid
 
-    def _parse_cmap_table(self, font_data, cmap_offset):
+    def _parse_cmap_table(self, font_data: bytes,
+                            cmap_offset: int) -> dict[int, int]:
         """
         Parse TrueType cmap table and return GID -> unicode codepoint mapping.
 
@@ -798,7 +811,8 @@ class CIDFontEmbedder:
 
         return {}
 
-    def _parse_cmap_format4(self, font_data, offset):
+    def _parse_cmap_format4(self, font_data: bytes,
+                              offset: int) -> dict[int, int]:
         """
         Parse cmap format 4 (segment-to-delta mapping) for BMP characters.
 
@@ -866,7 +880,8 @@ class CIDFontEmbedder:
 
         return gid_to_unicode
 
-    def _parse_cmap_format12(self, font_data, offset):
+    def _parse_cmap_format12(self, font_data: bytes,
+                               offset: int) -> dict[int, int]:
         """
         Parse cmap format 12 (segmented coverage) for full Unicode range.
 
@@ -899,7 +914,7 @@ class CIDFontEmbedder:
 
         return gid_to_unicode
 
-    def get_font_metrics(self, font_dict):
+    def get_font_metrics(self, font_dict: ps.Dict) -> dict[str, object]:
         """
         Parse TrueType tables for font metrics needed by PDF FontDescriptor.
 
@@ -961,7 +976,7 @@ class CIDFontEmbedder:
 
         return metrics
 
-    def _default_metrics(self):
+    def _default_metrics(self) -> dict[str, object]:
         """Return default font metrics."""
         return {
             'ascent': 800,
@@ -971,7 +986,7 @@ class CIDFontEmbedder:
             'bbox': [0, -200, 1000, 800],
         }
 
-    def _get_units_per_em(self, font_data, tables):
+    def _get_units_per_em(self, font_data: bytes, tables: dict) -> int:
         """Get unitsPerEm from head table."""
         head_info = tables.get(b'head')
         if not head_info:
@@ -981,7 +996,7 @@ class CIDFontEmbedder:
             return int.from_bytes(font_data[ho + 18:ho + 20], 'big')
         return 1000
 
-    def get_default_width(self, font_dict):
+    def get_default_width(self, font_dict: ps.Dict) -> int:
         """
         Get default glyph width for the /DW entry.
 
@@ -1014,7 +1029,7 @@ class CIDFontEmbedder:
 
         return 1000
 
-    def get_cid_system_info(self, font_dict):
+    def get_cid_system_info(self, font_dict: ps.Dict) -> tuple[str, str, int]:
         """
         Extract CIDSystemInfo (Registry/Ordering/Supplement) from the CIDFont.
 
@@ -1059,7 +1074,8 @@ class CIDFontEmbedder:
         return (reg_str, ord_str, sup_val)
 
 
-def generate_cid_tounicode_cmap(tounicode_map, font_name='Unknown'):
+def generate_cid_tounicode_cmap(tounicode_map: dict[int, str],
+                                font_name: str = 'Unknown') -> bytes:
     """
     Generate a ToUnicode CMap stream for CID font PDF embedding.
 

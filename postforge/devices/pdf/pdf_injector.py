@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PDF Injector Module
 
@@ -56,7 +58,7 @@ class PDFInjector:
        Cairo rendering
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize PDF injector."""
         if not PYPDF_AVAILABLE:
             raise ImportError(
@@ -67,8 +69,10 @@ class PDFInjector:
         self.cid_font_embedder = CIDFontEmbedder()
         self.cff_embedder = CFFEmbedder()
 
-    def inject_text_and_fonts(self, pdf_path, deferred_text_objs, font_tracker,
-                               scale_x, scale_y, page_height_pdf):
+    def inject_text_and_fonts(self, pdf_path: str, deferred_text_objs: list,
+                               font_tracker: FontTracker,
+                               scale_x: float, scale_y: float,
+                               page_height_pdf: float) -> None:
         """
         Add deferred text and embedded fonts to Cairo-generated PDF.
 
@@ -179,8 +183,9 @@ class PDFInjector:
             print(f"[PDF] Font injection failed: {e}")
             traceback.print_exc()
 
-    def _embed_font(self, writer, font_name, usage, instance_num=0,
-                    subrs_override=None):
+    def _embed_font(self, writer: object, font_name: bytes, usage: object,
+                    instance_num: int = 0,
+                    subrs_override: object = None) -> tuple[str, object] | None:
         """
         Embed a Type 1 font and return its PDF resource name.
 
@@ -301,7 +306,8 @@ class PDFInjector:
         # Store as tuple: (resource_name, font_ref)
         return (pdf_resource_name, font_ref)
 
-    def _embed_cid_font(self, writer, font_name, usage, instance_num=0):
+    def _embed_cid_font(self, writer: object, font_name: bytes, usage: object,
+                         instance_num: int = 0) -> tuple[str, object] | None:
         """
         Embed a CID/TrueType font as a PDF Type 0 font.
 
@@ -447,7 +453,7 @@ class PDFInjector:
         return (pdf_resource_name, font_ref)
 
     @staticmethod
-    def _is_cff_font(font_dict):
+    def _is_cff_font(font_dict: ps.Dict) -> bool:
         """Check if a font dictionary is a CFF (Type 2) font.
 
         Args:
@@ -460,7 +466,7 @@ class PDFInjector:
         return font_type is not None and font_type.val == 2
 
     @staticmethod
-    def _is_type42_font(font_dict):
+    def _is_type42_font(font_dict: ps.Dict) -> bool:
         """Check if a font dictionary is a Type 42 (TrueType) font.
 
         Args:
@@ -472,7 +478,8 @@ class PDFInjector:
         font_type = font_dict.val.get(b'FontType')
         return font_type is not None and font_type.val == 42
 
-    def _embed_cff_font(self, writer, font_name, usage, instance_num=0):
+    def _embed_cff_font(self, writer: object, font_name: bytes, usage: object,
+                         instance_num: int = 0) -> tuple[str, object] | None:
         """
         Embed a CFF font as /FontFile3 /Type1C and return its PDF resource name.
 
@@ -585,7 +592,8 @@ class PDFInjector:
 
         return (pdf_resource_name, font_ref)
 
-    def _embed_type42_font(self, writer, font_name, usage, instance_num=0):
+    def _embed_type42_font(self, writer: object, font_name: bytes, usage: object,
+                            instance_num: int = 0) -> tuple[str, object] | None:
         """
         Embed a Type 42 (TrueType) font as a simple TrueType font in PDF.
 
@@ -731,7 +739,7 @@ class PDFInjector:
 
         return (pdf_resource_name, font_ref)
 
-    def _get_type42_sfnts_data(self, font_dict):
+    def _get_type42_sfnts_data(self, font_dict: ps.Dict) -> bytes | None:
         """
         Extract raw TrueType binary from a Type 42 font dict's sfnts array.
 
@@ -758,7 +766,9 @@ class PDFInjector:
 
         return bytes(font_data) if len(font_data) >= 12 else None
 
-    def _rewrite_type42_cmap(self, font_data, tables, font_dict, glyphs_used):
+    def _rewrite_type42_cmap(self, font_data: bytes, tables: dict,
+                              font_dict: ps.Dict,
+                              glyphs_used: set[int]) -> bytes:
         """
         Rewrite cmap table in TrueType font data to match PostScript encoding.
 
@@ -884,7 +894,8 @@ class PDFInjector:
 
         return self.cid_font_embedder._assemble_truetype(keep_tables)
 
-    def _get_type42_bbox(self, font_data, tables, scale):
+    def _get_type42_bbox(self, font_data: bytes, tables: dict,
+                          scale: float) -> list[int]:
         """
         Get font bounding box from TrueType head table.
 
@@ -912,8 +923,10 @@ class PDFInjector:
                 ]
         return [0, -200, 1000, 800]
 
-    def _get_type42_widths(self, font_dict, font_data, tables, units_per_em,
-                           glyphs_used, first_char, last_char):
+    def _get_type42_widths(self, font_dict: ps.Dict, font_data: bytes,
+                           tables: dict, units_per_em: int,
+                           glyphs_used: set[int], first_char: int,
+                           last_char: int) -> object:
         """
         Get character widths for a Type 42 font via Encoding -> CharStrings -> hmtx.
 
@@ -944,9 +957,11 @@ class PDFInjector:
 
         return ArrayObject(widths)
 
-    def _get_type42_glyph_widths(self, font_dict, glyphs_used,
-                                  font_data=None, tables=None,
-                                  units_per_em=None):
+    def _get_type42_glyph_widths(self, font_dict: ps.Dict,
+                                  glyphs_used: set[int],
+                                  font_data: bytes | None = None,
+                                  tables: dict | None = None,
+                                  units_per_em: int | None = None) -> dict[int, int]:
         """
         Get glyph widths for Type 42 font via Encoding -> CharStrings -> hmtx.
 
@@ -1023,7 +1038,7 @@ class PDFInjector:
 
         return widths
 
-    def _build_pdf_w_array(self, w_array_data):
+    def _build_pdf_w_array(self, w_array_data: list) -> object | None:
         """
         Convert W array data to pypdf ArrayObject.
 
@@ -1048,7 +1063,7 @@ class PDFInjector:
 
         return result
 
-    def _make_pdf_string(self, text):
+    def _make_pdf_string(self, text: str) -> object:
         """
         Create a PDF string object (ByteStringObject) from a Python string.
 
@@ -1061,7 +1076,10 @@ class PDFInjector:
         from pypdf.generic import ByteStringObject
         return ByteStringObject(text.encode('latin-1'))
 
-    def _generate_text_content(self, text_objs, embedded_fonts, font_tracker, scale_x, scale_y, page_height_pdf):
+    def _generate_text_content(self, text_objs: list, embedded_fonts: dict,
+                                font_tracker: FontTracker, scale_x: float,
+                                scale_y: float,
+                                page_height_pdf: float) -> bytes:
         """
         Generate PDF content stream operators for text objects.
 
@@ -1408,7 +1426,9 @@ class PDFInjector:
 
         return b'\n'.join(lines)
 
-    def _compute_invisible_text_params(self, actual_text, scale_x, scale_y):
+    def _compute_invisible_text_params(self, actual_text: ps.ActualTextStart,
+                                        scale_x: float,
+                                        scale_y: float) -> tuple | None:
         """
         Compute positioning parameters for invisible text (Type 3 searchability).
 
@@ -1468,8 +1488,10 @@ class PDFInjector:
         return (x_pdf, y_pdf, tm_b, tm_c, tm_d, text_bytes, adv_x_pdf,
                 advance_width_pdf)
 
-    def _same_baseline(self, tm_b1, tm_c1, tm_d1, x1, y1,
-                             tm_b2, tm_c2, tm_d2, x2, y2):
+    def _same_baseline(self, tm_b1: float, tm_c1: float, tm_d1: float,
+                        x1: float, y1: float,
+                        tm_b2: float, tm_c2: float, tm_d2: float,
+                        x2: float, y2: float) -> bool:
         """
         Check if two text entries share the same baseline (rotation-aware).
 
@@ -1489,7 +1511,9 @@ class PDFInjector:
             perp_dist = abs(dy)
         return perp_dist < 0.5
 
-    def _emit_clip_path(self, lines, clip_path, clip_winding, scale_x, scale_y):
+    def _emit_clip_path(self, lines: list, clip_path: list,
+                          clip_winding: int, scale_x: float,
+                          scale_y: float) -> None:
         """
         Emit PDF clipping path operators.
 
@@ -1529,7 +1553,8 @@ class PDFInjector:
         else:
             lines.append(b'W n')
 
-    def _append_content_to_page(self, writer, page, new_content):
+    def _append_content_to_page(self, writer: object, page: object,
+                                 new_content: bytes) -> None:
         """
         Append content stream data to a page.
 
@@ -1579,7 +1604,8 @@ class PDFInjector:
             new_stream[NameObject('/Length')] = NumberObject(len(new_content))
             page[NameObject('/Contents')] = writer._add_object(new_stream)
 
-    def _add_fonts_to_page(self, page, embedded_fonts):
+    def _add_fonts_to_page(self, page: object,
+                            embedded_fonts: dict) -> None:
         """
         Add font resources to page's resource dictionary.
 
@@ -1607,7 +1633,8 @@ class PDFInjector:
         for font_dict_id, (pdf_resource_name, font_ref) in embedded_fonts.items():
             fonts[NameObject(pdf_resource_name)] = font_ref
 
-    def _add_invisible_text_fonts(self, page, writer):
+    def _add_invisible_text_fonts(self, page: object,
+                                    writer: object) -> None:
         """
         Add Courier font resource (/PFCour) for invisible text rendering.
 
@@ -1641,7 +1668,8 @@ class PDFInjector:
         fonts[NameObject('/PFCour')] = writer._add_object(cour_dict)
 
     @staticmethod
-    def _to_pfb(raw_data, length1, length2, length3):
+    def _to_pfb(raw_data: bytes, length1: int, length2: int,
+                length3: int) -> bytes:
         """
         Convert raw Type 1 font segments to PFB (Printer Font Binary) format.
 
@@ -1685,7 +1713,7 @@ class PDFInjector:
         b'WinAnsiEncoding', b'MacRomanEncoding', b'MacExpertEncoding',
     }
 
-    def _get_font_flags(self, font_dict):
+    def _get_font_flags(self, font_dict: ps.Dict) -> int:
         """
         Determine PDF font descriptor Flags based on font encoding.
 
@@ -1709,7 +1737,8 @@ class PDFInjector:
         # Custom array encoding, unknown named encoding, or no encoding → Symbolic
         return 4  # Symbolic — encoding built into font program
 
-    def _build_pdf_encoding(self, font_dict, first_char, last_char):
+    def _build_pdf_encoding(self, font_dict: ps.Dict, first_char: int,
+                              last_char: int) -> object | None:
         """
         Build PDF encoding dictionary from PostScript font encoding.
 
@@ -1768,7 +1797,8 @@ class PDFInjector:
 
         return enc_dict
 
-    def _build_tounicode_map(self, font_dict, glyphs_used):
+    def _build_tounicode_map(self, font_dict: ps.Dict,
+                              glyphs_used: set[int]) -> dict[int, str]:
         """Build ToUnicode mapping from char codes to Unicode."""
         tounicode_map = {}
         encoding = font_dict.val.get(b'Encoding')
@@ -1782,7 +1812,7 @@ class PDFInjector:
 
         return tounicode_map
 
-    def _get_glyph_name(self, encoding, char_code):
+    def _get_glyph_name(self, encoding: object, char_code: int) -> bytes | None:
         """Get glyph name for a character code."""
         if encoding is None:
             return None
@@ -1800,20 +1830,21 @@ class PDFInjector:
 
         return None
 
-    def _get_font_bbox(self, font_dict):
+    def _get_font_bbox(self, font_dict: ps.Dict) -> list:
         """Get font bounding box."""
         bbox = font_dict.val.get(b'FontBBox')
         if bbox and bbox.TYPE in ps.ARRAY_TYPES and len(bbox.val) >= 4:
             return [elem.val for elem in bbox.val[:4]]
         return [0, -200, 1000, 800]
 
-    def _get_char_range(self, glyphs_used):
+    def _get_char_range(self, glyphs_used: set[int]) -> tuple[int, int]:
         """Get first and last character codes."""
         if not glyphs_used:
             return 0, 255
         return min(glyphs_used), max(glyphs_used)
 
-    def _get_widths(self, font_dict, glyphs_used, first_char, last_char):
+    def _get_widths(self, font_dict: ps.Dict, glyphs_used: set[int],
+                     first_char: int, last_char: int) -> object:
         """Get character widths for the used character range."""
         if not glyphs_used:
             return ArrayObject([NumberObject(600)])
@@ -1831,6 +1862,6 @@ class PDFInjector:
         return ArrayObject(widths)
 
 
-def is_pypdf_available():
+def is_pypdf_available() -> bool:
     """Check if pypdf is available for font embedding."""
     return PYPDF_AVAILABLE

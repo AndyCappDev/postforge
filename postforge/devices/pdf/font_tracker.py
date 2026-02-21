@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 Font Tracker Module
 
@@ -24,7 +26,7 @@ class FontUsage:
 
     __slots__ = ('font_dict', 'font_name', 'glyphs_used', 'order')
 
-    def __init__(self, font_dict, font_name, order, glyphs_used=None):
+    def __init__(self, font_dict: ps.Dict, font_name: bytes, order: int, glyphs_used: set[int] | None = None) -> None:
         """
         Initialize font usage tracking.
 
@@ -72,7 +74,7 @@ class FontTracker:
         b'ZapfDingbats',
     })
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize empty font tracker."""
         # Key is a composite of (CharStrings identity, Encoding identity).
         # This deduplicates scaled instances of the same font that share
@@ -83,7 +85,7 @@ class FontTracker:
         # Map from font_dict identity to font_key for fast lookup
         self._dict_to_key = {}  # id(font_dict.val) -> font_key
 
-    def _get_font_key(self, font_dict):
+    def _get_font_key(self, font_dict: ps.Dict) -> tuple:
         """
         Get a deduplication key for a font dictionary.
 
@@ -118,7 +120,7 @@ class FontTracker:
 
         return (cs_id, enc_id)
 
-    def _get_cid_font_key(self, font_dict):
+    def _get_cid_font_key(self, font_dict: ps.Dict) -> tuple:
         """
         Get deduplication key for a Type 0 (CID) font.
 
@@ -144,7 +146,7 @@ class FontTracker:
 
         return ('cid', sfnts_id, cmap_id)
 
-    def track_text_obj(self, text_obj):
+    def track_text_obj(self, text_obj: ps.TextObj) -> None:
         """
         Record font and glyph usage from a TextObj.
 
@@ -197,7 +199,7 @@ class FontTracker:
             for char_code in text_obj.text:
                 self.fonts_used[font_key].glyphs_used.add(char_code)
 
-    def _track_cid_glyphs(self, text_obj):
+    def _track_cid_glyphs(self, text_obj: ps.TextObj) -> None:
         """
         Extract CIDs from Type 0 font TextObj and track them.
 
@@ -215,7 +217,7 @@ class FontTracker:
             cid = (text[i] << 8) | text[i + 1]
             self.fonts_used[font_key].glyphs_used.add(cid)
 
-    def needs_embedding(self):
+    def needs_embedding(self) -> bool:
         """
         Return True if any non-Standard 14 fonts were used.
 
@@ -224,7 +226,7 @@ class FontTracker:
         """
         return len(self.fonts_used) > 0
 
-    def get_fonts_to_embed(self):
+    def get_fonts_to_embed(self) -> dict[tuple, FontUsage]:
         """
         Get dictionary of fonts that need embedding.
 
@@ -233,7 +235,7 @@ class FontTracker:
         """
         return self.fonts_used
 
-    def get_fonts_in_order(self):
+    def get_fonts_in_order(self) -> list[tuple[tuple, FontUsage]]:
         """
         Get fonts in the order they were first used.
 
@@ -245,7 +247,7 @@ class FontTracker:
         """
         return [(font_key, self.fonts_used[font_key]) for font_key in self._font_order]
 
-    def get_font_key_for_dict(self, font_dict):
+    def get_font_key_for_dict(self, font_dict: ps.Dict) -> tuple | None:
         """
         Look up the font key for a font dictionary.
 
@@ -271,7 +273,7 @@ class FontTracker:
         return font_key
 
     @staticmethod
-    def is_cid_font(font_key):
+    def is_cid_font(font_key: tuple) -> bool:
         """
         Check if a font key represents a CID (Type 0) font.
 
@@ -286,7 +288,7 @@ class FontTracker:
         """
         return len(font_key) == 3 and font_key[0] == 'cid'
 
-    def get_best_subrs(self):
+    def get_best_subrs(self) -> dict:
         """
         Find the fullest Subrs array for each CharStrings group.
 
@@ -323,7 +325,7 @@ class FontTracker:
                 best[cs_id] = (count, subrs)
         return {cs_id: subrs for cs_id, (_, subrs) in best.items()}
 
-    def reset(self):
+    def reset(self) -> None:
         """Clear all tracked fonts."""
         self.fonts_used.clear()
         self._font_order.clear()
@@ -331,7 +333,7 @@ class FontTracker:
         self._next_order = 0
 
 
-def is_standard_14_font(font_name):
+def is_standard_14_font(font_name: bytes) -> bool:
     """
     Check if a font is one of the Standard 14 PDF fonts.
 
