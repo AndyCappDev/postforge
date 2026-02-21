@@ -85,7 +85,6 @@ class CharStringInterpreter:
             CharStringError: On decryption or execution failures
         """
 
-        # try:
         # 1. Decrypt CharString data (key=4330, skip 1 random byte)
         decrypted_data = self._decrypt_charstring(encrypted_charstring)
 
@@ -98,10 +97,6 @@ class CharStringInterpreter:
 
         # 4. Return only character width (paths already in graphics state)
         return self.advance_width
-            
-        # except Exception as e:
-        #     # Convert Python exceptions to PostScript-compatible errors
-        #     raise CharStringError(f"CharString execution failed: {str(e)}")
     
     def _decrypt_charstring(self, encrypted_data: bytes) -> bytes:
         """

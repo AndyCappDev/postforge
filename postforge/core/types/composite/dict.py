@@ -86,8 +86,6 @@ class Dict(PSObject):
         self.max_length = max_length
         self.created = time.monotonic_ns()  # creation time for this composite object
 
-        self.access = access
-        
         # Track all composite objects in appropriate refs immediately upon creation
         if ctxt_id is not None and contexts[ctxt_id] is not None:
             if self.is_global:
@@ -224,21 +222,6 @@ class Dict(PSObject):
             return f"<<{self.name}>>"
         else:
             return "<<dictionary>>"
-        """
-        Return a string reprsentation of all the keys and values in the dictionary.
-        Except for the self referenced systemdict if this is the systemdict.
-        """
-        return (
-            "<< "
-            + ", ".join(
-                [
-                    f"{Name(key) if isinstance(key, bytes) else key}: {val}"
-                    for key, val in self.val.items()
-                    if val.val != self.val
-                ]
-            )
-            + " >>"
-        )
 
     def __repr__(self) -> str:
         return self.__str__()

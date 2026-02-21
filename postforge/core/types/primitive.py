@@ -24,6 +24,8 @@ class Bool(PSObject):
     """PostScript boolean type - represents true/false values."""
     TYPE = T_BOOL
 
+    # Primitive types set attributes directly (bypassing super().__init__())
+    # for performance — these are the most frequently created PS objects.
     def __init__(self, val: bool, access: int = ACCESS_READ_ONLY, attrib: int = ATTRIB_LIT) -> None:
         self.val = val
         self.access = access

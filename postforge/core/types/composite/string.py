@@ -52,17 +52,15 @@ class String(Stream):
         is_global=False,
         val = None
     ) -> None:
-        # for strings, the val is actualy the Context the string belongs to
+        # for strings, the val is actually the Context the string belongs to
         super().__init__(None, access, attrib, is_composite, is_global)
 
         self.ctxt_id = ctxt_id
         self.offset = offset
         self.length = length
         self.start = start
-        self.access = access
         if val:
             self.val = val
-        # self.is_global = is_global
         self.created = time.monotonic_ns()  # creation time for this composite object
         
         # Track all local composite objects in local_refs immediately upon creation

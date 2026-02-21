@@ -140,7 +140,6 @@ def create_system_dict(ctxt, name: bytes) -> dict:
         ("undef", ps.Operator, undef),
         (".systemundef", ps.Operator, systemundef),
         # file operators
-        # ('==', ps.Operator, ps_equal_equal_print),
         ("bytesavailable", ps.Operator, ps_file.bytesavailable),
         ("closefile", ps.Operator, ps_file.closefile),
         ("currentfile", ps.Operator, ps_file.currentfile),
