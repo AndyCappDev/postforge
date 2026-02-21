@@ -61,14 +61,14 @@ class GState(PSObject):
             else:
                 contexts[ctxt_id].local_refs[self.created] = self.val
 
-    _ALL_ATTRS = ('val', '_access', 'attrib', 'is_composite', 'is_global',
+    _ALL_ATTRS = ('val', 'access', 'attrib', 'is_composite', 'is_global',
                   'ctxt_id', 'created')
 
     def __copy__(self):
         """Optimized copy for GState - shallow copy of gstate contents."""
         new_gstate = GState.__new__(GState)
         new_gstate.val = self.val
-        new_gstate._access = self._access
+        new_gstate.access = self.access
         new_gstate.attrib = self.attrib
         new_gstate.is_composite = self.is_composite
         new_gstate.is_global = self.is_global

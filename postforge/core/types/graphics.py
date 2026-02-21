@@ -98,7 +98,7 @@ class GraphicsState(PSObject):
     })
 
     _ALL_ATTRS = (
-        'val', '_access', 'attrib', 'is_composite', 'is_global',
+        'val', 'access', 'attrib', 'is_composite', 'is_global',
         'created', 'CTM', 'iCTM', 'currentpoint', 'path',
         'clip_currentpoint', 'clip_path', 'clip_path_stack',
         'color_space', 'color', 'transfer_function', 'black_generation',

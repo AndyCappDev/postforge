@@ -156,7 +156,7 @@ def _image_dict_form(ctxt, ostack):
     if ostack[-1].TYPE != ps.T_DICT:
         return ps_error.e(ctxt, ps_error.TYPECHECK, "image")
     # 3. INVALIDACCESS - Check access permission
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, "image")
 
     # Peek at image dictionary without popping
@@ -422,7 +422,7 @@ def _imagemask_dict_form(ctxt, ostack):
     if ostack[-1].TYPE != ps.T_DICT:
         return ps_error.e(ctxt, ps_error.TYPECHECK, "imagemask")
     # 3. INVALIDACCESS - Check access permission
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, "imagemask")
 
     # Peek at imagemask dictionary without popping

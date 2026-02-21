@@ -34,7 +34,7 @@ def aload(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, aload.__name__)
     
     # 3. INVALIDACCESS - Check access permission
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, aload.__name__)
     
     # 5. STACKOVERFLOW - Check result stack space
@@ -191,7 +191,7 @@ def astore(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, astore.__name__)
     
     # 3. INVALIDACCESS - Check access permission
-    if ostack[-1].access() < ps.ACCESS_WRITE_ONLY:
+    if ostack[-1].access < ps.ACCESS_WRITE_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, astore.__name__)
     
     # 1. STACKUNDERFLOW - Check sufficient elements for array length

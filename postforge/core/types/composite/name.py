@@ -59,7 +59,7 @@ class Name(PSObject):
         """Optimized copy for Name - immutable-like type."""
         new = Name.__new__(Name)
         new.val = self.val
-        new._access = self._access
+        new.access = self.access
         new.attrib = self.attrib
         new.is_composite = self.is_composite
         new.is_global = self.is_global

@@ -355,7 +355,7 @@ def ps_exec(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.STACKUNDERFLOW, op)
 
     # 2. INVALIDACCESS - Check access permission (any object type, read access required)
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, op)
 
     estack = ctxt.e_stack
@@ -1302,7 +1302,7 @@ def execstack(ctxt, ostack):
     if ostack[-1].TYPE != ps.T_ARRAY:
         return ps_error.e(ctxt, ps_error.TYPECHECK, execstack.__name__)
     # 3. INVALIDACCESS - Check access permission (default ACCESS_READ_ONLY)
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, execstack.__name__)
 
     if len(ostack[-1].val) < len(ctxt.e_stack):
@@ -1663,7 +1663,7 @@ def forall(ctxt, ostack):
     if ostack[-1].TYPE not in ps.ARRAY_TYPES or ostack[-1].attrib != ps.ATTRIB_EXEC:
         return ps_error.e(ctxt, ps_error.TYPECHECK, forall.__name__)
 
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY or ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY or ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, forall.__name__)
 
     if ctxt.o_stack[-2].TYPE in [ps.T_ARRAY, ps.T_PACKED_ARRAY, ps.T_STRING]:

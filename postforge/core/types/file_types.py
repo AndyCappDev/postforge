@@ -346,7 +346,7 @@ class File(Stream):
         else:
             self.val.unread()
 
-    _ALL_ATTRS = ('val', '_access', 'attrib', 'is_composite', 'is_global',
+    _ALL_ATTRS = ('val', 'access', 'attrib', 'is_composite', 'is_global',
                   'line_num', 'name', 'mode', 'created', 'ctxt_id', 'is_real_file',
                   'ps_section_end', '_putback_buf', '_putback_pos',
                   '_last_read_from_putback')
@@ -356,7 +356,7 @@ class File(Stream):
         # This preserves the shared file handle without triggering pickle logic
         new_file = self.__class__.__new__(self.__class__)
         new_file.val = self.val
-        new_file._access = self._access
+        new_file.access = self.access
         new_file.attrib = self.attrib
         new_file.is_composite = self.is_composite
         new_file.is_global = self.is_global
@@ -633,7 +633,7 @@ class StandardFile(File):
         if hasattr(self.stream, 'flush'):
             self.stream.flush()
 
-    _ALL_ATTRS = ('val', '_access', 'attrib', 'is_composite', 'is_global',
+    _ALL_ATTRS = ('val', 'access', 'attrib', 'is_composite', 'is_global',
                   'line_num', 'name', 'mode', 'created', 'ctxt_id',
                   'is_real_file', 'stream', 'closable')
 
@@ -642,7 +642,7 @@ class StandardFile(File):
         # This preserves the shared stream reference without triggering pickle logic
         new_file = self.__class__.__new__(self.__class__)
         new_file.val = self.val
-        new_file._access = self._access
+        new_file.access = self.access
         new_file.attrib = self.attrib
         new_file.is_composite = self.is_composite
         new_file.is_global = self.is_global
@@ -891,7 +891,7 @@ class EexecDecryptionFilter(File):
                     self.ctxt.d_stack.pop()
                     self.systemdict_pushed = False
     
-    _ALL_ATTRS = ('val', '_access', 'attrib', 'is_composite', 'is_global',
+    _ALL_ATTRS = ('val', 'access', 'attrib', 'is_composite', 'is_global',
                   'line_num', 'name', 'mode', 'created', 'ctxt_id', 'is_real_file',
                   'source_file', 'ctxt', 'R', 'c1', 'c2', 'random_bytes_to_skip',
                   'bytes_read', 'is_ascii_hex', 'hex_buffer', 'is_closed',
@@ -940,7 +940,7 @@ class Run(File):
         """Optimized copy for Run - file-based run object."""
         new_obj = Run.__new__(Run)
         new_obj.val = self.val
-        new_obj._access = self._access
+        new_obj.access = self.access
         new_obj.attrib = self.attrib
         new_obj.is_composite = self.is_composite
         new_obj.is_global = self.is_global

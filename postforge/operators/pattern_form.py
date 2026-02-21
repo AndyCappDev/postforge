@@ -233,7 +233,7 @@ def makepattern(ctxt, ostack) -> None:
         pattern_instance._pattern_impl = impl_data
 
         # 7. Make the pattern dictionary read-only
-        pattern_instance._access = ps.ACCESS_READ_ONLY
+        pattern_instance.access = ps.ACCESS_READ_ONLY
 
         # 8. Pop operands and push result
         ostack.pop()  # matrix
@@ -545,7 +545,7 @@ def execform(ctxt, ostack) -> None:
         return ps_error.e(ctxt, ps_error.TYPECHECK, execform.__name__)
 
     # 3. Check read access
-    if form_dict._access < ps.ACCESS_READ_ONLY:
+    if form_dict.access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, execform.__name__)
 
     first_invocation = b'Implementation' not in form_dict.val
@@ -685,9 +685,9 @@ def execform(ctxt, ostack) -> None:
         _setCTM(ctxt, real_ctm_vals)
 
         # Add Implementation key and make read-only
-        form_dict._access = ps.ACCESS_UNLIMITED
+        form_dict.access = ps.ACCESS_UNLIMITED
         form_dict.val[b'Implementation'] = ps.Name(b'_form_impl')
-        form_dict._access = ps.ACCESS_READ_ONLY
+        form_dict.access = ps.ACCESS_READ_ONLY
 
     # Replay cached elements transformed to device space.
     # In both paths, ctxt.gstate.CTM holds the real CTM at this point:

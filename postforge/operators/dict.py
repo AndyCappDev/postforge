@@ -464,7 +464,7 @@ def create_system_dict(ctxt, name: bytes) -> dict:
     obj.val[bytes("systemdict", "ascii")] = obj
 
     # set the systemdict to readonly
-    obj._access = ps.ACCESS_READ_ONLY
+    obj.access = ps.ACCESS_READ_ONLY
     return obj
 
 
@@ -524,7 +524,7 @@ def dict_from_mark(ctxt, ostack):
         d.put(key, val)
 
     d.max_length = len(d.val) + 10
-    d._access = ps.ACCESS_UNLIMITED
+    d.access = ps.ACCESS_UNLIMITED
     ostack[-1] = d
 
 
@@ -554,7 +554,7 @@ def lookup(ctxt, obj, dictionary=None):
 
         d_stack = ctxt.d_stack
         for i in range(len(d_stack) - 1, -1, -1):
-            if d_stack[i].access() < ps.ACCESS_READ_ONLY:
+            if d_stack[i].access < ps.ACCESS_READ_ONLY:
                 continue
 
             value = d_stack[i].val.get(key, None)
@@ -591,7 +591,7 @@ def begin(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, begin.__name__)
     
     # 3. INVALIDACCESS - Check access permission
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, begin.__name__)
 
     ctxt.d_stack.append(ctxt.o_stack[-1])
@@ -665,7 +665,7 @@ def ps_def(ctxt, ostack):
 
     d = ctxt.d_stack[-1]
 
-    if not ctxt.initializing and d.access() < ps.ACCESS_UNLIMITED:
+    if not ctxt.initializing and d.access < ps.ACCESS_UNLIMITED:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, op)
 
     if not ctxt.initializing and d.is_global:
@@ -855,7 +855,7 @@ def known(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, known.__name__)
     
     # 3. INVALIDACCESS - Check dictionary access (default READ_ONLY)
-    if ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, known.__name__)
 
     key = ostack[-2].create_key(ostack.pop())
@@ -929,7 +929,7 @@ def maxlength(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, maxlength.__name__)
     
     # 3. INVALIDACCESS - Check access permission
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, maxlength.__name__)
 
     ostack[-1] = ostack[-1].maxlength()
@@ -973,7 +973,7 @@ def store(ctxt, ostack):
 
     def_to = d_stack[-1]
     for i in range(len(d_stack) - 1, -1, -1):
-        if d_stack[i].access() < ps.ACCESS_READ_ONLY:
+        if d_stack[i].access < ps.ACCESS_READ_ONLY:
             continue
 
         if key in d_stack[i].val:
@@ -1014,7 +1014,7 @@ def undef(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, undef.__name__)
     
     # 3. INVALIDACCESS - Check dictionary access (WRITE_ONLY required)
-    if ostack[-2].access() < ps.ACCESS_WRITE_ONLY:
+    if ostack[-2].access < ps.ACCESS_WRITE_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, undef.__name__)
 
     key = ostack[-2].create_key(ostack[-1])
@@ -1056,7 +1056,7 @@ def systemundef(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, ".undef")
     
     # 3. INVALIDACCESS - Check dictionary access (READ_ONLY sufficient for systemundef)
-    if ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, ".undef")
 
     key = ostack[-2].create_key(ostack[-1])
@@ -1091,10 +1091,10 @@ def where(ctxt, ostack):
 
     d_stack = ctxt.d_stack
     for i in range(len(d_stack) - 1, -1, -1):
-        if d_stack[i].access() == ps.ACCESS_NONE:
+        if d_stack[i].access == ps.ACCESS_NONE:
             return ps_error.e(ctxt, ps_error.INVALIDACCESS, where.__name__)
 
-        if d_stack[i].access() < ps.ACCESS_READ_ONLY:
+        if d_stack[i].access < ps.ACCESS_READ_ONLY:
             continue
 
         if key in d_stack[i].val:

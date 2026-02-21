@@ -23,17 +23,17 @@ class ImageDataProcessor:
         """Validate PostScript data source - PLRM Section 4.10.2"""
         if data_source.TYPE in ps.ARRAY_TYPES and data_source.attrib == ps.ATTRIB_EXEC:
             # Procedure data source - LanguageLevel 1+
-            if data_source.access() < ps.ACCESS_EXECUTE_ONLY:
+            if data_source.access < ps.ACCESS_EXECUTE_ONLY:
                 return ps_error.e(ctxt, ps_error.INVALIDACCESS, operator_name)
             return 'procedure'
         elif data_source.TYPE == ps.T_FILE:
             # File data source (includes FilterFile) - LanguageLevel 2+
-            if data_source.access() < ps.ACCESS_READ_ONLY:
+            if data_source.access < ps.ACCESS_READ_ONLY:
                 return ps_error.e(ctxt, ps_error.INVALIDACCESS, operator_name)
             return 'file'
         elif data_source.TYPE == ps.T_STRING:
             # String data source - LanguageLevel 2+
-            if data_source.access() < ps.ACCESS_READ_ONLY:
+            if data_source.access < ps.ACCESS_READ_ONLY:
                 return ps_error.e(ctxt, ps_error.INVALIDACCESS, operator_name)
             return 'string'
         else:
@@ -45,7 +45,7 @@ class ImageDataProcessor:
         if matrix_obj.TYPE not in ps.ARRAY_TYPES:
             return ps_error.e(ctxt, ps_error.TYPECHECK, operator_name)
 
-        if matrix_obj.access() < ps.ACCESS_READ_ONLY:
+        if matrix_obj.access < ps.ACCESS_READ_ONLY:
             return ps_error.e(ctxt, ps_error.INVALIDACCESS, operator_name)
 
         if len(matrix_obj.val) != 6:

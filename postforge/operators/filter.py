@@ -229,7 +229,7 @@ class FilterFile(ps.File):
         new_obj = FilterFile.__new__(FilterFile)
         # File attrs
         new_obj.val = self.val
-        new_obj._access = self._access
+        new_obj.access = self.access
         new_obj.attrib = self.attrib
         new_obj.is_composite = self.is_composite
         new_obj.is_global = self.is_global
@@ -507,7 +507,7 @@ def ps_filter(ctxt, ostack):
 
     if has_dict_param:
         # INVALIDACCESS - Check dictionary access permission
-        if ostack[dict_param_pos].access() < ps.ACCESS_READ_ONLY:
+        if ostack[dict_param_pos].access < ps.ACCESS_READ_ONLY:
             return ps_error.e(ctxt, ps_error.INVALIDACCESS, "filter")
 
     # 7. Validate filter-specific requirements BEFORE popping operands
@@ -632,7 +632,7 @@ def ps_filter(ctxt, ostack):
     if isinstance(ds_obj, ps.File):
         required_access = (ps.ACCESS_READ_ONLY if is_decoding_filter
                           else ps.ACCESS_WRITE_ONLY)
-        if ds_obj.access() not in [required_access, ps.ACCESS_UNLIMITED]:
+        if ds_obj.access not in [required_access, ps.ACCESS_UNLIMITED]:
             return ps_error.e(ctxt, ps_error.INVALIDACCESS, "filter")
 
     # STEP 2: ALL VALIDATION PASSED - NOW POP OPERANDS

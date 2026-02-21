@@ -30,7 +30,7 @@ def setsystemparams(ctxt, ostack):
     if ostack[-1].TYPE != ps.T_DICT:
         return ps_error.e(ctxt, ps_error.TYPECHECK, setsystemparams.__name__)
     # 3. INVALIDACCESS - Check access permission
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, setsystemparams.__name__)
     
     # PLRM: "The dictionary usually must contain an entry named Password"
@@ -515,7 +515,7 @@ def setdevparams(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, setdevparams.__name__)
     if ostack[-2].TYPE != ps.T_STRING:
         return ps_error.e(ctxt, ps_error.TYPECHECK, setdevparams.__name__)
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, setdevparams.__name__)
     ostack.pop()
     ostack.pop()

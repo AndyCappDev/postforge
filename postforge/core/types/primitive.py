@@ -26,7 +26,7 @@ class Bool(PSObject):
 
     def __init__(self, val: bool, access: int = ACCESS_READ_ONLY, attrib: int = ATTRIB_LIT) -> None:
         self.val = val
-        self._access = access
+        self.access = access
         self.attrib = attrib
         self.is_composite = False
         self.is_global = False
@@ -35,7 +35,7 @@ class Bool(PSObject):
         """Optimized copy for Bool - immutable-like type."""
         new_obj = object.__new__(Bool)
         new_obj.val = self.val
-        new_obj._access = self._access
+        new_obj.access = self.access
         new_obj.attrib = self.attrib
         new_obj.is_composite = False
         new_obj.is_global = False
@@ -54,7 +54,7 @@ class Null(PSObject):
 
     def __init__(self, val: None = None, access: int = ACCESS_READ_ONLY, attrib: int = ATTRIB_LIT) -> None:
         self.val = val
-        self._access = access
+        self.access = access
         self.attrib = attrib
         self.is_composite = False
         self.is_global = False
@@ -62,7 +62,7 @@ class Null(PSObject):
     def __copy__(self) -> 'Null':
         new_obj = object.__new__(Null)
         new_obj.val = self.val
-        new_obj._access = self._access
+        new_obj.access = self.access
         new_obj.attrib = self.attrib
         new_obj.is_composite = False
         new_obj.is_global = False
@@ -86,7 +86,7 @@ class Int(PSObject):
 
     def __init__(self, val: int, access: int = ACCESS_READ_ONLY, attrib: int = ATTRIB_LIT) -> None:
         self.val = val
-        self._access = access
+        self.access = access
         self.attrib = attrib
         self.is_composite = False
         self.is_global = False
@@ -95,7 +95,7 @@ class Int(PSObject):
         """Optimized copy for Int - direct attribute assignment."""
         new_obj = object.__new__(Int)
         new_obj.val = self.val
-        new_obj._access = self._access
+        new_obj.access = self.access
         new_obj.attrib = self.attrib
         new_obj.is_composite = False
         new_obj.is_global = False
@@ -120,7 +120,7 @@ class Real(PSObject):
 
     def __init__(self, val: float, access: int = ACCESS_READ_ONLY, attrib: int = ATTRIB_LIT):
         self.val = val
-        self._access = access
+        self.access = access
         self.attrib = attrib
         self.is_composite = False
         self.is_global = False
@@ -129,7 +129,7 @@ class Real(PSObject):
         """Optimized copy for Real - direct attribute assignment."""
         new_obj = object.__new__(Real)
         new_obj.val = self.val
-        new_obj._access = self._access
+        new_obj.access = self.access
         new_obj.attrib = self.attrib
         new_obj.is_composite = False
         new_obj.is_global = False

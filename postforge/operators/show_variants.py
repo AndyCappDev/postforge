@@ -101,9 +101,9 @@ def kshow(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, kshow.__name__)
 
     # 4. INVALIDACCESS
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, kshow.__name__)
-    if ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, kshow.__name__)
 
     # 5. INVALIDFONT

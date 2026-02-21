@@ -42,7 +42,7 @@ def cvi(ctxt, ostack):
     if ostack[-1].TYPE not in {ps.T_INT, ps.T_REAL, ps.T_STRING}:
         return ps_error.e(ctxt, ps_error.TYPECHECK, cvi.__name__)
     # 3. INVALIDACCESS - Check access permission
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, cvi.__name__)
 
     if ostack[-1].TYPE == ps.T_INT:
@@ -100,7 +100,7 @@ def cvn(ctxt, ostack):
     if ostack[-1].TYPE != ps.T_STRING:
         return ps_error.e(ctxt, ps_error.TYPECHECK, cvn.__name__)
     # 3. INVALIDACCESS - Check access permission
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, cvn.__name__)
 
     ostack[-1] = ps.Name(
@@ -133,7 +133,7 @@ def cvr(ctxt, ostack):
     if ostack[-1].TYPE not in {ps.T_INT, ps.T_REAL, ps.T_STRING}:
         return ps_error.e(ctxt, ps_error.TYPECHECK, cvr.__name__)
     # 3. INVALIDACCESS - Check access permission
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, cvr.__name__)
 
     if ostack[-1].TYPE == ps.T_REAL:
@@ -192,7 +192,7 @@ def cvrs(ctxt, ostack):
     if ostack[-2].TYPE != ps.T_INT or ostack[-3].TYPE not in ps.NUMERIC_TYPES:
         return ps_error.e(ctxt, ps_error.TYPECHECK, cvrs.__name__)
     
-    if ostack[-1].access() < ps.ACCESS_WRITE_ONLY:
+    if ostack[-1].access < ps.ACCESS_WRITE_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, cvrs.__name__)
 
 
@@ -265,7 +265,7 @@ def cvs(ctxt, ostack):
     if ostack[-1].TYPE != ps.T_STRING:
         return ps_error.e(ctxt, ps_error.TYPECHECK, cvs.__name__)
 
-    if ostack[-1].access() < ps.ACCESS_WRITE_ONLY:
+    if ostack[-1].access < ps.ACCESS_WRITE_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, cvs.__name__)
 
     the_string = ostack[-1]
@@ -380,10 +380,10 @@ def executeonly(ctxt, ostack):
     if ostack[-1].TYPE not in {ps.T_ARRAY, ps.T_PACKED_ARRAY, ps.T_FILE, ps.T_STRING}:
         return ps_error.e(ctxt, ps_error.TYPECHECK, executeonly.__name__)
 
-    if ostack[-1].access() < ps.ACCESS_EXECUTE_ONLY:
+    if ostack[-1].access < ps.ACCESS_EXECUTE_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, executeonly.__name__)
 
-    ostack[-1]._access = ps.ACCESS_EXECUTE_ONLY
+    ostack[-1].access = ps.ACCESS_EXECUTE_ONLY
     pass
 
 
@@ -425,16 +425,16 @@ def noaccess(ctxt, ostack):
         if 'BlueValues' in ostack[-1].val or 'FontBBox' in ostack[-1].val:
             # Level 1 compatibility: Always allow noaccess on dictionaries
             # This maintains compatibility with old Type 1 fonts
-            ostack[-1]._access = ps.ACCESS_READ_ONLY
+            ostack[-1].access = ps.ACCESS_READ_ONLY
         # elif ostack[-1].val[b"__access__"] == ps.Int(ps.ACCESS_READ_ONLY):
-        elif ostack[-1].access() == ps.ACCESS_READ_ONLY:
+        elif ostack[-1].access == ps.ACCESS_READ_ONLY:
             return ps_error.e(ctxt, ps_error.INVALIDACCESS, noaccess.__name__)
         else:
-            ostack[-1]._access = ps.ACCESS_NONE
+            ostack[-1].access = ps.ACCESS_NONE
     else:
         # Create a copy for non-dictionary objects
         obj_copy = copy.copy(ostack[-1])
-        obj_copy._access = ps.ACCESS_NONE
+        obj_copy.access = ps.ACCESS_NONE
         ostack[-1] = obj_copy
 
 
@@ -469,17 +469,17 @@ def readonly(ctxt, ostack):
     if ostack[-1].TYPE not in {ps.T_ARRAY, ps.T_PACKED_ARRAY, ps.T_DICT, ps.T_FILE, ps.T_STRING}:
         return ps_error.e(ctxt, ps_error.TYPECHECK, readonly.__name__)
 
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, readonly.__name__)
 
     if ostack[-1].TYPE == ps.T_DICT:
-        ostack[-1]._access = ps.ACCESS_READ_ONLY
+        ostack[-1].access = ps.ACCESS_READ_ONLY
     else:
-        ostack[-1]._access = ps.ACCESS_READ_ONLY
+        ostack[-1].access = ps.ACCESS_READ_ONLY
         pass
         # # Create a copy for non-dictionary objects
         # obj_copy = copy.copy(ostack[-1])
-        # obj_copy._access = ps.ACCESS_READ_ONLY
+        # obj_copy.access = ps.ACCESS_READ_ONLY
         # ostack[-1] = obj_copy
 
 
@@ -506,7 +506,7 @@ def rcheck(ctxt, ostack):
     if ostack[-1].TYPE not in {ps.T_ARRAY, ps.T_PACKED_ARRAY, ps.T_DICT, ps.T_FILE, ps.T_STRING}:
         return ps_error.e(ctxt, ps_error.TYPECHECK, rcheck.__name__)
 
-    ostack[-1] = ps.Bool(ostack[-1].access() >= ps.ACCESS_READ_ONLY)
+    ostack[-1] = ps.Bool(ostack[-1].access >= ps.ACCESS_READ_ONLY)
 
 
 def ps_type(ctxt, ostack):
@@ -575,7 +575,7 @@ def wcheck(ctxt, ostack):
     if ostack[-1].TYPE not in {ps.T_ARRAY, ps.T_PACKED_ARRAY, ps.T_DICT, ps.T_FILE, ps.T_STRING}:
         return ps_error.e(ctxt, ps_error.TYPECHECK, wcheck.__name__)
 
-    ostack[-1] = ps.Bool(ostack[-1].access() == ps.ACCESS_UNLIMITED)
+    ostack[-1] = ps.Bool(ostack[-1].access == ps.ACCESS_UNLIMITED)
 
 
 def xcheck(ctxt, ostack):

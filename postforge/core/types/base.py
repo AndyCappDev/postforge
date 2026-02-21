@@ -39,7 +39,7 @@ class PSObject(object):
     ) -> None:
         self.val = val
 
-        self._access = access
+        self.access = access
         self.attrib = attrib
         self.is_composite = is_composite
         self.is_global = is_global
@@ -49,14 +49,11 @@ class PSObject(object):
         Creates new instance with same data, avoiding expensive pickle protocol."""
         new_obj = self.__class__.__new__(self.__class__)
         new_obj.val = self.val
-        new_obj._access = self._access
+        new_obj.access = self.access
         new_obj.attrib = self.attrib
         new_obj.is_composite = self.is_composite
         new_obj.is_global = self.is_global
         return new_obj
-
-    def access(self):
-        return self._access
 
     # Comparison operators will be implemented by concrete subclasses
     # that have access to the Bool class to return proper PostScript objects
@@ -88,7 +85,7 @@ class Stream(PSObject):
         """Optimized copy for Stream base class."""
         new_obj = self.__class__.__new__(self.__class__)
         new_obj.val = self.val
-        new_obj._access = self._access
+        new_obj.access = self.access
         new_obj.attrib = self.attrib
         new_obj.is_composite = self.is_composite
         new_obj.is_global = self.is_global

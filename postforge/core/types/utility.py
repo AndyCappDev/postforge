@@ -59,7 +59,7 @@ class Save(PSObject):
         """Optimized copy for Save - VM save level object."""
         new_obj = Save.__new__(Save)
         new_obj.val = self.val
-        new_obj._access = self._access
+        new_obj.access = self.access
         new_obj.attrib = self.attrib
         new_obj.is_composite = self.is_composite
         new_obj.is_global = self.is_global
@@ -87,7 +87,7 @@ class Font(PSObject):
         """Optimized copy for Font - font object with timestamp."""
         new_obj = Font.__new__(Font)
         new_obj.val = self.val
-        new_obj._access = self._access
+        new_obj.access = self.access
         new_obj.attrib = self.attrib
         new_obj.is_composite = self.is_composite
         new_obj.is_global = self.is_global

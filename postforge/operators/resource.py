@@ -35,7 +35,7 @@ def createresourcecategory(ctxt, ostack) -> None:
         ctxt, ps.Name(b".createresourcecategory"), ps.global_resources.get_gvm()[b"systemdict"]
     )
     # override ACCESS_NONE
-    proc._access = ps.ACCESS_READ_ONLY
+    proc.access = ps.ACCESS_READ_ONLY
     ctxt.e_stack.append(proc)
 
 
@@ -445,13 +445,13 @@ def defineresource(ctxt, ostack) -> None:
                         del old_resource_dict.val[key.val]
 
             # make the instance readonly
-            instance._access = ps.ACCESS_READ_ONLY
+            instance.access = ps.ACCESS_READ_ONLY
 
             if instance.TYPE == ps.T_DICT:
                 # set the instance dictionary's name
                 instance.name = key.val
                 # set the dictionary's access to read only
-                instance._access = ps.ACCESS_READ_ONLY
+                instance.access = ps.ACCESS_READ_ONLY
                 if b"__status__" not in instance.val:
                     instance.val[b"__status__"] = ps.Int(0)
 

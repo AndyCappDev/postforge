@@ -37,7 +37,7 @@ def scalefont(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, scalefont.__name__)
 
     # 3. INVALIDACCESS - Check font dictionary access
-    if ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, scalefont.__name__)
 
     original_font = ostack[-2]
@@ -79,9 +79,9 @@ def makefont(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, makefont.__name__)
 
     # 3. INVALIDACCESS - Check access permissions
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, makefont.__name__)
-    if ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, makefont.__name__)
 
     original_font = ostack[-2]
@@ -133,7 +133,7 @@ def setfont(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, setfont.__name__)
 
     # 3. INVALIDACCESS - Check access permission
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, setfont.__name__)
 
     font_dict = ostack[-1]

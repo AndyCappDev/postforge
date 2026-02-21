@@ -73,7 +73,7 @@ def packedarray(ctxt, ostack):
     for _ in range(length):
         parr.val.append(ostack.pop())
     parr.reverse()
-    parr._access = ps.ACCESS_READ_ONLY
+    parr.access = ps.ACCESS_READ_ONLY
     parr.length = length
 
     ostack.append(parr)

@@ -111,11 +111,11 @@ def ps_copy(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, op)
     
     # 3. INVALIDACCESS - Check destination access
-    if ostack[-1].access() < ps.ACCESS_WRITE_ONLY:
+    if ostack[-1].access < ps.ACCESS_WRITE_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, op)
 
     # 3. INVALIDACCESS - Check source access
-    if ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, op)
 
     if ostack[-2].TYPE in {ps.T_DICT, ps.T_STRING, ps.T_GSTATE}:
@@ -381,7 +381,7 @@ def length(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, length.__name__)
     
     # 3. INVALIDACCESS - Check access permission
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, length.__name__)
 
     ostack[-1] = ostack[-1].len()

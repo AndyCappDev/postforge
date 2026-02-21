@@ -129,7 +129,7 @@ def exec_exec(ctxt, o_stack, e_stack):
             d_stack = ctxt.d_stack
             obj = None
             for i in range(len(d_stack) - 1, -1, -1):
-                if d_stack[i].access() < 2:  # ACCESS_READ_ONLY = 2
+                if d_stack[i].access < 2:  # ACCESS_READ_ONLY = 2
                     continue
                 obj = d_stack[i].val.get(top, None)
                 if obj is not None:
@@ -641,7 +641,7 @@ cdef _ps_exec_from_token(ctxt, o_stack, e_stack):
     if len(o_stack) < 1:
         ps_error.e(ctxt, ps_error.STACKUNDERFLOW, "exec")
         return
-    if o_stack[-1].access() < ps.ACCESS_READ_ONLY:
+    if o_stack[-1].access < ps.ACCESS_READ_ONLY:
         ps_error.e(ctxt, ps_error.INVALIDACCESS, "exec")
         return
 

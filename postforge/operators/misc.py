@@ -14,11 +14,11 @@ from . import control as ps_control
 def _bind(ctxt, arr):
     """recursive **bind**"""
     for i, obj in enumerate(arr.val):
-        if obj.TYPE in ps.ARRAY_TYPES and obj.attrib == ps.ATTRIB_EXEC and obj.access() > ps.ACCESS_READ_ONLY:
+        if obj.TYPE in ps.ARRAY_TYPES and obj.attrib == ps.ATTRIB_EXEC and obj.access > ps.ACCESS_READ_ONLY:
             _bind(ctxt, obj)
             # make the nested procedure readonly
-            if obj.access() > ps.ACCESS_READ_ONLY:
-                obj._access = ps.ACCESS_READ_ONLY
+            if obj.access > ps.ACCESS_READ_ONLY:
+                obj.access = ps.ACCESS_READ_ONLY
         elif obj.TYPE == ps.T_NAME and obj.attrib == ps.ATTRIB_EXEC:
             # look it up
             op = ps_dict.lookup(ctxt, obj)
@@ -239,7 +239,7 @@ def eexec(ctxt, ostack):
     if ostack[-1].TYPE not in {ps.T_FILE, ps.T_STRING} and not isinstance(ostack[-1], ps.StandardFileProxy):
         return ps_error.e(ctxt, ps_error.TYPECHECK, eexec.__name__)
     # 3. INVALIDACCESS - Check access permission
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, eexec.__name__)
     
     source = ostack[-1]  # Peek at operand for validation before popping
@@ -309,7 +309,7 @@ def exechistorystack(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, exechistorystack.__name__)
         
     # 3. INVALIDACCESS - Check access permission (array must be writable)  
-    if ostack[-1].access() < ps.ACCESS_UNLIMITED:
+    if ostack[-1].access < ps.ACCESS_UNLIMITED:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, exechistorystack.__name__)
     
     result_array = ostack[-1]  # Peek at array before popping
@@ -352,7 +352,7 @@ def exechistorystack(ctxt, ostack):
         subarray.length = 0
     
     subarray.attrib = result_array.attrib
-    subarray._access = result_array._access
+    subarray.access = result_array.access
     
     # Update local_refs to track the array val after assignment
     if not subarray.is_global and subarray.ctxt_id is not None:

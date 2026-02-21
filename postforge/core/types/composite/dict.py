@@ -56,7 +56,7 @@ def _copy_string_key(key):
         offset,
         len(src_bytes),
         start=0,
-        access=key._access,
+        access=key.access,
         attrib=key.attrib,
         is_global=key.is_global,
     )
@@ -86,8 +86,7 @@ class Dict(PSObject):
         self.max_length = max_length
         self.created = time.monotonic_ns()  # creation time for this composite object
 
-        # Dict uses _access (inherited from PSObject) like all other types
-        self._access = access
+        self.access = access
         
         # Track all composite objects in appropriate refs immediately upon creation
         if ctxt_id is not None and contexts[ctxt_id] is not None:
@@ -99,14 +98,14 @@ class Dict(PSObject):
     def __getitem__(self, item):
         return self.val[item]
 
-    _ALL_ATTRS = ('val', '_access', 'attrib', 'is_composite', 'is_global',
+    _ALL_ATTRS = ('val', 'access', 'attrib', 'is_composite', 'is_global',
                   'ctxt_id', 'name', 'max_length', 'created')
 
     def __copy__(self):
         """Optimized copy for Dict - preserves shared dictionary reference."""
         new_dict = Dict.__new__(Dict)
         new_dict.val = self.val
-        new_dict._access = self._access
+        new_dict.access = self.access
         new_dict.attrib = self.attrib
         new_dict.is_composite = self.is_composite
         new_dict.is_global = self.is_global
@@ -129,7 +128,7 @@ class Dict(PSObject):
         new_dict.val = {}
         for k, v in self.val.items():
             new_dict.val[k] = copy.deepcopy(v, memo)
-        new_dict._access = self._access
+        new_dict.access = self.access
         new_dict.attrib = self.attrib
         new_dict.is_composite = self.is_composite
         new_dict.is_global = copy.deepcopy(self.is_global, memo)
@@ -170,9 +169,6 @@ class Dict(PSObject):
             # Always save local composite objects in local_refs for reference tracking
             # This ensures all local objects can be found during restore operations
             contexts[self.ctxt_id].local_refs[self.created] = self.val
-
-    def access(self) -> int:
-        return self._access
 
     def maxlength(self) -> Int:
         return Int(len(self.val))

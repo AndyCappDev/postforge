@@ -44,7 +44,7 @@ def show(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, show.__name__)
 
     # 3. INVALIDACCESS - Check access permission
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, show.__name__)
 
     text_string = ostack[-1]
@@ -254,7 +254,7 @@ def stringwidth(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, stringwidth.__name__)
 
     # 3. INVALIDACCESS - Check access permission
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, stringwidth.__name__)
 
     # 5. STACKOVERFLOW - Check result stack space
@@ -314,7 +314,7 @@ def ashow(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, ashow.__name__)
 
     # 3. INVALIDACCESS - Check access permission (string needs read access)
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, ashow.__name__)
 
     ax = ostack[-3].val
@@ -493,7 +493,7 @@ def widthshow(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, widthshow.__name__)
 
     # 3. INVALIDACCESS - Check access permission (string needs read access)
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, widthshow.__name__)
 
     cx = ostack[-4].val
@@ -700,7 +700,7 @@ def awidthshow(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, awidthshow.__name__)
 
     # 3. INVALIDACCESS - Check access permission (string needs read access)
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, awidthshow.__name__)
 
     cx = ostack[-6].val
@@ -907,9 +907,9 @@ def xyshow(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, xyshow.__name__)
 
     # 3. INVALIDACCESS - Check access permissions
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, xyshow.__name__)
-    if ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, xyshow.__name__)
 
     text_string = ostack[-2]
@@ -1102,9 +1102,9 @@ def xshow(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, xshow.__name__)
 
     # 3. INVALIDACCESS - Check access permissions
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, xshow.__name__)
-    if ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, xshow.__name__)
 
     text_string = ostack[-2]
@@ -1297,9 +1297,9 @@ def yshow(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, yshow.__name__)
 
     # 3. INVALIDACCESS - Check access permissions
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, yshow.__name__)
-    if ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, yshow.__name__)
 
     text_string = ostack[-2]
@@ -1493,9 +1493,9 @@ def cshow(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, cshow.__name__)
 
     # 4. INVALIDACCESS
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, cshow.__name__)
-    if ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, cshow.__name__)
 
     # 5. INVALIDFONT
@@ -1544,7 +1544,7 @@ def charpath(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, charpath.__name__)
 
     # 3. INVALIDACCESS - Check access permissions
-    if ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, charpath.__name__)
 
     text_string = ostack[-2]

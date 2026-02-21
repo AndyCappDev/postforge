@@ -62,14 +62,14 @@ class Array(PSObject):
             else:
                 contexts[ctxt_id].local_refs[self.created] = self.val
 
-    _ALL_ATTRS = ('val', '_access', 'attrib', 'is_composite', 'is_global',
+    _ALL_ATTRS = ('val', 'access', 'attrib', 'is_composite', 'is_global',
                   'ctxt_id', 'start', 'length', 'bound', 'created')
 
     def __copy__(self):
         """Optimized copy for Array - shallow copy of array contents."""
         new_array = Array.__new__(Array)
         new_array.val = self.val
-        new_array._access = self._access
+        new_array.access = self.access
         new_array.attrib = self.attrib
         new_array.is_composite = self.is_composite
         new_array.is_global = self.is_global
@@ -91,7 +91,7 @@ class Array(PSObject):
         # Copy all attributes explicitly
         new_array.created = time.monotonic_ns()
         new_array.val = [copy.deepcopy(item, memo) for item in self.val]
-        new_array._access = self._access
+        new_array.access = self.access
         new_array.attrib = self.attrib
         new_array.is_composite = self.is_composite
         new_array.is_global = copy.deepcopy(self.is_global, memo)
@@ -154,7 +154,7 @@ class Array(PSObject):
     def get(self, index: Int) -> Tuple[bool, Union[int, 'PSObject']]:
         if index.val < 0 or index.val > self.length - 1:
             return (False, ps_error.RANGECHECK)
-        if self._access < ACCESS_READ_ONLY:
+        if self.access < ACCESS_READ_ONLY:
             return (False, ps_error.INVALIDACCESS)
         return (True, copy.copy(self.val[self.start + index.val]))
 
@@ -163,7 +163,7 @@ class Array(PSObject):
             return (False, ps_error.RANGECHECK)
         if index.val + count.val > self.length:
             return (False, ps_error.RANGECHECK)
-        if self._access < ACCESS_READ_ONLY:
+        if self.access < ACCESS_READ_ONLY:
             return (False, ps_error.INVALIDACCESS)
         sub_array = copy.copy(self)
         sub_array.start = self.start + index.val
@@ -192,7 +192,7 @@ class Array(PSObject):
         actual_index = self.start + index.val
         if index.val < 0 or actual_index >= len(self.val):
             return (False, ps_error.RANGECHECK)
-        if self._access < ACCESS_UNLIMITED:
+        if self.access < ACCESS_UNLIMITED:
             return (False, ps_error.INVALIDACCESS)
         if obj.is_composite and self.is_global and not obj.is_global:
             return (False, ps_error.INVALIDACCESS)
@@ -203,7 +203,7 @@ class Array(PSObject):
     def putinterval(self, other: 'PSObject', index: Int) -> Tuple[bool, Union[int, None]]:
         if index.val < 0 or other.length + index.val > self.length:
             return (False, ps_error.RANGECHECK)
-        if self._access < ACCESS_UNLIMITED or other._access < ACCESS_READ_ONLY:
+        if self.access < ACCESS_UNLIMITED or other.access < ACCESS_READ_ONLY:
             return (False, ps_error.INVALIDACCESS)
         if self.is_global:
             for i in range(other.length):
@@ -287,7 +287,7 @@ class PackedArray(Array):
         """Optimized copy for PackedArray - inherits from Array but read-only."""
         new_obj = PackedArray.__new__(PackedArray)
         new_obj.val = self.val
-        new_obj._access = self._access
+        new_obj.access = self.access
         new_obj.attrib = self.attrib
         new_obj.is_composite = self.is_composite
         new_obj.is_global = self.is_global

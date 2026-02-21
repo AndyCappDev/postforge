@@ -192,7 +192,7 @@ def ps_file(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, op)
     
     # 3. INVALIDACCESS - Check access permissions
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY or ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY or ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, op)
 
     filename = ostack[-2].python_string()
@@ -578,7 +578,7 @@ def read(ctxt, ostack):
 
     # Check if file has read access
     file_obj = ostack[-1]
-    if file_obj.access() not in [ps.ACCESS_READ_ONLY, ps.ACCESS_UNLIMITED]:
+    if file_obj.access not in [ps.ACCESS_READ_ONLY, ps.ACCESS_UNLIMITED]:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, read.__name__)
 
     b = ostack[-1].read(ctxt)
@@ -620,11 +620,11 @@ def readstring(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, readstring.__name__)
     
     # Check file has read access (>= ACCESS_READ_ONLY)
-    if ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, readstring.__name__)
     
     # Check string has write access (>= ACCESS_WRITE_ONLY) for storing results
-    if ostack[-1].access() < ps.ACCESS_WRITE_ONLY:
+    if ostack[-1].access < ps.ACCESS_WRITE_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, readstring.__name__)
 
     # Pop operands
@@ -699,11 +699,11 @@ def readhexstring(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, readhexstring.__name__)
     
     # Check file has read access (>= ACCESS_READ_ONLY)
-    if ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, readhexstring.__name__)
     
     # Check string has write access (>= ACCESS_WRITE_ONLY) for storing results
-    if ostack[-1].access() < ps.ACCESS_WRITE_ONLY:
+    if ostack[-1].access < ps.ACCESS_WRITE_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, readhexstring.__name__)
     
     # Pop operands
@@ -1026,7 +1026,7 @@ def write(ctxt, ostack):
     if ostack[-1].TYPE != ps.T_INT:
         return ps_error.e(ctxt, ps_error.TYPECHECK, write.__name__)
 
-    if ostack[-2].access() < ps.ACCESS_WRITE_ONLY:
+    if ostack[-2].access < ps.ACCESS_WRITE_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, write.__name__)
 
     int_obj = ostack.pop()
@@ -1068,11 +1068,11 @@ def writestring(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, writestring.__name__)
 
     # Check file has write access (>= ACCESS_WRITE_ONLY)
-    if ostack[-2].access() < ps.ACCESS_WRITE_ONLY:
+    if ostack[-2].access < ps.ACCESS_WRITE_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, writestring.__name__)
 
     # Check string has read access (>= ACCESS_READ_ONLY)
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, writestring.__name__)
 
     # Pop operands
@@ -1118,11 +1118,11 @@ def writehexstring(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, writehexstring.__name__)
 
     # Check file has write access (>= ACCESS_WRITE_ONLY)
-    if ostack[-2].access() < ps.ACCESS_WRITE_ONLY:
+    if ostack[-2].access < ps.ACCESS_WRITE_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, writehexstring.__name__)
 
     # Check string has read access (>= ACCESS_READ_ONLY)
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, writehexstring.__name__)
 
     # Pop operands
@@ -1389,7 +1389,7 @@ def renamefile(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, renamefile.__name__)
     
     # 3. INVALIDACCESS - Check access permissions
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY or ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY or ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, renamefile.__name__)
     
     oldname = ostack[-2].python_string()
@@ -1755,7 +1755,7 @@ def writeobject(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.TYPECHECK, writeobject.__name__)
 
     # 3. INVALIDACCESS - file must have write access
-    if ostack[-3].access() < ps.ACCESS_WRITE_ONLY:
+    if ostack[-3].access < ps.ACCESS_WRITE_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, writeobject.__name__)
 
     # 4. RANGECHECK - tag 0-255

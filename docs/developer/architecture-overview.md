@@ -154,7 +154,7 @@ All PostScript values are represented as Python objects inheriting from
 
 - **`val`** — The Python value (int, float, bytes, list, dict, callable, etc.)
 - **`attrib`** — Literal (`ATTRIB_LIT`) or executable (`ATTRIB_EXEC`)
-- **`_access`** — Access control level (unlimited, read-only, execute-only, none)
+- **`access`** — Access control level (unlimited, read-only, execute-only, none)
 - **`TYPE`** — Integer type constant for fast dispatch (e.g., `T_INT`, `T_NAME`)
 - **`is_composite`** / **`is_global`** — VM allocation metadata
 

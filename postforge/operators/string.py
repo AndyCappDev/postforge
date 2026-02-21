@@ -43,7 +43,7 @@ def anchorsearch(ctxt, ostack):
     if ostack[-2].TYPE != ps.T_STRING:
         return ps_error.e(ctxt, ps_error.TYPECHECK, anchorsearch.__name__)
     # 3. INVALIDACCESS - Check access permissions
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY or ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY or ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, anchorsearch.__name__)
 
     string = ostack[-2].byte_string()
@@ -148,7 +148,7 @@ def search(ctxt, ostack):
     if ostack[-2].TYPE != ps.T_STRING:
         return ps_error.e(ctxt, ps_error.TYPECHECK, search.__name__)
     # 3. INVALIDACCESS - Check access permissions
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY or ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY or ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, search.__name__)
 
     string = ostack[-2].byte_string()
@@ -280,7 +280,7 @@ def token(ctxt, ostack):
 
 def token_from_file(ctxt, ostack, source):
     """Parse complete token from file"""
-    if source.access() < ps.ACCESS_READ_ONLY:
+    if source.access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, token.__name__)
     
     # Get first token using __token
@@ -330,7 +330,7 @@ def token_from_file(ctxt, ostack, source):
 
 def token_from_string(ctxt, ostack, source):
     """Parse complete token from string with post calculation"""
-    if source.access() < ps.ACCESS_READ_ONLY:
+    if source.access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, token.__name__)
     
     # Create string tokenizer wrapper that tracks position

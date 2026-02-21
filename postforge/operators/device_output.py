@@ -56,7 +56,7 @@ def currentpagedevice(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
         dst.val[src_key] = copy.copy(src_val)
 
     # set the access to the new dictionary to READ_ONLY
-    dst._access = ps.ACCESS_READ_ONLY
+    dst.access = ps.ACCESS_READ_ONLY
     ostack.append(dst)
 
 
@@ -116,7 +116,7 @@ def setpagedevice(ctxt, ostack) -> None:
     if ostack[-1].TYPE != ps.T_DICT:
         return ps_error.e(ctxt, ps_error.TYPECHECK, setpagedevice.__name__)
 
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, setpagedevice.__name__)
 
     # PLRM: when current device is not a page device (e.g. after nulldevice),

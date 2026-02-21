@@ -59,7 +59,7 @@ class String(Stream):
         self.offset = offset
         self.length = length
         self.start = start
-        self._access = access
+        self.access = access
         if val:
             self.val = val
         # self.is_global = is_global
@@ -108,7 +108,7 @@ class String(Stream):
     def get(self, index: Int) -> Tuple[bool, Union[int, 'PSObject']]:
         if index.val < 0 or index.val > self.length - 1:
             return (False, ps_error.RANGECHECK)
-        if self._access < ACCESS_READ_ONLY:
+        if self.access < ACCESS_READ_ONLY:
             return (False, ps_error.INVALIDACCESS)
         strings = (
             global_resources.global_strings
@@ -119,7 +119,7 @@ class String(Stream):
 
     def getinterval(self, index: Int, count: Int) -> Union[None, 'PSObject']:
         # TODO -- This must account for self and other NOT being in the same vm_alloc_mode
-        if self._access < ACCESS_READ_ONLY:
+        if self.access < ACCESS_READ_ONLY:
             return (False, ps_error.INVALIDACCESS)
         if index.val < 0 or count.val < 0:
             return (False, ps_error.RANGECHECK)
@@ -241,7 +241,7 @@ class String(Stream):
         self.start -= 1
         self.length += 1
 
-    _ALL_ATTRS = ('val', '_access', 'attrib', 'is_composite', 'is_global',
+    _ALL_ATTRS = ('val', 'access', 'attrib', 'is_composite', 'is_global',
                   'line_num', 'ctxt_id', 'offset', 'length', 'start',
                   'created', 'is_defined', 'is_substring')
 
@@ -249,7 +249,7 @@ class String(Stream):
         """Optimized copy for String - preserves string data and metadata."""
         new_obj = String.__new__(String)
         new_obj.val = self.val
-        new_obj._access = self._access
+        new_obj.access = self.access
         new_obj.attrib = self.attrib
         new_obj.is_composite = self.is_composite
         new_obj.is_global = self.is_global
@@ -274,7 +274,7 @@ class String(Stream):
         # Copy all attributes explicitly
         new_str.created = time.monotonic_ns()
         new_str.val = copy.deepcopy(self.val, memo)
-        new_str._access = self._access
+        new_str.access = self.access
         new_str.attrib = self.attrib
         new_str.is_composite = self.is_composite
         new_str.is_global = copy.deepcopy(self.is_global, memo)

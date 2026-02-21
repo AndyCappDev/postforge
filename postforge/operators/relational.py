@@ -122,7 +122,7 @@ def eq(ctxt, ostack, op_name=None):
     if len(ostack) < 2:
         return ps_error.e(ctxt, ps_error.STACKUNDERFLOW, op_name)
     # 2. INVALIDACCESS - Check access permissions
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY or ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY or ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, op_name)
 
     result = ostack[-2] == ostack[-1]
@@ -171,7 +171,7 @@ def ge(ctxt, ostack):
             return ps_error.e(ctxt, ps_error.TYPECHECK, ge.__name__)
     # 3. INVALIDACCESS - Check string access permissions
     if ostack[-1].TYPE == ps.T_STRING:
-        if ostack[-1].access() < ps.ACCESS_READ_ONLY or ostack[-2].access() < ps.ACCESS_READ_ONLY:
+        if ostack[-1].access < ps.ACCESS_READ_ONLY or ostack[-2].access < ps.ACCESS_READ_ONLY:
             return ps_error.e(ctxt, ps_error.INVALIDACCESS, ge.__name__)
 
     result = ostack[-2] >= ostack[-1]
@@ -217,7 +217,7 @@ def gt(ctxt, ostack):
 
     # 3. INVALIDACCESS - Check string access permissions
     if ostack[-1].TYPE == ps.T_STRING:
-        if ostack[-1].access() < ps.ACCESS_READ_ONLY or ostack[-2].access() < ps.ACCESS_READ_ONLY:
+        if ostack[-1].access < ps.ACCESS_READ_ONLY or ostack[-2].access < ps.ACCESS_READ_ONLY:
             return ps_error.e(ctxt, ps_error.INVALIDACCESS, gt.__name__)
 
     result = ostack[-2] > ostack[-1]
@@ -263,7 +263,7 @@ def le(ctxt, ostack):
 
     # 3. INVALIDACCESS - Check string access permissions
     if ostack[-1].TYPE == ps.T_STRING:
-        if ostack[-1].access() < ps.ACCESS_READ_ONLY or ostack[-2].access() < ps.ACCESS_READ_ONLY:
+        if ostack[-1].access < ps.ACCESS_READ_ONLY or ostack[-2].access < ps.ACCESS_READ_ONLY:
             return ps_error.e(ctxt, ps_error.INVALIDACCESS, le.__name__)
 
     result = ostack[-2] <= ostack[-1]
@@ -308,7 +308,7 @@ def lt(ctxt, ostack):
 
     # 3. INVALIDACCESS - Check string access permissions
     if ostack[-1].TYPE == ps.T_STRING:
-        if ostack[-1].access() < ps.ACCESS_READ_ONLY or ostack[-2].access() < ps.ACCESS_READ_ONLY:
+        if ostack[-1].access < ps.ACCESS_READ_ONLY or ostack[-2].access < ps.ACCESS_READ_ONLY:
             return ps_error.e(ctxt, ps_error.INVALIDACCESS, lt.__name__)
 
     result = ostack[-2] < ostack[-1]
@@ -334,11 +334,11 @@ def ne(ctxt, ostack):
     if len(ostack) < 2:
         return ps_error.e(ctxt, ps_error.STACKUNDERFLOW, ne.__name__)
 
-    if ostack[-1].access() < ps.ACCESS_READ_ONLY or ostack[-2].access() < ps.ACCESS_READ_ONLY:
+    if ostack[-1].access < ps.ACCESS_READ_ONLY or ostack[-2].access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, ne.__name__)
 
     if ostack[-1].TYPE == ps.T_DICT and ostack[-2].TYPE == ps.T_DICT:
-        if ostack[-1].access() < ps.ACCESS_READ_ONLY:
+        if ostack[-1].access < ps.ACCESS_READ_ONLY:
             return ps_error.e(ctxt, ps_error.INVALIDACCESS, ne.__name__)
 
     eq(ctxt, ostack, op_name="ne")

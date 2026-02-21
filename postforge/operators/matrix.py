@@ -382,7 +382,7 @@ def defaultmatrix(ctxt, ostack):
     if ostack[-1].TYPE not in ps.ARRAY_TYPES:
         return ps_error.e(ctxt, ps_error.TYPECHECK, defaultmatrix.__name__)
     # 3. INVALIDACCESS - Check access permission
-    if ostack[-1].access() < ps.ACCESS_WRITE_ONLY:
+    if ostack[-1].access < ps.ACCESS_WRITE_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, defaultmatrix.__name__)
 
     # STEP 2: Check matrix length (must be 6 elements)
