@@ -159,12 +159,12 @@ def _render_image_element(image_element: ps.ImageElement, cairo_ctx, page_height
             cairo_ctx.set_source(pattern)
             cairo_ctx.paint()
 
-        except Exception as e:
+        except (cairo.Error, ValueError) as e:
             print(f"Image rendering error: {e}")
         finally:
             cairo_ctx.restore()
 
-    except Exception as e:
+    except (cairo.Error, ValueError, TypeError, IndexError) as e:
         print(f"Image element rendering failed: {e}")
 
 
@@ -314,12 +314,12 @@ def _render_imagemask_element(mask_element: ps.ImageMaskElement, cairo_ctx, page
             cairo_ctx.transform(cairo.Matrix(*mask_element.ctm))
             cairo_ctx.set_source(cached_pattern)
             cairo_ctx.paint()
-        except Exception as e:
+        except (cairo.Error, ValueError) as e:
             print(f"Imagemask rendering error: {e}")
         finally:
             cairo_ctx.restore()
 
-    except Exception as e:
+    except (cairo.Error, ValueError, TypeError, IndexError) as e:
         print(f"Imagemask element rendering failed: {e}")
 
 
@@ -429,12 +429,12 @@ def _render_colorimage_element(color_element: ps.ColorImageElement, cairo_ctx, p
             cairo_ctx.set_source(pattern)
             cairo_ctx.paint()
 
-        except Exception as e:
+        except (cairo.Error, ValueError) as e:
             print(f"Colorimage rendering error: {e}")
         finally:
             cairo_ctx.restore()
 
-    except Exception as e:
+    except (cairo.Error, ValueError, TypeError, IndexError) as e:
         print(f"Colorimage element rendering failed: {e}")
 
 
@@ -552,7 +552,7 @@ def _convert_samples_to_cairo_format(sample_data, bits_per_component, width, hei
             return pixel_data
         else:
             return None
-    except Exception as e:
+    except (ValueError, TypeError, IndexError, KeyError) as e:
         print(f"Sample conversion error: {e}")
         return None
 
@@ -697,7 +697,7 @@ def _apply_color_key_mask(pixel_data, sample_data, bits_per_component, width, he
                         if alpha_offset < len(pixel_data):
                             pixel_data[alpha_offset] = 0
 
-    except Exception as e:
+    except (ValueError, TypeError, IndexError) as e:
         print(f"Color key mask error: {e}")
 
 
@@ -952,7 +952,7 @@ def _convert_indexed_image(sample_data, bits_per_component, width, height, decod
 
         return pixel_data
 
-    except Exception as e:
+    except (ValueError, TypeError, IndexError, KeyError) as e:
         print(f"Indexed image conversion error: {e}")
         return None
 
@@ -1139,7 +1139,7 @@ def _convert_cie_image(sample_data, bits_per_component, width, height, decode_ar
                                           width, height, components, mask_color)
                 return pixel_data
 
-    except Exception as e:
+    except (ValueError, TypeError, IndexError, KeyError, ZeroDivisionError) as e:
         return None
 
 
@@ -1340,7 +1340,7 @@ def _convert_cie_def_image(sample_data, bits_per_component, width, height, decod
                                             width, height, decode_array)
             return None
 
-    except Exception as e:
+    except (ValueError, TypeError, IndexError, KeyError, ZeroDivisionError) as e:
         print(f"CIE DEF image conversion error: {e}")
         return None
 
@@ -1490,7 +1490,7 @@ def _convert_grayscale_samples(sample_data, bits_per_component, width, height, d
         else:
             return None
 
-    except Exception as e:
+    except (ValueError, TypeError, IndexError) as e:
         print(f"Grayscale conversion error: {e}")
         return None
 
@@ -1506,7 +1506,7 @@ def _convert_mask_to_cairo_a1(mask_data, width, height, polarity):
                 inverted.append(byte ^ 0xFF)
             return inverted
 
-    except Exception as e:
+    except (ValueError, TypeError, IndexError) as e:
         print(f"Mask conversion error: {e}")
         return None
 
@@ -1697,7 +1697,7 @@ def _convert_rgb_samples(sample_data, bits_per_component, width, height, decode_
         else:
             return None
 
-    except Exception as e:
+    except (ValueError, TypeError, IndexError) as e:
         return None
 
 
@@ -1902,5 +1902,5 @@ def _convert_cmyk_to_rgb(sample_data, bits_per_component, width, height, decode_
         else:
             return None
 
-    except Exception as e:
+    except (ValueError, TypeError, IndexError) as e:
         return None
