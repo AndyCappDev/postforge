@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostScript context initialization.
 
@@ -14,7 +16,7 @@ import random
 import sys
 import tempfile
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from . import types as ps
 from ..operators import control as ps_control
@@ -22,7 +24,7 @@ from ..operators import dict as ps_dict
 from ..operators.matrix import _matrix_inverse
 
 
-def init_system_params() -> Dict[str, Any]:
+def init_system_params() -> dict[str, Any]:
     """
     Initialize system parameters for PostScript interpreter.
 
@@ -35,7 +37,7 @@ def init_system_params() -> Dict[str, Any]:
     regardless of how PostForge is executed.
 
     Returns:
-        Dict[str, Any]: System parameters dictionary containing:
+        dict[str, Any]: System parameters dictionary containing:
             - PackageDir: Path to the postforge package directory
             - ByteOrder: Boolean indicating byte order (True for big-endian)
             - CurrDisplayList: Current display list index
@@ -91,8 +93,8 @@ def init_system_params() -> Dict[str, Any]:
 
 
 def create_context(
-    system_params: Dict[str, Any],
-) -> Tuple[Optional[ps.Context], Optional[str]]:
+    system_params: dict[str, Any],
+) -> tuple[ps.Context | None, str | None]:
     """
     Create and initialize a complete PostScript execution context.
 
@@ -108,7 +110,7 @@ def create_context(
                       including resource paths and configuration settings
 
     Returns:
-        Tuple[Optional[ps.Context], Optional[str]]: Success/failure result
+        tuple[ps.Context | None, str | None]: Success/failure result
             - Success: (Context object, None) - Ready for PostScript execution
             - Failure: (None, error_description) - Initialization failed
 

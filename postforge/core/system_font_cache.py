@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 System font cache — scans platform font directories for installed fonts,
 extracts PostScript names, and persists the mapping in a JSON cache file.
@@ -58,19 +60,19 @@ class SystemFontCache:
 
     _instance = None
 
-    def __init__(self):
-        self._fonts = {}        # {ps_name: file_path}
-        self._dir_mtimes = {}   # {dir_path: mtime}
-        self._loaded = False
+    def __init__(self) -> None:
+        self._fonts: dict[str, str] = {}        # {ps_name: file_path}
+        self._dir_mtimes: dict[str, float] = {}   # {dir_path: mtime}
+        self._loaded: bool = False
 
     @classmethod
-    def get_instance(cls):
+    def get_instance(cls) -> SystemFontCache:
         """Return the singleton instance."""
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
 
-    def get_font_path(self, font_name):
+    def get_font_path(self, font_name: str) -> str | None:
         """Look up a system font by PostScript name.
 
         Rebuilds the cache automatically if stale or not yet loaded.
@@ -88,7 +90,7 @@ class SystemFontCache:
 
         return self._fonts.get(font_name)
 
-    def rebuild(self):
+    def rebuild(self) -> None:
         """Force a full rescan of system font directories and persist the cache."""
         self._fonts.clear()
         self._dir_mtimes.clear()
@@ -106,7 +108,7 @@ class SystemFontCache:
         self._loaded = True
         logger.info("System font cache rebuilt: %d fonts found", len(self._fonts))
 
-    def font_count(self):
+    def font_count(self) -> int:
         """Return the number of cached fonts."""
         return len(self._fonts)
 
@@ -114,7 +116,7 @@ class SystemFontCache:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _load_or_rebuild(self):
+    def _load_or_rebuild(self) -> None:
         """Load cache from disk if fresh, otherwise rebuild."""
         if os.path.exists(_CACHE_FILE):
             try:
@@ -133,7 +135,7 @@ class SystemFontCache:
                 pass  # Corrupt cache — rebuild
         self.rebuild()
 
-    def _is_fresh(self):
+    def _is_fresh(self) -> bool:
         """Check whether cached directory mtimes match current filesystem."""
         dirs = _get_platform_font_dirs()
         existing_dirs = {d for d in dirs if os.path.isdir(d)}
@@ -154,7 +156,7 @@ class SystemFontCache:
 
         return True
 
-    def _persist(self):
+    def _persist(self) -> None:
         """Write the cache to disk as JSON."""
         try:
             os.makedirs(_CACHE_DIR, exist_ok=True)
@@ -168,7 +170,7 @@ class SystemFontCache:
         except OSError as exc:
             logger.warning("Could not write system font cache: %s", exc)
 
-    def _scan_directory(self, root):
+    def _scan_directory(self, root: str) -> None:
         """Recursively scan *root* for font files and extract PS names."""
         for dirpath, _dirnames, filenames in os.walk(root):
             for fname in filenames:
@@ -190,7 +192,7 @@ class SystemFontCache:
 # Platform helper
 # ------------------------------------------------------------------
 
-def _get_platform_font_dirs():
+def _get_platform_font_dirs() -> list[str]:
     """Return the list of font directories for the current platform."""
     if sys.platform.startswith("linux"):
         key = "linux"
@@ -207,7 +209,7 @@ def _get_platform_font_dirs():
 # Font name extraction by format
 # ------------------------------------------------------------------
 
-def _extract_font_name(path, ext):
+def _extract_font_name(path: str, ext: str) -> str | None:
     """Extract the PostScript font name from a font file.
 
     Returns the name as a str, or None on failure.
@@ -223,7 +225,7 @@ def _extract_font_name(path, ext):
     return None
 
 
-def _extract_name_type1_ascii(path):
+def _extract_name_type1_ascii(path: str) -> str | None:
     """Extract /FontName from a PFA or .t1 file (first ~4KB of text)."""
     try:
         with open(path, "rb") as f:
@@ -236,7 +238,7 @@ def _extract_name_type1_ascii(path):
     return None
 
 
-def _extract_name_pfb(path):
+def _extract_name_pfb(path: str) -> str | None:
     """Extract /FontName from a PFB (binary Type 1) file.
 
     PFB files consist of segments: each begins with 0x80, a type byte,
@@ -270,7 +272,7 @@ def _extract_name_pfb(path):
     return None
 
 
-def _extract_name_otf(path):
+def _extract_name_otf(path: str) -> str | None:
     """Extract PS name from an OTF file.
 
     If the file has CFF outlines (magic OTTO), parse the CFF Name INDEX.
@@ -295,7 +297,7 @@ def _extract_name_otf(path):
     return _extract_name_from_name_table(data)
 
 
-def _extract_name_ttf(path):
+def _extract_name_ttf(path: str) -> str | None:
     """Extract PS name from a TrueType (.ttf) file via the name table."""
     try:
         with open(path, "rb") as f:
@@ -313,7 +315,7 @@ def _extract_name_ttf(path):
 # CFF Name INDEX extraction (for OTTO / CFF-based OTF)
 # ------------------------------------------------------------------
 
-def _extract_name_cff(data):
+def _extract_name_cff(data: bytes) -> str | None:
     """Parse the CFF Name INDEX from an OTF file with CFF outlines.
 
     Finds the CFF table, then reads the Name INDEX (first INDEX after
@@ -338,7 +340,7 @@ def _extract_name_cff(data):
     return None
 
 
-def _parse_cff_index(data, offset):
+def _parse_cff_index(data: bytes, offset: int) -> tuple[list[bytes], int]:
     """Parse a CFF INDEX structure at *offset* within *data*.
 
     Returns (list_of_bytes, end_offset).
@@ -383,7 +385,7 @@ def _parse_cff_index(data, offset):
 # OpenType/TrueType name table parsing (nameID 6 = PostScript name)
 # ------------------------------------------------------------------
 
-def _extract_name_from_name_table(data):
+def _extract_name_from_name_table(data: bytes) -> str | None:
     """Parse the OpenType/TrueType name table for nameID 6 (PostScript name).
 
     Prefers platformID 3 (Windows) encodingID 1 (Unicode BMP) decoded as
@@ -439,7 +441,7 @@ def _extract_name_from_name_table(data):
 # OTF/TTF table directory helper
 # ------------------------------------------------------------------
 
-def _find_table(data, tag):
+def _find_table(data: bytes, tag: bytes) -> tuple[int | None, int | None]:
     """Find a table in the OTF/TTF table directory.
 
     Returns (offset, length) or (None, None) if not found.

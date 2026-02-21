@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostScript Function Evaluation Engine
 
@@ -14,7 +16,7 @@ Used by shfill and other operators that reference PostScript function dictionari
 from . import types as ps
 
 
-def evaluate_function(func, inputs):
+def evaluate_function(func: ps.PSObject | list | tuple, inputs: list[float]) -> list[float]:
     """
     Evaluate a PostScript function dictionary or array of functions.
 
@@ -44,7 +46,7 @@ def evaluate_function(func, inputs):
     return _evaluate_single(func, inputs)
 
 
-def _evaluate_single(func_dict, inputs):
+def _evaluate_single(func_dict: ps.PSObject | dict, inputs: list[float]) -> list[float]:
     """Evaluate a single PostScript function dictionary."""
     d = func_dict.val if hasattr(func_dict, 'val') else func_dict
 
@@ -81,7 +83,7 @@ def _evaluate_single(func_dict, inputs):
     return outputs
 
 
-def _eval_type2(d, inputs):
+def _eval_type2(d: dict, inputs: list[float]) -> list[float]:
     """
     Type 2: Exponential Interpolation.
     y_j = C0_j + x^N * (C1_j - C0_j)
@@ -106,7 +108,7 @@ def _eval_type2(d, inputs):
     return [c0[j] + factor * (c1[j] - c0[j]) for j in range(len(c0))]
 
 
-def _eval_type0(d, inputs):
+def _eval_type0(d: dict, inputs: list[float]) -> list[float]:
     """
     Type 0: Sampled function with multi-dimensional linear interpolation.
     Supports m-input functions with m-dimensional grids.
@@ -220,7 +222,7 @@ def _eval_type0(d, inputs):
     return outputs
 
 
-def _eval_type3(d, inputs):
+def _eval_type3(d: dict, inputs: list[float]) -> list[float]:
     """
     Type 3: Stitching function.
     Chains sub-functions across domain partitions.
@@ -273,7 +275,7 @@ def _eval_type3(d, inputs):
     return _evaluate_single(func_list[k], [encoded_x])
 
 
-def _read_samples(data, sample_offset, count, bps):
+def _read_samples(data: bytes | bytearray, sample_offset: int, count: int, bps: int) -> list[float]:
     """Read `count` samples starting at sample_offset from byte data."""
     results = []
     if bps == 8:
@@ -332,14 +334,14 @@ def _read_samples(data, sample_offset, count, bps):
 
 # Helper functions for extracting values from PostScript dictionaries
 
-def _get_value(d, key):
+def _get_value(d: dict, key: bytes) -> object | None:
     """Get raw value from dict (handles both PS Dict.val and plain dict)."""
     if isinstance(d, dict):
         return d.get(key)
     return None
 
 
-def _get_int(d, key, default=0):
+def _get_int(d: dict, key: bytes, default: int = 0) -> int:
     """Get integer value from PS dict."""
     obj = d.get(key) if isinstance(d, dict) else None
     if obj is None:
@@ -349,7 +351,7 @@ def _get_int(d, key, default=0):
     return int(obj)
 
 
-def _get_float(d, key, default=0.0):
+def _get_float(d: dict, key: bytes, default: float = 0.0) -> float:
     """Get float value from PS dict."""
     obj = d.get(key) if isinstance(d, dict) else None
     if obj is None:
@@ -359,7 +361,7 @@ def _get_float(d, key, default=0.0):
     return float(obj)
 
 
-def _get_int_array(d, key, default=None):
+def _get_int_array(d: dict, key: bytes, default: list[int] | None = None) -> list[int]:
     """Get list of ints from PS array in dict."""
     obj = d.get(key) if isinstance(d, dict) else None
     if obj is None:
@@ -371,7 +373,7 @@ def _get_int_array(d, key, default=None):
     return default or []
 
 
-def _get_float_array(d, key, default=None):
+def _get_float_array(d: dict, key: bytes, default: list[float] | None = None) -> list[float]:
     """Get list of floats from PS array in dict."""
     obj = d.get(key) if isinstance(d, dict) else None
     if obj is None:

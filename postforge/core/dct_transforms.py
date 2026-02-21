@@ -1,6 +1,7 @@
 # PostForge - A PostScript Interpreter
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
+from __future__ import annotations
 
 """
 DCT ColorTransform utilities for PostScript DCT filters.
@@ -20,7 +21,7 @@ class DCTColorTransform:
     """PostScript DCT ColorTransform implementation per PLRM Section 3.17"""
 
     @staticmethod
-    def rgb_to_yuv(rgb_data):
+    def rgb_to_yuv(rgb_data: np.ndarray) -> np.ndarray:
         """Convert RGB to YUV per PLRM specification.
 
         Args:
@@ -63,7 +64,7 @@ class DCTColorTransform:
         return yuv_float.astype(np.uint8)
 
     @staticmethod
-    def yuv_to_rgb(yuv_data):
+    def yuv_to_rgb(yuv_data: np.ndarray) -> np.ndarray:
         """Convert YUV to RGB per PLRM specification.
 
         Args:
@@ -100,7 +101,7 @@ class DCTColorTransform:
         return rgb_float.astype(np.uint8)
 
     @staticmethod
-    def cmyk_to_yuvk(cmyk_data):
+    def cmyk_to_yuvk(cmyk_data: np.ndarray) -> np.ndarray:
         """Convert CMYK to YUVK per PLRM specification.
 
         Args:
@@ -133,7 +134,7 @@ class DCTColorTransform:
         return yuvk_data
 
     @staticmethod
-    def yuvk_to_cmyk(yuvk_data):
+    def yuvk_to_cmyk(yuvk_data: np.ndarray) -> np.ndarray:
         """Convert YUVK to CMYK per PLRM specification.
 
         Args:
@@ -159,7 +160,7 @@ class DCTColorTransform:
         return cmyk_data
 
     @staticmethod
-    def should_apply_transform(colors, color_transform_param):
+    def should_apply_transform(colors: int, color_transform_param: int | None) -> bool:
         """Determine if ColorTransform should be applied based on PLRM rules.
 
         Args:
@@ -186,7 +187,7 @@ class DCTColorTransform:
         return colors == 3
 
     @staticmethod
-    def apply_encode_transform(image_data, colors, color_transform_param):
+    def apply_encode_transform(image_data: np.ndarray, colors: int, color_transform_param: int | None) -> np.ndarray:
         """Apply ColorTransform during encoding if needed.
 
         Args:
@@ -208,7 +209,7 @@ class DCTColorTransform:
             return image_data
 
     @staticmethod
-    def apply_decode_transform(image_data, colors, color_transform_param):
+    def apply_decode_transform(image_data: np.ndarray, colors: int, color_transform_param: int | None) -> np.ndarray:
         """Apply ColorTransform during decoding if needed.
 
         Args:

@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 ICC Profile Processing — Tier 2
 
@@ -20,6 +22,7 @@ the same cached profile.
 
 import hashlib
 import io
+from typing import Any
 
 try:
     from PIL import ImageCms, Image
@@ -44,12 +47,12 @@ _COLOR_CACHE_MAX = 4096
 _N_TO_PIL_MODE = {1: 'L', 3: 'RGB', 4: 'CMYK'}
 
 
-def is_available():
+def is_available() -> bool:
     """Return True if Pillow ImageCms (lcms2) is available."""
     return _IMAGECMS_AVAILABLE
 
 
-def extract_icc_bytes(ctxt, stream_obj):
+def extract_icc_bytes(ctxt: Any, stream_obj: Any) -> bytes | None:
     """Extract ICC profile binary data from a PostScript stream object.
 
     Tries multiple access patterns in order:
@@ -115,7 +118,7 @@ def extract_icc_bytes(ctxt, stream_obj):
     return None
 
 
-def register_stream(ctxt, stream_obj):
+def register_stream(ctxt: Any, stream_obj: Any) -> bytes | None:
     """Extract ICC bytes from stream, build profile, register in cache.
 
     Called at setcolorspace time.
@@ -147,7 +150,7 @@ def register_stream(ctxt, stream_obj):
     return profile_hash
 
 
-def get_profile_hash(stream_obj):
+def get_profile_hash(stream_obj: Any) -> bytes | None:
     """Look up cached profile hash for a stream object.
 
     Args:
@@ -161,7 +164,7 @@ def get_profile_hash(stream_obj):
     return _stream_to_hash.get(id(stream_obj))
 
 
-def get_transform(profile_hash, n_components):
+def get_transform(profile_hash: bytes, n_components: int) -> Any:
     """Get or build a cached CMS transform from ICC profile → sRGB.
 
     Args:
@@ -198,7 +201,7 @@ def get_transform(profile_hash, n_components):
         return None
 
 
-def icc_convert_color(profile_hash, n_components, components):
+def icc_convert_color(profile_hash: bytes, n_components: int, components: list[float]) -> tuple[float, float, float] | None:
     """Convert a single color from ICC profile space to sRGB.
 
     Uses a 1×1 Pillow image for the transform, with LRU color cache.
@@ -252,8 +255,9 @@ def icc_convert_color(profile_hash, n_components, components):
         return None
 
 
-def icc_convert_image(profile_hash, n_components, sample_data, width, height,
-                      bits_per_component, decode_array):
+def icc_convert_image(profile_hash: bytes, n_components: int, sample_data: bytes,
+                      width: int, height: int, bits_per_component: int,
+                      decode_array: list[float] | None) -> bytearray | None:
     """Bulk image conversion from ICC profile space to Cairo BGRX format.
 
     Only handles 8-bit samples initially. Returns None for other bit depths
@@ -307,7 +311,7 @@ def icc_convert_image(profile_hash, n_components, sample_data, width, height,
         return None
 
 
-def _is_identity_decode(decode_array, n_components):
+def _is_identity_decode(decode_array: list[float] | None, n_components: int) -> bool:
     """Check if decode array is identity ([0 1] per component, or [0 1 0 1 ...] for CMYK)."""
     if not decode_array:
         return True
@@ -325,7 +329,7 @@ def _is_identity_decode(decode_array, n_components):
     return True
 
 
-def _build_decode_lut(decode_array, n_components):
+def _build_decode_lut(decode_array: list[float], n_components: int) -> list[bytearray]:
     """Build per-component 256-entry byte lookup tables for decode mapping.
 
     Returns a list of bytearrays, one per component. Each maps input byte value
@@ -352,7 +356,7 @@ def _build_decode_lut(decode_array, n_components):
     return luts
 
 
-def _apply_decode_luts(raw_data, luts, n_components):
+def _apply_decode_luts(raw_data: bytes, luts: list[bytearray], n_components: int) -> bytes:
     """Apply per-component decode LUTs to interleaved sample data."""
     result = bytearray(len(raw_data))
     for i, b in enumerate(raw_data):
@@ -361,7 +365,7 @@ def _apply_decode_luts(raw_data, luts, n_components):
     return bytes(result)
 
 
-def clear_caches():
+def clear_caches() -> None:
     """Clear all ICC profile caches."""
     _profile_cache.clear()
     _transform_cache.clear()

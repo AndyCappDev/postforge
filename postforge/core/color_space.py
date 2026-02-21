@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostScript Color Space System - Core Infrastructure
 
@@ -13,11 +15,11 @@ PLRM: Sections 4.8 (Color Spaces) and 6.2 (Device Color Conversions)
 """
 
 import math as _math
+from collections.abc import Callable
 
 from . import icc_default
 from . import icc_profile
 from . import types as ps
-from typing import List, Tuple, Union, Optional
 
 
 class ColorSpaceEngine:
@@ -55,7 +57,7 @@ class ColorSpaceEngine:
     }
     
     @classmethod
-    def validate_color_space(cls, space_array: List) -> bool:
+    def validate_color_space(cls, space_array: list) -> bool:
         """
         Validate color space array format per PLRM.
         
@@ -106,7 +108,7 @@ class ColorSpaceEngine:
         return False
     
     @classmethod
-    def get_component_count(cls, space_array: List) -> int:
+    def get_component_count(cls, space_array: list) -> int:
         """
         Get expected component count for color space.
 
@@ -171,7 +173,7 @@ class ColorSpaceEngine:
         raise ValueError(f"Unsupported color space: {space_name}")
     
     @classmethod
-    def resolve_iccbased_space(cls, space_array):
+    def resolve_iccbased_space(cls, space_array: list) -> str:
         """Resolve ICCBased to its alternate/fallback device space name.
 
         Checks the /Alternate key first; falls back to inferring from /N.
@@ -202,7 +204,7 @@ class ColorSpaceEngine:
         return {1: "DeviceGray", 3: "DeviceRGB", 4: "DeviceCMYK"}.get(n, "DeviceRGB")
 
     @classmethod
-    def get_default_color(cls, space_array: List) -> List[float]:
+    def get_default_color(cls, space_array: list) -> list[float]:
         """
         Get default initial color for color space per PLRM.
 
@@ -251,7 +253,7 @@ class ColorSpaceEngine:
         return 0.3 * red + 0.59 * green + 0.11 * blue
     
     @staticmethod
-    def gray_to_rgb(gray: float) -> Tuple[float, float, float]:
+    def gray_to_rgb(gray: float) -> tuple[float, float, float]:
         """
         Convert gray to RGB (all components equal).
         
@@ -283,7 +285,7 @@ class ColorSpaceEngine:
         return 1.0 - min(1.0, 0.3 * cyan + 0.59 * magenta + 0.11 * yellow + black)
     
     @staticmethod
-    def gray_to_cmyk(gray: float) -> Tuple[float, float, float, float]:
+    def gray_to_cmyk(gray: float) -> tuple[float, float, float, float]:
         """
         Convert gray to CMYK.
         
@@ -300,7 +302,8 @@ class ColorSpaceEngine:
     
     @staticmethod
     def rgb_to_cmyk(red: float, green: float, blue: float, 
-                    bg_func: Optional = None, ucr_func: Optional = None) -> Tuple[float, float, float, float]:
+                    bg_func: Callable[[float], float] | None = None,
+                    ucr_func: Callable[[float], float] | None = None) -> tuple[float, float, float, float]:
         """
         Convert RGB to CMYK with black generation and undercolor removal.
         
@@ -352,7 +355,7 @@ class ColorSpaceEngine:
         return (cyan, magenta, yellow, black)
     
     @staticmethod
-    def cmyk_to_rgb(cyan: float, magenta: float, yellow: float, black: float) -> Tuple[float, float, float]:
+    def cmyk_to_rgb(cyan: float, magenta: float, yellow: float, black: float) -> tuple[float, float, float]:
         """
         Convert CMYK to RGB.
         
@@ -380,7 +383,7 @@ class ColorSpaceEngine:
     # ==========================================================================
     
     @staticmethod
-    def hsb_to_rgb(hue: float, saturation: float, brightness: float) -> Tuple[float, float, float]:
+    def hsb_to_rgb(hue: float, saturation: float, brightness: float) -> tuple[float, float, float]:
         """
         Convert HSB to RGB using hexcone model.
         
@@ -433,7 +436,7 @@ class ColorSpaceEngine:
             return (brightness, p, q)
     
     @staticmethod
-    def rgb_to_hsb(red: float, green: float, blue: float) -> Tuple[float, float, float]:
+    def rgb_to_hsb(red: float, green: float, blue: float) -> tuple[float, float, float]:
         """
         Convert RGB to HSB using hexcone model.
         
@@ -487,14 +490,14 @@ class ColorSpaceEngine:
     )
 
     @staticmethod
-    def _srgb_gamma(u):
+    def _srgb_gamma(u: float) -> float:
         """Apply sRGB companding (linear → gamma-corrected)."""
         if u <= 0.0031308:
             return 12.92 * u
         return 1.055 * (u ** (1.0 / 2.4)) - 0.055
 
     @classmethod
-    def cie_abc_to_rgb(cls, components, cie_dict):
+    def cie_abc_to_rgb(cls, components: list[float], cie_dict: dict) -> tuple[float, float, float]:
         """
         Convert CIEBasedABC color to sRGB.
 
@@ -558,7 +561,7 @@ class ColorSpaceEngine:
         return (r, g, b_)
 
     @classmethod
-    def cie_a_to_rgb(cls, component, cie_dict):
+    def cie_a_to_rgb(cls, component: float, cie_dict: dict) -> tuple[float, float, float]:
         """
         Convert CIEBasedA color to sRGB.
 
@@ -615,7 +618,7 @@ class ColorSpaceEngine:
         return (r, g, b_)
 
     @classmethod
-    def cie_def_to_rgb(cls, components, cie_dict):
+    def cie_def_to_rgb(cls, components: list[float], cie_dict: dict) -> tuple[float, float, float]:
         """
         Convert CIEBasedDEF color to sRGB.
 
@@ -652,7 +655,7 @@ class ColorSpaceEngine:
         return cls.cie_abc_to_rgb(abc, cie_dict)
 
     @classmethod
-    def cie_defg_to_rgb(cls, components, cie_dict):
+    def cie_defg_to_rgb(cls, components: list[float], cie_dict: dict) -> tuple[float, float, float]:
         """
         Convert CIEBasedDEFG color to sRGB.
 
@@ -694,7 +697,7 @@ class ColorSpaceEngine:
     # ==========================================================================
     
     @staticmethod
-    def clamp_color_components(components: List[float]) -> List[float]:
+    def clamp_color_components(components: list[float]) -> list[float]:
         """
         Clamp color component values to valid range [0.0, 1.0].
         
@@ -709,7 +712,7 @@ class ColorSpaceEngine:
         return [max(0.0, min(1.0, value)) for value in components]
     
     @staticmethod  
-    def validate_component_count(space_array: List, components: List[float]) -> bool:
+    def validate_component_count(space_array: list, components: list[float]) -> bool:
         """
         Validate that component count matches color space requirements.
         
@@ -727,7 +730,7 @@ class ColorSpaceEngine:
             return False
 
 
-def convert_to_device_color(ctxt, gs_color, gs_color_space):
+def convert_to_device_color(ctxt: ps.Context, gs_color: list, gs_color_space: list) -> list[float]:
     """
     Convert PostScript color to device color space for display list.
 
@@ -840,7 +843,7 @@ def convert_to_device_color(ctxt, gs_color, gs_color_space):
         return source_color  # Fallback to original color
 
 
-def _get_cie_float_array(d, key, default):
+def _get_cie_float_array(d: dict, key: bytes, default: list[float]) -> list[float]:
     """Extract a list of floats from a CIE dictionary entry.
 
     Handles both plain Python dicts and PostScript Dict.val dicts.
@@ -857,7 +860,8 @@ def _get_cie_float_array(d, key, default):
     return default
 
 
-def _table_3d_lookup(table_obj, d, e, f, range_def, range_abc):
+def _table_3d_lookup(table_obj: ps.Array, d: float, e: float, f: float,
+                     range_def: list[float], range_abc: list[float]) -> list[float]:
     """Perform trilinear interpolation in a CIEBasedDEF 3D lookup table.
 
     Table format: [m1 m2 m3 [string1 ... string_m1]]
@@ -908,7 +912,7 @@ def _table_3d_lookup(table_obj, d, e, f, range_def, range_abc):
                  (range_abc[3] - range_abc[2]) / 255.0,
                  (range_abc[5] - range_abc[4]) / 255.0]
 
-    def _sample(d_idx, e_idx, f_idx):
+    def _sample(d_idx: int, e_idx: int, f_idx: int) -> tuple[float, float, float]:
         """Get ABC triple from the table, scaled to RangeABC."""
         string_obj = strings[s_start + d_idx]
         if hasattr(string_obj, 'byte_string'):
@@ -947,7 +951,8 @@ def _table_3d_lookup(table_obj, d, e, f, range_def, range_abc):
     return abc
 
 
-def _table_4d_lookup(table_obj, d, e, f, g, range_defg, range_abc):
+def _table_4d_lookup(table_obj: ps.Array, d: float, e: float, f: float, g: float,
+                     range_defg: list[float], range_abc: list[float]) -> list[float]:
     """Perform nearest-neighbor lookup in a CIEBasedDEFG 4D lookup table.
 
     Table format: [m1 m2 m3 m4 [string1 ... string_m1]]
@@ -1005,7 +1010,7 @@ _CIE_DECODE_CACHE = {}  # id(proc) → list of pre-evaluated float values
 _CIE_DECODE_CACHE_SIZE = 256  # Matches 8-bit images exactly (i/255 inputs)
 
 
-def _eval_cie_decode_proc(proc_obj, input_val):
+def _eval_cie_decode_proc(proc_obj: ps.Array, input_val: float) -> float:
     """Evaluate a CIE Decode procedure (DecodeABC, DecodeLMN, etc.) on a single value.
 
     On first call for a given procedure, pre-evaluates at 256 points in [0, 1]
@@ -1049,7 +1054,7 @@ def _eval_cie_decode_proc(proc_obj, input_val):
 _CIE_MARK = object()  # Sentinel for [ ... ] array construction in CIE procedures
 
 
-def _exec_cie_tokens(proc_obj, stack):
+def _exec_cie_tokens(proc_obj: ps.Array, stack: list) -> None:
     """Execute CIE procedure tokens on an existing stack.
 
     Handles: numbers, dup, pop, exch, add, sub, mul, div, exp, neg, abs,
@@ -1254,7 +1259,7 @@ def _exec_cie_tokens(proc_obj, stack):
         # Unknown operators are silently ignored
 
 
-def _apply_decode_array(cie_dict, key, values):
+def _apply_decode_array(cie_dict: dict, key: bytes, values: list[float]) -> list[float]:
     """Apply a DecodeABC/DecodeLMN/DecodeA array of procedures to input values.
 
     DecodeABC and DecodeLMN are literal arrays of executable procedures:

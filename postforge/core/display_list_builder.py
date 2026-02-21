@@ -1,6 +1,7 @@
 # PostForge - A PostScript Interpreter
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
+from __future__ import annotations
 
 """
 DisplayListBuilder - Optimized Clipping Path Management
@@ -31,17 +32,17 @@ class DisplayListBuilder:
     and optimal device rendering performance.
     """
     
-    def __init__(self, display_list: ps.DisplayList):
+    def __init__(self, display_list: ps.DisplayList) -> None:
         """
         Initialize DisplayListBuilder with target display list.
-        
+
         Args:
             display_list: DisplayList instance to manage
         """
         self.display_list = display_list
         self.current_clip_version = -1  # Track display list clipping state
         
-    def add_graphics_operation(self, ctxt: Any, graphics_element: Any):
+    def add_graphics_operation(self, ctxt: Any, graphics_element: Any) -> None:
         """
         Add graphics operation to display list, inserting ClipElement if needed.
 
@@ -71,10 +72,10 @@ class DisplayListBuilder:
                 # Don't let callback errors break PostScript execution
                 pass
         
-    def reset_tracking(self):
+    def reset_tracking(self) -> None:
         """
         Reset version tracking for new page or context reset.
-        
+
         This forces the next graphics operation to insert a ClipElement
         regardless of version tracking, ensuring proper initialization.
         """
@@ -84,13 +85,13 @@ class DisplayListBuilder:
         """Get current tracked clipping version for debugging."""
         return self.current_clip_version
         
-    def force_clip_sync(self, ctxt: Any):
+    def force_clip_sync(self, ctxt: Any) -> None:
         """
         Force insertion of ClipElement on next graphics operation.
-        
+
         Useful for manual synchronization or when external code has
         modified clipping state outside normal tracking.
-        
+
         Args:
             ctxt: PostScript context with current graphics state
         """

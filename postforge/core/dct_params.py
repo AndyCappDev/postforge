@@ -1,6 +1,7 @@
 # PostForge - A PostScript Interpreter
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
+from __future__ import annotations
 
 """
 DCT parameter parsing and validation for PostScript DCT filters.
@@ -16,26 +17,26 @@ from . import error as ps_error
 class DCTParameters:
     """Container for validated DCT filter parameters"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Required parameters for DCTEncode
-        self.columns = None
-        self.rows = None
-        self.colors = None
+        self.columns: int | None = None
+        self.rows: int | None = None
+        self.colors: int | None = None
 
         # Optional parameters
-        self.hsample = None
-        self.vsample = None
-        self.quant_tables = None
-        self.qfactor = 1.0
-        self.huff_tables = None
-        self.color_transform = None
+        self.hsample: list[int] | None = None
+        self.vsample: list[int] | None = None
+        self.quant_tables: list[list[float]] | None = None
+        self.qfactor: float = 1.0
+        self.huff_tables: list[list[int]] | None = None
+        self.color_transform: int | None = None
 
 
 class DCTParameterParser:
     """PostScript DCT parameter parsing and validation"""
 
     @staticmethod
-    def parse_encode_params(params, ctxt):
+    def parse_encode_params(params: ps.Dict | None, ctxt: ps.Context) -> DCTParameters | None:
         """Parse and validate DCTEncode parameters per PLRM Table 3.17.
 
         Args:
@@ -112,7 +113,7 @@ class DCTParameterParser:
         return result
 
     @staticmethod
-    def parse_decode_params(params, ctxt):
+    def parse_decode_params(params: ps.Dict | None, ctxt: ps.Context) -> DCTParameters | None:
         """Parse and validate DCTDecode parameters.
 
         Args:
@@ -142,7 +143,7 @@ class DCTParameterParser:
         return result
 
     @staticmethod
-    def _parse_required_int(param_dict, key, operator, ctxt):
+    def _parse_required_int(param_dict: dict, key: bytes, operator: str, ctxt: ps.Context) -> int | None:
         """Parse required integer parameter"""
         if key not in param_dict:
             return ps_error.e(ctxt, ps_error.RANGECHECK, operator)
@@ -154,7 +155,7 @@ class DCTParameterParser:
         return int(param_obj.val)
 
     @staticmethod
-    def _parse_optional_int(param_dict, key, default, ctxt):
+    def _parse_optional_int(param_dict: dict, key: bytes, default: int | None, ctxt: ps.Context) -> int | None:
         """Parse optional integer parameter"""
         if key not in param_dict:
             return default
@@ -166,7 +167,7 @@ class DCTParameterParser:
         return int(param_obj.val)
 
     @staticmethod
-    def _parse_optional_number(param_dict, key, default, ctxt):
+    def _parse_optional_number(param_dict: dict, key: bytes, default: float, ctxt: ps.Context) -> float | None:
         """Parse optional number (int or real) parameter"""
         if key not in param_dict:
             return default
@@ -178,7 +179,7 @@ class DCTParameterParser:
         return float(param_obj.val)
 
     @staticmethod
-    def _parse_sampling_array(param_dict, key, colors, ctxt):
+    def _parse_sampling_array(param_dict: dict, key: bytes, colors: int, ctxt: ps.Context) -> list[int] | None:
         """Parse HSamples or VSamples array parameter
 
         Args:
@@ -216,7 +217,7 @@ class DCTParameterParser:
         return sampling_factors
 
     @staticmethod
-    def _parse_quant_tables(param_dict, colors, ctxt):
+    def _parse_quant_tables(param_dict: dict, colors: int, ctxt: ps.Context) -> list[list[float]] | None:
         """Parse QuantTables parameter
 
         Args:
@@ -272,7 +273,7 @@ class DCTParameterParser:
         return quant_tables
 
     @staticmethod
-    def _parse_huff_tables(param_dict, colors, ctxt):
+    def _parse_huff_tables(param_dict: dict, colors: int, ctxt: ps.Context) -> list[list[int]] | None:
         """Parse HuffTables parameter
 
         Args:
@@ -283,7 +284,7 @@ class DCTParameterParser:
         Returns:
             List of Huffman tables or None for default tables
 
-        PLRM: Array of 2×Colors encoding tables. First 16 values specify
+        PLRM: Array of 2xColors encoding tables. First 16 values specify
         number of codes of each length 1-16 bits. Remaining values are
         symbols corresponding to each code.
         """

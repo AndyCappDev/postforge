@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 import math
 
 from ..operators import dict as ps_dict
@@ -55,7 +57,7 @@ white_space = set([NULL, SPACE, TAB, LINE_FEED, FORM_FEED, RETURN])
 new_line = set([LINE_FEED, FORM_FEED, RETURN])
 
 
-def handle_newline(source, b, ctxt):
+def handle_newline(source: ps.File, b: int, ctxt: ps.Context) -> bool:
     """
     Handle newline character and increment line_num appropriately.
 
@@ -97,7 +99,7 @@ escapes = {
 }
 
 
-def _decode_ascii85_group(values):
+def _decode_ascii85_group(values: list[int]) -> list[int]:
     """
     Decode ASCII85 5-tuple to binary bytes - PLRM algorithm for tokenizer.
 
@@ -153,7 +155,7 @@ def _decode_ascii85_group(values):
         return [byte1, byte2, byte3, byte4]  # 5 chars → 4 bytes
 
 
-def syntax_error(ctxt, source, command):
+def syntax_error(ctxt: ps.Context, source: ps.File, command: str) -> tuple[bool, int, str, None]:
     source.close()
     ctxt.o_stack.append(ps.Bool(False))
     ctxt.proc_count = 0
@@ -162,7 +164,7 @@ def syntax_error(ctxt, source, command):
     return (False, ps_error.SYNTAXERROR, command, None)
 
 
-def TOKEN_FAIL(ctxt, stack) -> bool:
+def TOKEN_FAIL(ctxt: ps.Context, stack: list[ps.PSObject]) -> tuple[bool, None, None, None]:
     # close the stream
     # NOTE: Stack may contain StringTokenizer objects (no TYPE attribute) or ps.File objects
     # Only close ps.File objects, not StringTokenizer wrappers
@@ -180,7 +182,7 @@ def TOKEN_FAIL(ctxt, stack) -> bool:
     return (True, None, None, None)
 
 
-def TOKEN_SUCCESS(ctxt, stack, do_exec=True) -> bool:
+def TOKEN_SUCCESS(ctxt: ps.Context, stack: list[ps.PSObject], do_exec: bool = True) -> tuple[bool, None, None, bool]:
     # the token is already on the stack
     # push a boolean true if stack is operand_stack
 
@@ -190,7 +192,7 @@ def TOKEN_SUCCESS(ctxt, stack, do_exec=True) -> bool:
     return (True, None, None, do_exec)
 
 
-def __token(ctxt, stack):
+def __token(ctxt: ps.Context, stack: list[ps.PSObject]) -> tuple[bool, int | None, str | None, bool | None]:
     """
     PostScript tokenizer - reads and parses the next token from a source stream.
     

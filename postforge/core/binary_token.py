@@ -1,6 +1,7 @@
 # PostForge - A PostScript Interpreter
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
+from __future__ import annotations
 
 """
 Binary Token and Object Sequence Parser (PLRM Sections 3.14.1-3.14.2)
@@ -25,13 +26,13 @@ from . import types as ps
 # Return helpers (same tuple format as tokenizer.py)
 # ---------------------------------------------------------------------------
 
-def _token_success(ctxt, stack, do_exec=True):
+def _token_success(ctxt: ps.Context, stack: list, do_exec: bool = True) -> tuple[bool, None, None, bool]:
     """Token parsed successfully — push True, return success tuple."""
     ctxt.o_stack.append(ps.Bool(True))
     return (True, None, None, do_exec)
 
 
-def _syntax_error(ctxt, source, command):
+def _syntax_error(ctxt: ps.Context, source: ps.File, command: str) -> tuple[bool, int, str, None]:
     """Syntax error — close source, push False, return error tuple."""
     source.close()
     ctxt.o_stack.append(ps.Bool(False))
@@ -43,7 +44,7 @@ def _syntax_error(ctxt, source, command):
 # Byte reading helper
 # ---------------------------------------------------------------------------
 
-def _read_bytes(source, ctxt, count):
+def _read_bytes(source: ps.File, ctxt: ps.Context, count: int) -> bytes | None:
     """Read exactly *count* bytes from source. Return bytes or None on EOF."""
     result = bytearray(count)
     for i in range(count):
@@ -223,11 +224,11 @@ class _BOSParseError(Exception):
 
 class _BOSUndefinedError(Exception):
     """Internal: immediately evaluated name not found."""
-    def __init__(self, name_bytes):
+    def __init__(self, name_bytes: bytes) -> None:
         self.name_bytes = name_bytes
 
 
-def _bos_errmsg(token_type, elements=0, size=0, reason="malformed"):
+def _bos_errmsg(token_type: int, elements: int = 0, size: int = 0, reason: str = "malformed") -> str:
     """Format PLRM-style error description for binary object sequence errors."""
     return f"bin obj seq, type={token_type}, elements={elements}, size={size}, {reason}"
 
@@ -235,7 +236,7 @@ def _bos_errmsg(token_type, elements=0, size=0, reason="malformed"):
 _MAX_BOS_DEPTH = 100
 
 
-def _parse_binary_object_sequence(ctxt, stack, source, token_type):
+def _parse_binary_object_sequence(ctxt: ps.Context, stack: list, source: ps.File, token_type: int) -> tuple[bool, int | None, str | None, bool | None]:
     """
     Parse a binary object sequence (PLRM 3.14.2).
 
@@ -426,7 +427,7 @@ def _parse_binary_object_sequence(ctxt, stack, source, token_type):
 # Dispatch entry point
 # ---------------------------------------------------------------------------
 
-def parse_binary_token(ctxt, stack, source, token_type):
+def parse_binary_token(ctxt: ps.Context, stack: list, source: ps.File, token_type: int) -> tuple[bool, int | None, str | None, bool | None]:
     """
     Parse a binary token (PLRM Section 3.14.1, Table 3.25).
 
@@ -494,7 +495,7 @@ def parse_binary_token(ctxt, stack, source, token_type):
 # Integer parsers
 # ---------------------------------------------------------------------------
 
-def _parse_int(ctxt, stack, source, fmt, nbytes):
+def _parse_int(ctxt: ps.Context, stack: list, source: ps.File, fmt: str, nbytes: int) -> tuple[bool, int | None, str | None, bool | None]:
     """Parse 16-bit or 32-bit integer with given struct format."""
     data = _read_bytes(source, ctxt, nbytes)
     if data is None:
@@ -504,7 +505,7 @@ def _parse_int(ctxt, stack, source, fmt, nbytes):
     return _token_success(ctxt, stack)
 
 
-def _parse_int8(ctxt, stack, source):
+def _parse_int8(ctxt: ps.Context, stack: list, source: ps.File) -> tuple[bool, int | None, str | None, bool | None]:
     """Parse 8-bit signed integer (type 136)."""
     b = source.read(ctxt)
     if b is None:
@@ -519,7 +520,7 @@ def _parse_int8(ctxt, stack, source):
 # Real parsers
 # ---------------------------------------------------------------------------
 
-def _parse_real(ctxt, stack, source, fmt):
+def _parse_real(ctxt: ps.Context, stack: list, source: ps.File, fmt: str) -> tuple[bool, int | None, str | None, bool | None]:
     """Parse 32-bit IEEE float with given struct format."""
     data = _read_bytes(source, ctxt, 4)
     if data is None:
@@ -533,7 +534,7 @@ def _parse_real(ctxt, stack, source, fmt):
 # Boolean parser
 # ---------------------------------------------------------------------------
 
-def _parse_bool(ctxt, stack, source):
+def _parse_bool(ctxt: ps.Context, stack: list, source: ps.File) -> tuple[bool, int | None, str | None, bool | None]:
     """Parse binary boolean (type 141): 0=false, nonzero=true."""
     b = source.read(ctxt)
     if b is None:
@@ -546,7 +547,7 @@ def _parse_bool(ctxt, stack, source):
 # String parsers
 # ---------------------------------------------------------------------------
 
-def _parse_string_short(ctxt, stack, source):
+def _parse_string_short(ctxt: ps.Context, stack: list, source: ps.File) -> tuple[bool, int | None, str | None, bool | None]:
     """Parse string with 1-byte length (type 142)."""
     length_byte = source.read(ctxt)
     if length_byte is None:
@@ -554,7 +555,7 @@ def _parse_string_short(ctxt, stack, source):
     return _read_binary_string(ctxt, stack, source, length_byte)
 
 
-def _parse_string_long(ctxt, stack, source, fmt):
+def _parse_string_long(ctxt: ps.Context, stack: list, source: ps.File, fmt: str) -> tuple[bool, int | None, str | None, bool | None]:
     """Parse string with 2-byte length (types 143-144)."""
     data = _read_bytes(source, ctxt, 2)
     if data is None:
@@ -563,7 +564,7 @@ def _parse_string_long(ctxt, stack, source, fmt):
     return _read_binary_string(ctxt, stack, source, length)
 
 
-def _read_binary_string(ctxt, stack, source, length):
+def _read_binary_string(ctxt: ps.Context, stack: list, source: ps.File, length: int) -> tuple[bool, int | None, str | None, bool | None]:
     """Read *length* bytes of string data and create a String object."""
     strings = ps.global_resources.global_strings if ctxt.vm_alloc_mode else ctxt.local_strings
     offset = len(strings)
@@ -582,7 +583,7 @@ def _read_binary_string(ctxt, stack, source, length):
 # System name parser
 # ---------------------------------------------------------------------------
 
-def _parse_system_name(ctxt, stack, source, literal):
+def _parse_system_name(ctxt: ps.Context, stack: list, source: ps.File, literal: bool) -> tuple[bool, int | None, str | None, bool | None]:
     """Parse encoded system name (types 145-146). Index is single byte 0-255."""
     index_byte = source.read(ctxt)
     if index_byte is None:
@@ -603,7 +604,7 @@ def _parse_system_name(ctxt, stack, source, literal):
 # Fixed-point parser (type 137)
 # ---------------------------------------------------------------------------
 
-def _parse_fixed_point(ctxt, stack, source):
+def _parse_fixed_point(ctxt: ps.Context, stack: list, source: ps.File) -> tuple[bool, int | None, str | None, bool | None]:
     """
     Parse fixed-point number (type 137).
 
@@ -644,7 +645,7 @@ def _parse_fixed_point(ctxt, stack, source):
 # Homogeneous number array parser (type 149)
 # ---------------------------------------------------------------------------
 
-def _parse_homogeneous_number_array(ctxt, stack, source):
+def _parse_homogeneous_number_array(ctxt: ps.Context, stack: list, source: ps.File) -> tuple[bool, int | None, str | None, bool | None]:
     """
     Parse homogeneous number array (type 149).
 

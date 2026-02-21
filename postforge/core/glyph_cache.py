@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 Glyph Cache Infrastructure
 
@@ -31,7 +33,7 @@ Cacheability (per PLRM, Type 3 fonts only):
 import copy
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Optional, Tuple, List, Any
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -74,9 +76,9 @@ class CachedGlyph:
     Also stores a reference to the font_dict to prevent garbage collection
     and enable validation that the cached glyph is for the correct font.
     """
-    display_elements: List[Any]  # Display list elements (Path, Fill, Stroke, etc.)
-    char_width: Tuple[float, float]  # (wx, wy) in character space
-    char_bbox: Optional[Tuple[float, float, float, float]]  # (llx, lly, urx, ury) or None
+    display_elements: list[Any]  # Display list elements (Path, Fill, Stroke, etc.)
+    char_width: tuple[float, float]  # (wx, wy) in character space
+    char_bbox: tuple[float, float, float, float] | None  # (llx, lly, urx, ury) or None
     font_dict: Any  # Reference to font dict - prevents GC and enables validation
 
 
@@ -92,7 +94,7 @@ class GlyphCache:
     """
     DEFAULT_MAX_ENTRIES = 2048
 
-    def __init__(self, max_entries: Optional[int] = None):
+    def __init__(self, max_entries: int | None = None) -> None:
         """Initialize glyph cache with optional size limit.
 
         Args:
@@ -104,7 +106,7 @@ class GlyphCache:
         self._hits = 0
         self._misses = 0
 
-    def get(self, key: GlyphCacheKey) -> Optional[CachedGlyph]:
+    def get(self, key: GlyphCacheKey) -> CachedGlyph | None:
         """Retrieve cached glyph, updating LRU order.
 
         Args:
@@ -191,7 +193,7 @@ class GlyphBitmapCache:
     DEFAULT_MAX_ENTRIES = 4096
     FALLBACK_MAX_BYTES = 64 * 1024 * 1024  # 64 MB - only used if system params not wired
 
-    def __init__(self, max_entries: Optional[int] = None, max_bytes: Optional[int] = None):
+    def __init__(self, max_entries: int | None = None, max_bytes: int | None = None) -> None:
         self._cache: OrderedDict[GlyphCacheKey, CachedBitmap] = OrderedDict()
         self._width_cache: dict[GlyphCacheKey, tuple] = {}  # char_width per key
         self._max_entries = max_entries or self.DEFAULT_MAX_ENTRIES
@@ -209,7 +211,7 @@ class GlyphBitmapCache:
         self._misses += 1
         return False
 
-    def get(self, key: GlyphCacheKey) -> Optional[CachedBitmap]:
+    def get(self, key: GlyphCacheKey) -> CachedBitmap | None:
         """Retrieve cached bitmap, updating LRU order and statistics."""
         entry = self._cache.get(key)
         if entry is not None:
@@ -240,7 +242,7 @@ class GlyphBitmapCache:
         self._cache[key] = bitmap
         self._current_bytes += entry_bytes
 
-    def get_width(self, key: GlyphCacheKey) -> Optional[tuple]:
+    def get_width(self, key: GlyphCacheKey) -> tuple | None:
         """Get cached char_width for a glyph."""
         return self._width_cache.get(key)
 
@@ -273,7 +275,7 @@ class GlyphBitmapCache:
         return len(self._cache)
 
 
-def make_cache_key(font_dict, char_selector: bytes, ctm, color: list, position_y: float = 0.0) -> GlyphCacheKey:
+def make_cache_key(font_dict: Any, char_selector: bytes, ctm: Any, color: list[float], position_y: float = 0.0) -> GlyphCacheKey:
     """Create cache key from font, character, transformation, color, and sub-pixel Y.
 
     The cache key captures everything that affects glyph appearance:

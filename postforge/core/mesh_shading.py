@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 Mesh Shading Parser — Types 4-7
 
@@ -18,7 +20,7 @@ class MeshVertex:
     """A vertex with position and color."""
     __slots__ = ('x', 'y', 'color')
 
-    def __init__(self, x, y, color):
+    def __init__(self, x: float, y: float, color: list[float]) -> None:
         self.x = x
         self.y = y
         self.color = color  # list of floats in color space
@@ -28,7 +30,7 @@ class MeshTriangle:
     """A triangle defined by three vertices."""
     __slots__ = ('v0', 'v1', 'v2')
 
-    def __init__(self, v0, v1, v2):
+    def __init__(self, v0: MeshVertex, v1: MeshVertex, v2: MeshVertex) -> None:
         self.v0 = v0
         self.v1 = v1
         self.v2 = v2
@@ -38,7 +40,7 @@ class CoonsPatch:
     """A Coons patch with 12 control points and 4 corner colors."""
     __slots__ = ('points', 'colors')
 
-    def __init__(self, points, colors):
+    def __init__(self, points: list[tuple[float, float]], colors: list[list[float]]) -> None:
         self.points = points  # list of 12 (x, y) tuples
         self.colors = colors  # list of 4 color lists (corner colors)
 
@@ -47,7 +49,7 @@ class TensorPatch:
     """A tensor-product patch with 16 control points and 4 corner colors."""
     __slots__ = ('points', 'colors')
 
-    def __init__(self, points, colors):
+    def __init__(self, points: list[tuple[float, float]], colors: list[list[float]]) -> None:
         self.points = points  # list of 16 (x, y) tuples
         self.colors = colors  # list of 4 color lists (corner colors)
 
@@ -58,7 +60,7 @@ class _BitReader:
     Optimized with fast paths for byte-aligned reads of common bit widths.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: bytes | bytearray | memoryview) -> None:
         if isinstance(data, memoryview):
             self.data = bytes(data)
         elif isinstance(data, (bytes, bytearray)):
@@ -68,7 +70,7 @@ class _BitReader:
         self.bit_pos = 0
         self._len = len(self.data)
 
-    def read_bits(self, n):
+    def read_bits(self, n: int) -> int:
         """Read n bits as an unsigned integer.
 
         Optimized with fast paths for byte-aligned reads of 8, 16, 24, 32 bits.
@@ -125,23 +127,23 @@ class _BitReader:
         self.bit_pos += n
         return result
 
-    def align_to_byte(self):
+    def align_to_byte(self) -> None:
         """Advance to next byte boundary."""
         remainder = self.bit_pos & 7
         if remainder:
             self.bit_pos += 8 - remainder
 
     @property
-    def exhausted(self):
+    def exhausted(self) -> bool:
         return (self.bit_pos >> 3) >= self._len
 
 
-def _decode_value(raw, scale, decode_min):
+def _decode_value(raw: int, scale: float, decode_min: float) -> float:
     """Decode a raw integer value to float using precomputed scale."""
     return decode_min + raw * scale
 
 
-def _compute_decode_scale(bits, decode_min, decode_max):
+def _compute_decode_scale(bits: int, decode_min: float, decode_max: float) -> float:
     """Precompute the scale factor for decoding."""
     max_val = (1 << bits) - 1
     if max_val == 0:
@@ -149,7 +151,7 @@ def _compute_decode_scale(bits, decode_min, decode_max):
     return (decode_max - decode_min) / max_val
 
 
-def _decode_coordinate(raw, bits, decode_min, decode_max):
+def _decode_coordinate(raw: int, bits: int, decode_min: float, decode_max: float) -> float:
     """Decode a raw integer coordinate to float using Decode array."""
     max_val = (1 << bits) - 1
     if max_val == 0:
@@ -157,7 +159,7 @@ def _decode_coordinate(raw, bits, decode_min, decode_max):
     return decode_min + (raw / max_val) * (decode_max - decode_min)
 
 
-def _decode_color_component(raw, bits, decode_min, decode_max):
+def _decode_color_component(raw: int, bits: int, decode_min: float, decode_max: float) -> float:
     """Decode a raw integer color component to float."""
     max_val = (1 << bits) - 1
     if max_val == 0:
@@ -165,7 +167,7 @@ def _decode_color_component(raw, bits, decode_min, decode_max):
     return decode_min + (raw / max_val) * (decode_max - decode_min)
 
 
-def _read_vertex(reader, bpc, bpco, bpfl, decode, n_comps, func=None):
+def _read_vertex(reader: _BitReader, bpc: int, bpco: int, bpfl: int, decode: list[float], n_comps: int, func: object | None = None) -> tuple[int, MeshVertex]:
     """Read a single vertex (coordinate + color) from the bit stream.
 
     Args:
@@ -206,7 +208,7 @@ def _read_vertex(reader, bpc, bpco, bpfl, decode, n_comps, func=None):
     return flag, MeshVertex(x, y, color)
 
 
-def _read_point(reader, bpc, decode):
+def _read_point(reader: _BitReader, bpc: int, decode: list[float]) -> tuple[float, float]:
     """Read a coordinate pair from the bit stream (no flag, no color)."""
     raw_x = reader.read_bits(bpc)
     raw_y = reader.read_bits(bpc)
@@ -215,7 +217,7 @@ def _read_point(reader, bpc, decode):
     return (x, y)
 
 
-def _read_color(reader, bpco, decode, n_comps, func=None):
+def _read_color(reader: _BitReader, bpco: int, decode: list[float], n_comps: int, func: object | None = None) -> list[float]:
     """Read color components from the bit stream."""
     if func is not None:
         raw_t = reader.read_bits(bpco)
@@ -233,7 +235,7 @@ def _read_color(reader, bpco, decode, n_comps, func=None):
     return color
 
 
-def parse_type4_mesh(data, bpc, bpco, bpfl, decode, n_comps, func=None):
+def parse_type4_mesh(data: bytes | bytearray | memoryview, bpc: int, bpco: int, bpfl: int, decode: list[float], n_comps: int, func: object | None = None) -> list[MeshTriangle]:
     """Parse Type 4 free-form Gouraud-shaded triangle mesh.
 
     Returns list of MeshTriangle.
@@ -314,7 +316,7 @@ def parse_type4_mesh(data, bpc, bpco, bpfl, decode, n_comps, func=None):
     return triangles
 
 
-def parse_type5_mesh(data, bpc, bpco, decode, n_comps, vertices_per_row, func=None):
+def parse_type5_mesh(data: bytes | bytearray | memoryview, bpc: int, bpco: int, decode: list[float], n_comps: int, vertices_per_row: int, func: object | None = None) -> list[MeshTriangle]:
     """Parse Type 5 lattice-form Gouraud-shaded triangle mesh.
 
     Returns list of MeshTriangle.
@@ -382,7 +384,7 @@ def parse_type5_mesh(data, bpc, bpco, decode, n_comps, vertices_per_row, func=No
     return triangles
 
 
-def parse_type6_patches(data, bpc, bpco, bpfl, decode, n_comps, func=None):
+def parse_type6_patches(data: bytes | bytearray | memoryview, bpc: int, bpco: int, bpfl: int, decode: list[float], n_comps: int, func: object | None = None) -> list[CoonsPatch]:
     """Parse Type 6 Coons patch mesh.
 
     Each patch: flag + 12 control points + 4 corner colors.
@@ -440,7 +442,7 @@ def parse_type6_patches(data, bpc, bpco, bpfl, decode, n_comps, func=None):
     return patches
 
 
-def parse_type7_patches(data, bpc, bpco, bpfl, decode, n_comps, func=None):
+def parse_type7_patches(data: bytes | bytearray | memoryview, bpc: int, bpco: int, bpfl: int, decode: list[float], n_comps: int, func: object | None = None) -> list[TensorPatch]:
     """Parse Type 7 tensor-product patch mesh.
 
     Each patch: flag + 16 control points + 4 corner colors.

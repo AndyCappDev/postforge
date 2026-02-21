@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 Default ICC Color Management — Tier 3
 
@@ -39,19 +41,19 @@ _disabled = False             # Set by --no-icc
 _custom_profile_path = None   # Set by --cmyk-profile
 
 
-def disable():
+def disable() -> None:
     """Disable ICC color management. Called from CLI --no-icc."""
     global _disabled
     _disabled = True
 
 
-def set_custom_profile(path):
+def set_custom_profile(path: str) -> None:
     """Set a custom CMYK ICC profile path. Called from CLI --cmyk-profile."""
     global _custom_profile_path
     _custom_profile_path = path
 
 
-def _is_cmyk_profile(path):
+def _is_cmyk_profile(path: str) -> bool:
     """Check whether an ICC profile file has a CMYK color space.
 
     Reads the color space signature at byte offset 16 in the ICC header.
@@ -66,7 +68,7 @@ def _is_cmyk_profile(path):
         return False
 
 
-def _find_cmyk_in_dir(directory):
+def _find_cmyk_in_dir(directory: str) -> str | None:
     """Search a directory for the first .icc/.icm file with CMYK color space."""
     if not os.path.isdir(directory):
         return None
@@ -78,7 +80,7 @@ def _find_cmyk_in_dir(directory):
     return None
 
 
-def _find_cmyk_profile():
+def _find_cmyk_profile() -> str | None:
     """Search system paths for a CMYK ICC profile.
 
     Returns:
@@ -131,7 +133,7 @@ def _find_cmyk_profile():
     return None
 
 
-def initialize():
+def initialize() -> None:
     """Eagerly initialize ICC profile search.
 
     Called from CLI at startup so the profile message prints before
@@ -140,7 +142,7 @@ def initialize():
     _ensure_initialized()
 
 
-def _ensure_initialized():
+def _ensure_initialized() -> None:
     """Lazy initialization: find profile, load, build transform.
 
     Called on first conversion attempt. Sets _default_cmyk_hash on success.
@@ -189,7 +191,7 @@ def _ensure_initialized():
     _default_cmyk_hash = profile_hash
 
 
-def get_cmyk_profile_hash():
+def get_cmyk_profile_hash() -> bytes | None:
     """Return the default CMYK profile hash, or None if disabled/unavailable.
 
     Triggers lazy initialization on first call.
@@ -198,7 +200,7 @@ def get_cmyk_profile_hash():
     return _default_cmyk_hash
 
 
-def convert_cmyk_color(c, m, y, k):
+def convert_cmyk_color(c: float, m: float, y: float, k: float) -> tuple[float, float, float] | None:
     """Convert a single CMYK color to sRGB using the default ICC profile.
 
     Args:
@@ -214,8 +216,9 @@ def convert_cmyk_color(c, m, y, k):
     return icc_profile.icc_convert_color(profile_hash, 4, [c, m, y, k])
 
 
-def convert_cmyk_image(sample_data, width, height, bits_per_component,
-                       decode_array):
+def convert_cmyk_image(sample_data: bytes, width: int, height: int,
+                       bits_per_component: int,
+                       decode_array: list[float] | None) -> bytearray | None:
     """Bulk CMYK image to Cairo BGRX conversion using the default ICC profile.
 
     Only handles 8-bit samples. Returns None for other bit depths or if ICC

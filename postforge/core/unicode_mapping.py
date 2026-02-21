@@ -1,6 +1,7 @@
 # PostForge - A PostScript Interpreter
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
+from __future__ import annotations
 
 """
 Unicode Mapping Module
@@ -10,6 +11,11 @@ Used by PDF device to generate searchable text from glyph names.
 
 Reference: https://github.com/adobe-type-tools/agl-aglfn
 """
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from . import types as ps
 
 # Adobe Glyph List (AGL) mapping - subset of commonly used glyph names
 # Format: glyph_name (bytes) -> Unicode character (str)
@@ -333,7 +339,7 @@ def glyph_name_to_unicode(glyph_name: bytes) -> str:
     return '\ufffd'
 
 
-def text_to_unicode(text_bytes: bytes, font_dict) -> str:
+def text_to_unicode(text_bytes: bytes, font_dict: ps.Dict) -> str:
     """
     Convert PostScript text bytes to Unicode string using font's encoding.
 

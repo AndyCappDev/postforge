@@ -1,6 +1,7 @@
 # PostForge - A PostScript Interpreter
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
+from __future__ import annotations
 
 import copy
 
@@ -36,7 +37,7 @@ UNSUPPORTED = 25
 CONFIGURATIONERROR = 26
 
 
-def e(ctxt, error_code: int, func_name: str):
+def e(ctxt: ps.Context, error_code: int, func_name: str) -> None:
     # Immediately pause execution history to preserve the actual error context
     # This prevents error handling operations from overwriting the history we care about
     ctxt.execution_history_paused = True

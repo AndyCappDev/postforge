@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 Type 2 CharString Interpreter for CFF Fonts
 
@@ -26,7 +28,6 @@ from . import color_space
 from . import error as ps_error
 from .display_list_builder import DisplayListBuilder
 from ..operators.matrix import _transform_point, _transform_delta
-from typing import Optional, Tuple
 
 
 class Type2Error(Exception):
@@ -34,7 +35,7 @@ class Type2Error(Exception):
     pass
 
 
-def _subr_bias(n_subrs):
+def _subr_bias(n_subrs: int) -> int:
     """Calculate subroutine bias per Type 2 spec."""
     if n_subrs < 1240:
         return 107
@@ -52,8 +53,8 @@ class Type2CharStringInterpreter:
     Type 1 CharStringInterpreter.
     """
 
-    def __init__(self, ctxt, font_dict, default_width_x, nominal_width_x,
-                 local_subrs, global_subrs, width_only_mode=False):
+    def __init__(self, ctxt: ps.Context, font_dict: ps.Dict, default_width_x: float, nominal_width_x: float,
+                 local_subrs: list[bytes], global_subrs: list[bytes], width_only_mode: bool = False) -> None:
         self.ctxt = ctxt
         self.font_dict = font_dict
         self.default_width_x = default_width_x
@@ -76,7 +77,7 @@ class Type2CharStringInterpreter:
         # Store show origin for coordinate transform (same pattern as Type 1)
         self.show_origin = ctxt.gstate.currentpoint if ctxt and not width_only_mode else None
 
-    def execute(self, charstring_data):
+    def execute(self, charstring_data: bytes) -> float | None:
         """Execute a Type 2 charstring.
 
         Returns advance width in character space, or None on failure.
@@ -84,7 +85,7 @@ class Type2CharStringInterpreter:
         self._execute_bytes(charstring_data)
         return self.advance_width
 
-    def _execute_bytes(self, data):
+    def _execute_bytes(self, data: bytes) -> None:
         """Execute charstring byte stream."""
         i = 0
         length = len(data)
@@ -154,7 +155,7 @@ class Type2CharStringInterpreter:
     # Width handling
     # -------------------------------------------------------------------
 
-    def _check_width(self, expected_args):
+    def _check_width(self, expected_args: int) -> None:
         """Check for optional width argument before first stack-clearing operator.
 
         Type 2 width rule: if stack has one extra argument beyond what the operator
@@ -179,7 +180,7 @@ class Type2CharStringInterpreter:
     # Coordinate transforms (same pattern as Type 1 interpreter)
     # -------------------------------------------------------------------
 
-    def _transform_glyph_to_device_space(self, glyph_x, glyph_y):
+    def _transform_glyph_to_device_space(self, glyph_x: float, glyph_y: float) -> tuple[float, float]:
         """Transform from character space to device space."""
         font_matrix = self.font_dict.val.get(b'FontMatrix')
         if font_matrix and font_matrix.TYPE == ps.T_ARRAY:
@@ -197,7 +198,7 @@ class Type2CharStringInterpreter:
     # Path helpers
     # -------------------------------------------------------------------
 
-    def _close_current_subpath(self):
+    def _close_current_subpath(self) -> None:
         """Close the current subpath if it has path elements beyond MoveTo.
 
         Type 2 implicitly closes subpaths on each moveto and endchar.
@@ -205,7 +206,7 @@ class Type2CharStringInterpreter:
         if (self.ctxt.gstate.path and len(self.ctxt.gstate.path[-1]) > 1):
             self.ctxt.gstate.path[-1].append(ps.ClosePath())
 
-    def _do_moveto(self, dx, dy):
+    def _do_moveto(self, dx: float, dy: float) -> None:
         """Relative moveto with path building."""
         self.current_point = (self.current_point[0] + dx, self.current_point[1] + dy)
 
@@ -228,7 +229,7 @@ class Type2CharStringInterpreter:
 
         self.ctxt.gstate.currentpoint = ps.Point(float(device_x), float(device_y))
 
-    def _do_lineto(self, dx, dy):
+    def _do_lineto(self, dx: float, dy: float) -> None:
         """Relative lineto with path building."""
         self.current_point = (self.current_point[0] + dx, self.current_point[1] + dy)
 
@@ -241,7 +242,7 @@ class Type2CharStringInterpreter:
         self.ctxt.gstate.path[-1].append(ps.LineTo(ps.Point(device_x, device_y)))
         self.ctxt.gstate.currentpoint = ps.Point(float(device_x), float(device_y))
 
-    def _do_curveto(self, dx1, dy1, dx2, dy2, dx3, dy3):
+    def _do_curveto(self, dx1: float, dy1: float, dx2: float, dy2: float, dx3: float, dy3: float) -> None:
         """Relative curveto with path building."""
         x1 = self.current_point[0] + dx1
         y1 = self.current_point[1] + dy1
@@ -269,7 +270,7 @@ class Type2CharStringInterpreter:
     # Operator dispatch
     # -------------------------------------------------------------------
 
-    def _execute_operator(self, op):
+    def _execute_operator(self, op: int) -> None:
         """Execute a single-byte Type 2 operator."""
         if op == 1:
             self._op_hstem()
@@ -315,7 +316,7 @@ class Type2CharStringInterpreter:
             self._op_hvcurveto()
         # else: unknown operator — ignore
 
-    def _execute_operator_12(self, sub_op):
+    def _execute_operator_12(self, sub_op: int) -> None:
         """Execute a two-byte (12, sub_op) operator."""
         if sub_op == 0:
             pass  # dotsection — deprecated, no-op
@@ -373,35 +374,35 @@ class Type2CharStringInterpreter:
     # Hint operators (stack-clearing, count stems, no path output)
     # -------------------------------------------------------------------
 
-    def _op_hstem(self):
+    def _op_hstem(self) -> None:
         """hstem: horizontal stem hints."""
         n_pairs = len(self.stack) // 2
         self._check_width(n_pairs * 2)
         self.num_h_hints += len(self.stack) // 2
         self.stack.clear()
 
-    def _op_vstem(self):
+    def _op_vstem(self) -> None:
         """vstem: vertical stem hints."""
         n_pairs = len(self.stack) // 2
         self._check_width(n_pairs * 2)
         self.num_v_hints += len(self.stack) // 2
         self.stack.clear()
 
-    def _op_hstemhm(self):
+    def _op_hstemhm(self) -> None:
         """hstemhm: horizontal stem hints (hintmask may follow)."""
         n_pairs = len(self.stack) // 2
         self._check_width(n_pairs * 2)
         self.num_h_hints += len(self.stack) // 2
         self.stack.clear()
 
-    def _op_vstemhm(self):
+    def _op_vstemhm(self) -> None:
         """vstemhm: vertical stem hints (hintmask may follow)."""
         n_pairs = len(self.stack) // 2
         self._check_width(n_pairs * 2)
         self.num_v_hints += len(self.stack) // 2
         self.stack.clear()
 
-    def _handle_hint_mask(self, op):
+    def _handle_hint_mask(self, op: int) -> None:
         """Handle hintmask (19) / cntrmask (20) — consume implicit vstems first."""
         # If stack has operands, they are implicit vstem hints
         if self.stack:
@@ -416,7 +417,7 @@ class Type2CharStringInterpreter:
     # Path construction operators
     # -------------------------------------------------------------------
 
-    def _op_rmoveto(self):
+    def _op_rmoveto(self) -> None:
         """rmoveto: dx dy"""
         self._check_width(2)
         if len(self.stack) < 2:
@@ -427,7 +428,7 @@ class Type2CharStringInterpreter:
         self.stack.clear()
         self._do_moveto(dx, dy)
 
-    def _op_hmoveto(self):
+    def _op_hmoveto(self) -> None:
         """hmoveto: dx"""
         self._check_width(1)
         if len(self.stack) < 1:
@@ -437,7 +438,7 @@ class Type2CharStringInterpreter:
         self.stack.clear()
         self._do_moveto(dx, 0.0)
 
-    def _op_vmoveto(self):
+    def _op_vmoveto(self) -> None:
         """vmoveto: dy"""
         self._check_width(1)
         if len(self.stack) < 1:
@@ -447,7 +448,7 @@ class Type2CharStringInterpreter:
         self.stack.clear()
         self._do_moveto(0.0, dy)
 
-    def _op_rlineto(self):
+    def _op_rlineto(self) -> None:
         """rlineto: {dx dy}+ — multiple relative lines."""
         args = self.stack[:]
         self.stack.clear()
@@ -456,7 +457,7 @@ class Type2CharStringInterpreter:
             self._do_lineto(args[i], args[i + 1])
             i += 2
 
-    def _op_hlineto(self):
+    def _op_hlineto(self) -> None:
         """hlineto: alternating horizontal/vertical lines.
 
         If odd arg count starts with dx; if even starts with dx.
@@ -472,7 +473,7 @@ class Type2CharStringInterpreter:
                 self._do_lineto(0.0, val)
             horizontal = not horizontal
 
-    def _op_vlineto(self):
+    def _op_vlineto(self) -> None:
         """vlineto: alternating vertical/horizontal lines."""
         args = self.stack[:]
         self.stack.clear()
@@ -484,7 +485,7 @@ class Type2CharStringInterpreter:
                 self._do_lineto(val, 0.0)
             vertical = not vertical
 
-    def _op_rrcurveto(self):
+    def _op_rrcurveto(self) -> None:
         """rrcurveto: {dx1 dy1 dx2 dy2 dx3 dy3}+ — multiple curves."""
         args = self.stack[:]
         self.stack.clear()
@@ -494,7 +495,7 @@ class Type2CharStringInterpreter:
                              args[i + 3], args[i + 4], args[i + 5])
             i += 6
 
-    def _op_hhcurveto(self):
+    def _op_hhcurveto(self) -> None:
         """hhcurveto: dy1? {dxa dxb dyb dxc}+
 
         All curves have dy1=0 and dyc=0 (horizontal tangents at start/end),
@@ -518,7 +519,7 @@ class Type2CharStringInterpreter:
             dy1_extra = 0.0
             i += 4
 
-    def _op_vvcurveto(self):
+    def _op_vvcurveto(self) -> None:
         """vvcurveto: dx1? {dya dxb dyb dyc}+
 
         All curves have dx1=0 and dxc=0 (vertical tangents at start/end),
@@ -541,7 +542,7 @@ class Type2CharStringInterpreter:
             dx1_extra = 0.0
             i += 4
 
-    def _op_hvcurveto(self):
+    def _op_hvcurveto(self) -> None:
         """hvcurveto: alternating h-start/v-end and v-start/h-end curves.
 
         First curve starts horizontal (dy1=0), ends vertical (dxf=0).
@@ -551,13 +552,13 @@ class Type2CharStringInterpreter:
         self.stack.clear()
         self._alternating_curves(args, start_horizontal=True)
 
-    def _op_vhcurveto(self):
+    def _op_vhcurveto(self) -> None:
         """vhcurveto: alternating v-start/h-end and h-start/v-end curves."""
         args = self.stack[:]
         self.stack.clear()
         self._alternating_curves(args, start_horizontal=False)
 
-    def _alternating_curves(self, args, start_horizontal):
+    def _alternating_curves(self, args: list[float], start_horizontal: bool) -> None:
         """Shared logic for hvcurveto / vhcurveto."""
         i = 0
         phase = start_horizontal
@@ -588,7 +589,7 @@ class Type2CharStringInterpreter:
 
             phase = not phase
 
-    def _op_rcurveline(self):
+    def _op_rcurveline(self) -> None:
         """rcurveline: {dx1 dy1 dx2 dy2 dx3 dy3}+ dxl dyl — curves then one line."""
         args = self.stack[:]
         self.stack.clear()
@@ -605,7 +606,7 @@ class Type2CharStringInterpreter:
         if i + 1 < len(args):
             self._do_lineto(args[i], args[i + 1])
 
-    def _op_rlinecurve(self):
+    def _op_rlinecurve(self) -> None:
         """rlinecurve: {dx dy}+ dx1 dy1 dx2 dy2 dx3 dy3 — lines then one curve."""
         args = self.stack[:]
         self.stack.clear()
@@ -625,7 +626,7 @@ class Type2CharStringInterpreter:
     # endchar
     # -------------------------------------------------------------------
 
-    def _op_endchar(self):
+    def _op_endchar(self) -> None:
         """endchar: finish character.
 
         If 4 extra args on stack: deprecated seac (accent composite).
@@ -678,7 +679,7 @@ class Type2CharStringInterpreter:
     # Subroutine operators
     # -------------------------------------------------------------------
 
-    def _op_callsubr(self):
+    def _op_callsubr(self) -> None:
         """callsubr: pop index, apply bias, execute local subroutine."""
         if not self.stack:
             return
@@ -691,7 +692,7 @@ class Type2CharStringInterpreter:
             if self.call_stack:
                 self.call_stack.pop()
 
-    def _op_callgsubr(self):
+    def _op_callgsubr(self) -> None:
         """callgsubr: pop index, apply bias, execute global subroutine."""
         if not self.stack:
             return
@@ -704,7 +705,7 @@ class Type2CharStringInterpreter:
             if self.call_stack:
                 self.call_stack.pop()
 
-    def _op_return(self):
+    def _op_return(self) -> None:
         """return: return from subroutine (handled by call stack pop in callsubr/callgsubr)."""
         pass  # Actual return is handled by the call stack in _execute_bytes
 
@@ -712,7 +713,7 @@ class Type2CharStringInterpreter:
     # Flex operators (12, 34-37)
     # -------------------------------------------------------------------
 
-    def _op12_hflex(self):
+    def _op12_hflex(self) -> None:
         """hflex: 7 args — dx1 dx2 dy2 dx3 dx4 dx5 dx6"""
         if len(self.stack) < 7:
             self.stack.clear()
@@ -730,7 +731,7 @@ class Type2CharStringInterpreter:
         # Second curve
         self._do_curveto(dx4, 0.0, dx5, -dy2, dx6, 0.0)
 
-    def _op12_flex(self):
+    def _op12_flex(self) -> None:
         """flex: 13 args — dx1 dy1 dx2 dy2 dx3 dy3 dx4 dy4 dx5 dy5 dx6 dy6 fd"""
         if len(self.stack) < 13:
             self.stack.clear()
@@ -746,7 +747,7 @@ class Type2CharStringInterpreter:
         self._do_curveto(dx1, dy1, dx2, dy2, dx3, dy3)
         self._do_curveto(dx4, dy4, dx5, dy5, dx6, dy6)
 
-    def _op12_hflex1(self):
+    def _op12_hflex1(self) -> None:
         """hflex1: 9 args — dx1 dy1 dx2 dy2 dx3 dx4 dx5 dy5 dx6"""
         if len(self.stack) < 9:
             self.stack.clear()
@@ -763,7 +764,7 @@ class Type2CharStringInterpreter:
         # Second curve (dy6 = -(dy1+dy2+dy5))
         self._do_curveto(dx4, 0.0, dx5, dy5, dx6, -(dy1 + dy2 + dy5))
 
-    def _op12_flex1(self):
+    def _op12_flex1(self) -> None:
         """flex1: 11 args — dx1 dy1 dx2 dy2 dx3 dy3 dx4 dy4 dx5 dy5 d6
 
         The last arg d6 is either dx6 or dy6 depending on cumulative direction.
@@ -797,43 +798,43 @@ class Type2CharStringInterpreter:
     # Arithmetic operators (12, N)
     # -------------------------------------------------------------------
 
-    def _op12_abs(self):
+    def _op12_abs(self) -> None:
         if self.stack:
             self.stack[-1] = abs(self.stack[-1])
 
-    def _op12_add(self):
+    def _op12_add(self) -> None:
         if len(self.stack) >= 2:
             b = self.stack.pop()
             a = self.stack.pop()
             self.stack.append(a + b)
 
-    def _op12_sub(self):
+    def _op12_sub(self) -> None:
         if len(self.stack) >= 2:
             b = self.stack.pop()
             a = self.stack.pop()
             self.stack.append(a - b)
 
-    def _op12_div(self):
+    def _op12_div(self) -> None:
         if len(self.stack) >= 2:
             b = self.stack.pop()
             a = self.stack.pop()
             self.stack.append(a / b if b != 0 else 0.0)
 
-    def _op12_neg(self):
+    def _op12_neg(self) -> None:
         if self.stack:
             self.stack[-1] = -self.stack[-1]
 
-    def _op12_mul(self):
+    def _op12_mul(self) -> None:
         if len(self.stack) >= 2:
             b = self.stack.pop()
             a = self.stack.pop()
             self.stack.append(a * b)
 
-    def _op12_sqrt(self):
+    def _op12_sqrt(self) -> None:
         if self.stack:
             self.stack[-1] = math.sqrt(abs(self.stack[-1]))
 
-    def _op12_random(self):
+    def _op12_random(self) -> None:
         # Return a pseudo-random number (spec says > 0, <= 1)
         self.stack.append(1.0)  # Simplification
 
@@ -841,30 +842,30 @@ class Type2CharStringInterpreter:
     # Logic operators (12, N)
     # -------------------------------------------------------------------
 
-    def _op12_and(self):
+    def _op12_and(self) -> None:
         if len(self.stack) >= 2:
             b = self.stack.pop()
             a = self.stack.pop()
             self.stack.append(1.0 if (a != 0 and b != 0) else 0.0)
 
-    def _op12_or(self):
+    def _op12_or(self) -> None:
         if len(self.stack) >= 2:
             b = self.stack.pop()
             a = self.stack.pop()
             self.stack.append(1.0 if (a != 0 or b != 0) else 0.0)
 
-    def _op12_not(self):
+    def _op12_not(self) -> None:
         if self.stack:
             a = self.stack.pop()
             self.stack.append(1.0 if a == 0 else 0.0)
 
-    def _op12_eq(self):
+    def _op12_eq(self) -> None:
         if len(self.stack) >= 2:
             b = self.stack.pop()
             a = self.stack.pop()
             self.stack.append(1.0 if a == b else 0.0)
 
-    def _op12_ifelse(self):
+    def _op12_ifelse(self) -> None:
         """ifelse: s1 s2 v1 v2 → s1 if v1<=v2, else s2"""
         if len(self.stack) >= 4:
             v2 = self.stack.pop()
@@ -877,19 +878,19 @@ class Type2CharStringInterpreter:
     # Stack manipulation operators (12, N)
     # -------------------------------------------------------------------
 
-    def _op12_drop(self):
+    def _op12_drop(self) -> None:
         if self.stack:
             self.stack.pop()
 
-    def _op12_dup(self):
+    def _op12_dup(self) -> None:
         if self.stack:
             self.stack.append(self.stack[-1])
 
-    def _op12_exch(self):
+    def _op12_exch(self) -> None:
         if len(self.stack) >= 2:
             self.stack[-1], self.stack[-2] = self.stack[-2], self.stack[-1]
 
-    def _op12_index(self):
+    def _op12_index(self) -> None:
         """index: i → stack[-(i+1)] (copy ith element from top)."""
         if self.stack:
             idx = int(self.stack.pop())
@@ -898,7 +899,7 @@ class Type2CharStringInterpreter:
             if idx < len(self.stack):
                 self.stack.append(self.stack[-(idx + 1)])
 
-    def _op12_roll(self):
+    def _op12_roll(self) -> None:
         """roll: n j — roll top n elements by j positions."""
         if len(self.stack) >= 2:
             j = int(self.stack.pop())
@@ -913,7 +914,7 @@ class Type2CharStringInterpreter:
     # Storage operators (12, N) — transient array
     # -------------------------------------------------------------------
 
-    def _op12_put(self):
+    def _op12_put(self) -> None:
         """put: val i → transient[i] = val"""
         if len(self.stack) >= 2:
             i = int(self.stack.pop())
@@ -921,7 +922,7 @@ class Type2CharStringInterpreter:
             if 0 <= i < 32:
                 self.transient_array[i] = val
 
-    def _op12_get(self):
+    def _op12_get(self) -> None:
         """get: i → transient[i]"""
         if self.stack:
             i = int(self.stack.pop())
@@ -935,10 +936,10 @@ class Type2CharStringInterpreter:
 # Public API
 # ---------------------------------------------------------------------------
 
-def type2_charstring_to_width(charstring_data, ctxt, font_dict,
-                               default_width_x, nominal_width_x,
-                               local_subrs, global_subrs,
-                               width_only=False):
+def type2_charstring_to_width(charstring_data: bytes, ctxt: ps.Context, font_dict: ps.Dict,
+                               default_width_x: float, nominal_width_x: float,
+                               local_subrs: list[bytes], global_subrs: list[bytes],
+                               width_only: bool = False) -> float | None:
     """Execute a Type 2 charstring and return width in user space.
 
     This is the main entry point for CFF font rendering, mirroring

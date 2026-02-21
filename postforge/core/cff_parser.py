@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 CFF (Compact Font Format) Binary Parser
 
@@ -38,24 +40,24 @@ class CFFFont:
         'is_cid', 'fd_array', 'fd_select', 'ros', 'raw_data',
     )
 
-    def __init__(self):
-        self.name = ''
-        self.top_dict = {}
-        self.char_strings = []      # GID-indexed charstring bytes
-        self.charset = []            # GID -> glyph name
-        self.encoding = [0] * 256   # char_code -> GID
-        self.font_matrix = [0.001, 0.0, 0.0, 0.001, 0.0, 0.0]
-        self.font_bbox = [0, 0, 0, 0]
-        self.private_dict = {}
-        self.local_subrs = []
-        self.global_subrs = []
-        self.default_width_x = 0.0
-        self.nominal_width_x = 0.0
-        self.is_cid = False
-        self.fd_array = []           # Per-FD private dicts (CID only)
-        self.fd_select = []          # GID -> FD index (CID only)
-        self.ros = None              # (Registry, Ordering, Supplement) for CID
-        self.raw_data = None         # Original binary data (for PDF embedding)
+    def __init__(self) -> None:
+        self.name: str = ''
+        self.top_dict: dict = {}
+        self.char_strings: list[bytes] = []      # GID-indexed charstring bytes
+        self.charset: list[str] = []            # GID -> glyph name
+        self.encoding: list[int] = [0] * 256   # char_code -> GID
+        self.font_matrix: list[float] = [0.001, 0.0, 0.0, 0.001, 0.0, 0.0]
+        self.font_bbox: list[float] = [0, 0, 0, 0]
+        self.private_dict: dict = {}
+        self.local_subrs: list[bytes] = []
+        self.global_subrs: list[bytes] = []
+        self.default_width_x: float = 0.0
+        self.nominal_width_x: float = 0.0
+        self.is_cid: bool = False
+        self.fd_array: list[dict] = []           # Per-FD private dicts (CID only)
+        self.fd_select: list[int] = []          # GID -> FD index (CID only)
+        self.ros: tuple[str, str, int] | None = None  # (Registry, Ordering, Supplement) for CID
+        self.raw_data: bytes | None = None         # Original binary data (for PDF embedding)
 
 
 # ---------------------------------------------------------------------------
@@ -326,17 +328,17 @@ _PRIVATE_DICT_OPERATORS = {
 # Low-Level Binary Helpers
 # ---------------------------------------------------------------------------
 
-def _read_card8(data, offset):
+def _read_card8(data: bytes, offset: int) -> tuple[int, int]:
     """Read Card8 (unsigned byte)."""
     return data[offset], offset + 1
 
 
-def _read_card16(data, offset):
+def _read_card16(data: bytes, offset: int) -> tuple[int, int]:
     """Read Card16 (unsigned 16-bit big-endian)."""
     return struct.unpack_from('>H', data, offset)[0], offset + 2
 
 
-def _read_offset(data, offset, off_size):
+def _read_offset(data: bytes, offset: int, off_size: int) -> tuple[int, int]:
     """Read an offset of off_size bytes (1-4), big-endian unsigned."""
     if off_size == 1:
         return data[offset], offset + 1
@@ -355,7 +357,7 @@ def _read_offset(data, offset, off_size):
 # INDEX Parsing
 # ---------------------------------------------------------------------------
 
-def _parse_index(data, offset):
+def _parse_index(data: bytes, offset: int) -> tuple[list[bytes], int]:
     """Parse a CFF INDEX structure.
 
     Returns (list_of_bytes_objects, offset_after_index).
@@ -390,7 +392,7 @@ def _parse_index(data, offset):
 # DICT Parsing
 # ---------------------------------------------------------------------------
 
-def _parse_dict_data(data):
+def _parse_dict_data(data: bytes) -> dict:
     """Parse a CFF DICT from raw bytes into {operator: operands} dict.
 
     Operands are accumulated before each operator. Delta arrays are NOT
@@ -498,7 +500,7 @@ def _parse_dict_data(data):
     return result
 
 
-def _decode_delta(values):
+def _decode_delta(values: list[float]) -> list[float]:
     """Decode a delta-encoded array: [a0, d1, d2, ...] -> [a0, a0+d1, a0+d1+d2, ...]"""
     result = []
     accum = 0
@@ -512,7 +514,7 @@ def _decode_delta(values):
 # SID Resolution
 # ---------------------------------------------------------------------------
 
-def _get_sid_string(sid, string_index):
+def _get_sid_string(sid: int, string_index: list[bytes]) -> str:
     """Resolve a String ID (SID) to its string.
 
     SID 0-390 are predefined standard strings.
@@ -530,7 +532,7 @@ def _get_sid_string(sid, string_index):
 # Charset Parsing
 # ---------------------------------------------------------------------------
 
-def _parse_charset(data, offset, n_glyphs, string_index):
+def _parse_charset(data: bytes, offset: int, n_glyphs: int, string_index: list[bytes]) -> list[str]:
     """Parse a charset structure. Returns list of glyph names (GID 0 = .notdef always)."""
     names = ['.notdef']
 
@@ -568,7 +570,7 @@ def _parse_charset(data, offset, n_glyphs, string_index):
     return names
 
 
-def _get_predefined_charset(charset_id, n_glyphs, string_index):
+def _get_predefined_charset(charset_id: int, n_glyphs: int, string_index: list[bytes]) -> list[str]:
     """Return glyph names for a predefined charset ID."""
     if charset_id == 0:
         sids = _ISO_ADOBE_CHARSET
@@ -596,7 +598,7 @@ def _get_predefined_charset(charset_id, n_glyphs, string_index):
 # Encoding Parsing
 # ---------------------------------------------------------------------------
 
-def _parse_encoding(data, offset, charset, string_index):
+def _parse_encoding(data: bytes, offset: int, charset: list[str], string_index: list[bytes]) -> list[int]:
     """Parse an encoding structure. Returns 256-element list (code -> GID).
 
     The encoding maps character codes to GIDs. We build a name->GID lookup
@@ -657,7 +659,7 @@ def _parse_encoding(data, offset, charset, string_index):
     return encoding
 
 
-def _get_predefined_encoding(encoding_id, charset, string_index):
+def _get_predefined_encoding(encoding_id: int, charset: list[str], string_index: list[bytes]) -> list[int]:
     """Build encoding for predefined encoding IDs (0=Standard, 1=Expert)."""
     encoding = [0] * 256
 
@@ -688,7 +690,7 @@ def _get_predefined_encoding(encoding_id, charset, string_index):
 # FDSelect Parsing (CID fonts)
 # ---------------------------------------------------------------------------
 
-def _parse_fd_select(data, offset, n_glyphs):
+def _parse_fd_select(data: bytes, offset: int, n_glyphs: int) -> list[int]:
     """Parse FDSelect structure. Returns list of FD indices (GID-indexed)."""
     fmt, offset = _read_card8(data, offset)
 
@@ -724,7 +726,7 @@ def _parse_fd_select(data, offset, n_glyphs):
 # Main Parser
 # ---------------------------------------------------------------------------
 
-def parse_cff(data):
+def parse_cff(data: bytes) -> list[CFFFont]:
     """Parse CFF binary data into a list of CFFFont objects.
 
     Args:

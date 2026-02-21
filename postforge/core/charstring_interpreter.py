@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 CharString Interpreter for Type 1 Font CharString Execution
 
@@ -23,7 +25,6 @@ Based on:
 from . import types as ps
 from . import color_space
 from . import error as ps_error
-from typing import List, Tuple, Optional, Union
 from ..operators.matrix import _transform_point, _transform_delta
 # Direct path manipulation - no longer import PostScript operators to avoid stack issues
 from .display_list_builder import DisplayListBuilder
@@ -37,7 +38,7 @@ class CharStringInterpreter:
     to the PostScript graphics state path, just like regular path operators.
     """
     
-    def __init__(self, ctxt, private_dict: ps.Dict, font_dict: ps.Dict, width_only_mode: bool = False):
+    def __init__(self, ctxt: ps.Context, private_dict: ps.Dict, font_dict: ps.Dict, width_only_mode: bool = False) -> None:
         """
         Initialize CharString interpreter
         
@@ -68,7 +69,7 @@ class CharStringInterpreter:
         self.flex_active = False  # True when in flex hint accumulation mode
         self.flex_points = []  # Accumulated flex points (up to 7 coordinate pairs)
         
-    def execute_charstring_for_width(self, encrypted_charstring: bytes) -> Optional[float]:
+    def execute_charstring_for_width(self, encrypted_charstring: bytes) -> float | None:
         """
         Execute CharString, adding paths to graphics state and returning character width
 
@@ -147,7 +148,7 @@ class CharStringInterpreter:
 
         return bytes(decrypted_bytes[n_iv:])
     
-    def _parse_charstring_commands(self, charstring_data: bytes) -> List[Tuple[int, List]]:
+    def _parse_charstring_commands(self, charstring_data: bytes) -> list[tuple[int, list]]:
         """
         Parse Type 1 CharString commands from decrypted data
         
@@ -238,7 +239,7 @@ class CharStringInterpreter:
         
         return commands
     
-    def _execute_type1_command(self, command_code: Union[int, Tuple[int, int]], args: List[int]):
+    def _execute_type1_command(self, command_code: int | tuple[int, int], args: list[int]) -> None:
         """
         Execute individual Type 1 CharString command
         
@@ -308,7 +309,7 @@ class CharStringInterpreter:
     
     # Type 1 Command Implementations
     
-    def _cmd_hsbw(self):
+    def _cmd_hsbw(self) -> None:
         """hsbw: Set horizontal sidebearing and width"""
         if len(self.stack) < 2:
             raise CharStringError("hsbw: stack underflow")
@@ -320,7 +321,7 @@ class CharStringInterpreter:
         # This is the character's internal coordinate system - don't update gstate.currentpoint
         self.current_point = (self.left_sidebearing, 0.0)
         
-    def _cmd_sbw(self):
+    def _cmd_sbw(self) -> None:
         """sbw: Set sidebearing and width (both x and y components)"""
         if len(self.stack) < 4:
             raise CharStringError("sbw: stack underflow")
@@ -334,7 +335,7 @@ class CharStringInterpreter:
         # This is the character's internal coordinate system - don't update gstate.currentpoint
         self.current_point = (self.left_sidebearing, self.sidebearing_y)
     
-    def _cmd_rmoveto(self):
+    def _cmd_rmoveto(self) -> None:
         """rmoveto: Relative move to"""
         if len(self.stack) < 2:
             raise CharStringError("rmoveto: stack underflow")
@@ -370,7 +371,7 @@ class CharStringInterpreter:
         # Update the currentpoint (essential for relative operations)
         self.ctxt.gstate.currentpoint = ps.Point(float(device_x), float(device_y))
 
-    def _cmd_hmoveto(self):
+    def _cmd_hmoveto(self) -> None:
         """hmoveto: Horizontal move to (equivalent to dx 0 rmoveto)"""
         if len(self.stack) < 1:
             raise CharStringError("hmoveto: stack underflow")
@@ -404,7 +405,7 @@ class CharStringInterpreter:
         # Update the currentpoint (essential for relative operations)
         self.ctxt.gstate.currentpoint = ps.Point(float(device_x), float(device_y))
 
-    def _cmd_vmoveto(self):
+    def _cmd_vmoveto(self) -> None:
         """vmoveto: Vertical move to (equivalent to 0 dy rmoveto)"""
         if len(self.stack) < 1:
             raise CharStringError("vmoveto: stack underflow")
@@ -438,7 +439,7 @@ class CharStringInterpreter:
         # Update the currentpoint (essential for relative operations)
         self.ctxt.gstate.currentpoint = ps.Point(float(device_x), float(device_y))
 
-    def _cmd_rlineto(self):
+    def _cmd_rlineto(self) -> None:
         """rlineto: Relative line to"""
         if len(self.stack) < 2:
             raise CharStringError("rlineto: stack underflow")
@@ -464,7 +465,7 @@ class CharStringInterpreter:
         # Update the currentpoint (essential for relative operations)
         self.ctxt.gstate.currentpoint = ps.Point(float(device_x), float(device_y))
     
-    def _cmd_hlineto(self):
+    def _cmd_hlineto(self) -> None:
         """hlineto: Horizontal line to (equivalent to dx 0 rlineto)"""
         if len(self.stack) < 1:
             raise CharStringError("hlineto: stack underflow")
@@ -488,7 +489,7 @@ class CharStringInterpreter:
         # Update the currentpoint (essential for relative operations)
         self.ctxt.gstate.currentpoint = ps.Point(float(device_x), float(device_y))
     
-    def _cmd_vlineto(self):
+    def _cmd_vlineto(self) -> None:
         """vlineto: Vertical line to (equivalent to 0 dy rlineto)"""
         if len(self.stack) < 1:
             raise CharStringError("vlineto: stack underflow")
@@ -512,7 +513,7 @@ class CharStringInterpreter:
         # Update the currentpoint (essential for relative operations)
         self.ctxt.gstate.currentpoint = ps.Point(float(device_x), float(device_y))
     
-    def _cmd_rrcurveto(self):
+    def _cmd_rrcurveto(self) -> None:
         """rrcurveto: Relative curve to with relative control points"""
         if len(self.stack) < 6:
             raise CharStringError("rrcurveto: stack underflow")
@@ -554,7 +555,7 @@ class CharStringInterpreter:
         # Update the currentpoint to end of curve (essential for relative operations)
         self.ctxt.gstate.currentpoint = ps.Point(float(device_x3), float(device_y3))
     
-    def _cmd_hvcurveto(self):
+    def _cmd_hvcurveto(self) -> None:
         """hvcurveto: Horizontal-vertical curve to"""
         if len(self.stack) < 4:
             raise CharStringError("hvcurveto: stack underflow")
@@ -594,7 +595,7 @@ class CharStringInterpreter:
         # Update the currentpoint to end of curve (essential for relative operations)
         self.ctxt.gstate.currentpoint = ps.Point(float(device_x3), float(device_y3))
     
-    def _cmd_vhcurveto(self):
+    def _cmd_vhcurveto(self) -> None:
         """vhcurveto: Vertical-horizontal curve to"""
         if len(self.stack) < 4:
             raise CharStringError("vhcurveto: stack underflow")
@@ -634,7 +635,7 @@ class CharStringInterpreter:
         # Update the currentpoint to end of curve (essential for relative operations)
         self.ctxt.gstate.currentpoint = ps.Point(float(device_x3), float(device_y3))
     
-    def _cmd_closepath(self):
+    def _cmd_closepath(self) -> None:
         """closepath: Close current subpath"""
         # Skip path operations in width-only mode
         if self.width_only_mode:
@@ -646,7 +647,7 @@ class CharStringInterpreter:
         # Note: Type 1 closepath does NOT update current point (unlike PostScript closepath)
         # So we don't modify currentpoint here
     
-    def _cmd_endchar(self):
+    def _cmd_endchar(self) -> None:
         """endchar: End character definition"""
         # This command ends the CharString execution and renders the glyph
         # Rendering method depends on PaintType: 0=fill, 2=stroke
@@ -688,7 +689,7 @@ class CharStringInterpreter:
     
     # Hint Commands (store hint information but don't affect path)
     
-    def _cmd_hstem(self):
+    def _cmd_hstem(self) -> None:
         """hstem: Horizontal stem hint"""
         if len(self.stack) < 2:
             raise CharStringError("hstem: stack underflow")
@@ -699,7 +700,7 @@ class CharStringInterpreter:
         # Store hint information (could be used for font hinting in future)
         # For now, just consume the arguments
     
-    def _cmd_vstem(self):
+    def _cmd_vstem(self) -> None:
         """vstem: Vertical stem hint"""
         if len(self.stack) < 2:
             raise CharStringError("vstem: stack underflow")
@@ -710,7 +711,7 @@ class CharStringInterpreter:
         # Store hint information (could be used for font hinting in future)
         # For now, just consume the arguments
     
-    def _cmd_hstem3(self):
+    def _cmd_hstem3(self) -> None:
         """hstem3: Three horizontal stem hints"""
         if len(self.stack) < 6:
             raise CharStringError("hstem3: stack underflow")
@@ -719,7 +720,7 @@ class CharStringInterpreter:
         for _ in range(6):
             self.stack.pop()
     
-    def _cmd_vstem3(self):
+    def _cmd_vstem3(self) -> None:
         """vstem3: Three vertical stem hints"""
         if len(self.stack) < 6:
             raise CharStringError("vstem3: stack underflow")
@@ -728,14 +729,14 @@ class CharStringInterpreter:
         for _ in range(6):
             self.stack.pop()
     
-    def _cmd_dotsection(self):
+    def _cmd_dotsection(self) -> None:
         """dotsection: Hint for dot sections (i, j, !)"""
         # No arguments, just a hint marker
         pass
     
     # Subroutine Commands (not implemented - would require Subrs array access)
     
-    def _calc_subr_bias(self, subr_count):
+    def _calc_subr_bias(self, subr_count: int) -> int:
         """
         Calculate subroutine bias for Type 2-style CharStrings.
 
@@ -756,7 +757,7 @@ class CharStringInterpreter:
         else:
             return 32768
 
-    def _cmd_callsubr(self):
+    def _cmd_callsubr(self) -> None:
         """
         callsubr: Call CharString subroutine
 
@@ -822,13 +823,13 @@ class CharStringInterpreter:
         # may leave values on the stack for the caller to use
         self.execute_charstring_for_width(encrypted_charstring)
     
-    def _cmd_return(self):
+    def _cmd_return(self) -> None:
         """return: Return from subroutine"""
         # No-op: callsubr executes subroutines inline, so return is implicit
     
     # Arithmetic Commands
     
-    def _cmd_div(self):
+    def _cmd_div(self) -> None:
         """div: Divide two numbers"""
         if len(self.stack) < 2:
             raise CharStringError("div: stack underflow")
@@ -844,7 +845,7 @@ class CharStringInterpreter:
     
     # OtherSubrs Commands - Flex hints (0, 1, 2) and hint replacement (3)
 
-    def _cmd_callothersubr(self):
+    def _cmd_callothersubr(self) -> None:
         """
         callothersubr: Call OtherSubrs procedure
 
@@ -894,12 +895,12 @@ class CharStringInterpreter:
             for arg in args:
                 self.ps_stack.append(arg)
 
-    def _othersubr_start_flex(self):
+    def _othersubr_start_flex(self) -> None:
         """OtherSubrs 1: Initialize flex hint accumulation"""
         self.flex_active = True
         self.flex_points = []
 
-    def _othersubr_add_flex(self):
+    def _othersubr_add_flex(self) -> None:
         """OtherSubrs 2: Add current point to flex point list"""
         if self.flex_active:
             # Store current point as a flex control point
@@ -908,7 +909,7 @@ class CharStringInterpreter:
         self.ps_stack.append(self.current_point[1])  # y first (will be popped second)
         self.ps_stack.append(self.current_point[0])  # x second (will be popped first)
 
-    def _othersubr_end_flex(self, args):
+    def _othersubr_end_flex(self, args: list[float]) -> None:
         """
         OtherSubrs 0: End flex and draw the curves
 
@@ -978,7 +979,7 @@ class CharStringInterpreter:
         # Clear flex points
         self.flex_points = []
 
-    def _cmd_pop(self):
+    def _cmd_pop(self) -> None:
         """pop: Transfer value from PostScript stack to CharString stack"""
         if len(self.ps_stack) < 1:
             # If PS stack is empty, push 0 as fallback (some fonts expect this)
@@ -986,7 +987,7 @@ class CharStringInterpreter:
         else:
             self.stack.append(self.ps_stack.pop())
 
-    def _cmd_setcurrentpoint(self):
+    def _cmd_setcurrentpoint(self) -> None:
         """setcurrentpoint: Set current point explicitly"""
         if len(self.stack) < 2:
             raise CharStringError("setcurrentpoint: stack underflow")
@@ -998,7 +999,7 @@ class CharStringInterpreter:
         # This is the character's internal coordinate system - don't update gstate.currentpoint
         self.current_point = (x, y)
     
-    def _cmd_seac(self):
+    def _cmd_seac(self) -> None:
         """seac: Standard encoding accented character
 
         Builds a composite glyph from a base character and an accent character.
@@ -1097,7 +1098,7 @@ class CharStringInterpreter:
         self.advance_width = saved_advance_width
         self.left_sidebearing = saved_left_sidebearing
 
-    def _execute_component_charstring(self, encrypted_charstring: bytes):
+    def _execute_component_charstring(self, encrypted_charstring: bytes) -> None:
         """Execute a component CharString (for seac), adding paths without finalizing.
 
         Similar to execute_charstring_for_width but doesn't return width and
@@ -1118,7 +1119,7 @@ class CharStringInterpreter:
             self._execute_type1_command(command_code, args)
 
 
-    def _transform_glyph_to_device_space(self, glyph_x: float, glyph_y: float) -> Tuple[float, float]:
+    def _transform_glyph_to_device_space(self, glyph_x: float, glyph_y: float) -> tuple[float, float]:
         """Transform coordinates from character space to device space
         
         Correct PostScript coordinate transformation:
@@ -1159,7 +1160,7 @@ class CharStringError(Exception):
     pass
 
 
-def charstring_to_width(encrypted_charstring: bytes, ctxt, private_dict: ps.Dict, font_dict: ps.Dict, width_only: bool = False) -> Optional[float]:
+def charstring_to_width(encrypted_charstring: bytes, ctxt: ps.Context, private_dict: ps.Dict, font_dict: ps.Dict, width_only: bool = False) -> float | None:
     """
     Convenience function: Execute CharString and return character width in user space
 

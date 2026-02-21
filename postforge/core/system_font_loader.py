@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 System Font Loader — loads binary OTF/TTF system fonts into PostForge.
 
@@ -26,7 +28,7 @@ logger = logging.getLogger(__name__)
 _unicode_to_glyph = None
 
 
-def _get_unicode_to_glyph():
+def _get_unicode_to_glyph() -> dict[int, bytes]:
     """Return the reverse AGL mapping: Unicode codepoint → glyph name bytes."""
     global _unicode_to_glyph
     if _unicode_to_glyph is None:
@@ -41,7 +43,7 @@ def _get_unicode_to_glyph():
     return _unicode_to_glyph
 
 
-def load_otf_cff(ctxt, file_path):
+def load_otf_cff(ctxt: ps.Context, file_path: str) -> bool:
     """Load an OTF font with CFF outlines.
 
     Extracts the CFF table, parses it, and registers each font found
@@ -92,7 +94,7 @@ def load_otf_cff(ctxt, file_path):
     return True
 
 
-def load_ttf(ctxt, file_path):
+def load_ttf(ctxt: ps.Context, file_path: str) -> bool:
     """Load a TTF or OTF font with TrueType outlines as a Type 42 font.
 
     Builds a Type 42 font dictionary with sfnts, Encoding, and CharStrings,
@@ -198,7 +200,7 @@ def load_ttf(ctxt, file_path):
     return True
 
 
-def _extract_ps_name(data):
+def _extract_ps_name(data: bytes) -> str | None:
     """Extract PostScript name (nameID 6) from the name table.
 
     Returns str or None.
@@ -244,7 +246,7 @@ def _extract_ps_name(data):
     return mac_name
 
 
-def _build_encoding_and_charstrings(data, units_per_em):
+def _build_encoding_and_charstrings(data: bytes, units_per_em: int) -> tuple[list[bytes], dict[bytes, int]]:
     """Build Encoding array and CharStrings dict from cmap table.
 
     Returns:
@@ -303,7 +305,7 @@ def _build_encoding_and_charstrings(data, units_per_em):
     return encoding_arr, charstrings_dict
 
 
-def _parse_cmap(data, cmap_offset, cmap_length):
+def _parse_cmap(data: bytes, cmap_offset: int, cmap_length: int) -> dict[int, int]:
     """Parse cmap table to build Unicode codepoint → GID mapping.
 
     Supports format 4 (BMP) and format 12 (full Unicode).
@@ -364,7 +366,7 @@ def _parse_cmap(data, cmap_offset, cmap_length):
     return {}
 
 
-def _parse_cmap_format4(tbl, offset):
+def _parse_cmap_format4(tbl: bytes, offset: int) -> dict[int, int]:
     """Parse cmap format 4 (segment mapping to delta values)."""
     if offset + 14 > len(tbl):
         return {}
@@ -407,7 +409,7 @@ def _parse_cmap_format4(tbl, offset):
     return result
 
 
-def _parse_cmap_format12(tbl, offset):
+def _parse_cmap_format12(tbl: bytes, offset: int) -> dict[int, int]:
     """Parse cmap format 12 (segmented coverage)."""
     if offset + 16 > len(tbl):
         return {}
@@ -433,7 +435,7 @@ def _parse_cmap_format12(tbl, offset):
     return result
 
 
-def _parse_post_table(data):
+def _parse_post_table(data: bytes) -> dict[int, bytes]:
     """Parse post table to get GID → glyph name mapping.
 
     Returns dict: GID (int) → glyph name (bytes)
@@ -509,7 +511,7 @@ _MAC_GLYPH_NAMES = [
 ]
 
 
-def _parse_post_format2(tbl):
+def _parse_post_format2(tbl: bytes) -> dict[int, bytes]:
     """Parse post table format 2.0 for GID → glyph name mapping."""
     if len(tbl) < 34:
         return {}
