@@ -80,7 +80,7 @@ def _print_help(op):
     print(doc)
 
 
-def help(ctxt, ostack):
+def ps_help(ctxt, ostack):
     """
     name **help** -
 
@@ -94,17 +94,17 @@ def help(ctxt, ostack):
     """
 
     if len(ostack) < 1:
-        _print_help(help)
+        _print_help(ps_help)
         return
 
     if ostack[-1].TYPE != ps.T_NAME:
-        return ps_error.e(ctxt, ps_error.TYPECHECK, help.__name__)
+        return ps_error.e(ctxt, ps_error.TYPECHECK, "help")
 
     obj = ps_dict.lookup(ctxt, ostack[-1])
     if obj is None:
         return ps_error.e(ctxt, ps_error.UNDEFINED, ostack[-1].val.decode("ascii"))
     if obj.TYPE != ps.T_OPERATOR:
-        return ps_error.e(ctxt, ps_error.TYPECHECK, help.__name__)
+        return ps_error.e(ctxt, ps_error.TYPECHECK, "help")
 
     ostack.pop()
     _print_help(obj.val)

@@ -316,7 +316,7 @@ def create_system_dict(ctxt, name: bytes) -> dict:
         ("echo", ps.Operator, ps_misc.echo),
         ("eexec", ps.Operator, ps_misc.eexec),
         ("exechistorystack", ps.Operator, ps_misc.exechistorystack),
-        ("help", ps.Operator, ps_misc.help),
+        ("help", ps.Operator, ps_misc.ps_help),
         ("internaldict", ps.Operator, ps_misc.internaldict),
         ("loopname", ps.Operator, ps_misc.loopname),
         ("pauseexechistory", ps.Operator, ps_misc.pauseexechistory),
