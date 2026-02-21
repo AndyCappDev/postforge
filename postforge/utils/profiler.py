@@ -138,15 +138,19 @@ class NoOpBackend(ProfilerBackend):
         self.enabled = False
         
     def start_profiling(self):
+        """No-op: profiling is disabled."""
         pass
-        
+
     def stop_profiling(self):
+        """No-op: profiling is disabled."""
         pass
-        
+
     def generate_report(self) -> str:
+        """Return a message indicating profiling is disabled."""
         return "Profiling disabled"
-        
+
     def save_results(self):
+        """No-op: profiling is disabled."""
         pass
 
 
