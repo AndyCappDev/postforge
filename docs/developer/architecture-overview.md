@@ -12,8 +12,8 @@ Every PostScript program flows through the same pipeline:
 ```
                                                   ┌──────────────┐
 PostScript Source ──► Tokenizer ──► Execution ──► │ Display List │──► Output Device
-  (.ps file,          extracts       Engine       │  (per page)  │    (PNG, PDF,
-   string, or         tokens from    (exec_exec)  └──────────────┘     SVG, Qt)
+  (.ps file,          extracts       Engine       │  (per page)  │    (PNG, PDF, SVG,
+   string, or         tokens from    (exec_exec)  └──────────────┘     TIFF, Qt)
    interactive)       byte streams
 ```
 
@@ -480,30 +480,27 @@ without involving Cairo at all.
 ### Device Architecture
 
 ```
-                         ┌────────────────────────────────┐
-                         │  Shared Cairo Rendering        │
-                         │  (devices/common/)             │
-                         │                                │
-                         │  cairo_renderer.py  - dispatch │
-                         │  cairo_images.py    - images   │
-                         │  cairo_patterns.py  - patterns │
-                         │  cairo_shading.py   - shading  │
-                         └──────┬───────┬───────┬─────────┘
-                                │       │       │
-                    ┌───────────┘       │       └───────────┐
-                    ▼                   ▼                   ▼
-          ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
-          │  PNG     │   │  PDF     │   │  SVG     │   │  Qt      │
-          │  device  │   │  device  │   │  device  │   │  device  │
-          └──────────┘   └──────────┘   └──────────┘   └──────────┘
-                                        │
-                                ┌───────┴─────────┐
-                                │ Font embedding  │
-                                │ (font_embedder, │
-                                │  cid_font_      │
-                                │  embedder,      │
-                                │  pdf_injector)  │
-                                └─────────────────┘
+                    ┌────────────────────────────────────────────────────────────────┐
+                    │                   Shared Cairo Rendering                       │
+                    │                    (devices/common/)                           │
+                    │                                                                │
+                    │  cairo_renderer.py - dispatch     cairo_patterns.py - patterns │
+                    │  cairo_images.py   - images       cairo_shading.py  - shading  │
+                    └─────┬────────────┬────────────┬─────────────┬────────────┬─────┘
+                          │            │            │             │            │
+                          ▼            ▼            ▼             ▼            ▼
+                     ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
+                     │   PNG    │ │   PDF    │ │   SVG    │ │   TIFF   │ │    Qt    │
+                     │  device  │ │  device  │ │  device  │ │  device  │ │  device  │
+                     └──────────┘ └────┬─────┘ └──────────┘ └──────────┘ └──────────┘
+                                       │
+                              ┌────────┴────────┐
+                              │ Font embedding  │
+                              │ (font_embedder, │
+                              │  cid_font_      │
+                              │  embedder,      │
+                              │  pdf_injector)  │
+                              └─────────────────┘
 ```
 
 **PNG** (`postforge/devices/png/png.py`) — Creates a Cairo ImageSurface, calls
@@ -522,6 +519,13 @@ elements with CSS font-family fallback chains. This can be overridden with
 `--text-as-paths` to render text as path outlines instead. Each page produces
 a separate `.svg` file.
 
+**TIFF** (`postforge/devices/tiff/tiff.py`) — Renders to a Cairo ImageSurface
+(like PNG), then converts to a PIL Image for TIFF encoding via Pillow. Supports
+single-page (one `.tif` per page) and multi-page (all pages in one `.tif` via
+`--multipage-tiff`). Optional CMYK output via ICC profile conversion
+(`--cmyk`), with the ICC profile embedded in the TIFF for downstream color
+management.
+
 **Qt** (`postforge/devices/qt/qt.py`) — Interactive display window. Renders to
 a Cairo ImageSurface and displays it in a Qt widget. In interactive mode, the
 display updates live as display list elements are added; in batch mode, it
@@ -529,7 +533,7 @@ updates on `showpage`.
 
 ### PostScript-Side Device Setup
 
-The PostScript configuration files (e.g., `png.ps`, `pdf.ps`, `svg.ps`) define the page
+The PostScript configuration files (e.g., `png.ps`, `pdf.ps`, `svg.ps`, `tiff.ps`) define the page
 device dictionary — page size, resolution, margins, color space, and
 Install/BeginPage/EndPage procedures. When a device is selected, this
 dictionary is loaded and merged into the graphics state's `page_device`.
@@ -651,6 +655,7 @@ A quick reference to the directory structure:
 | `postforge/devices/common/` | Shared Cairo rendering backend |
 | `postforge/devices/png/` | PNG output device |
 | `postforge/devices/pdf/` | PDF output device + font embedding |
+| `postforge/devices/tiff/` | TIFF output device (multi-page, CMYK) |
 | `postforge/devices/qt/` | Interactive Qt display |
 | `postforge/utils/` | Memory analysis, profiling |
 | `postforge/resources/Init/` | PostScript initialization scripts |

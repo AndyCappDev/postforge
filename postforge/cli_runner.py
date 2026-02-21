@@ -12,6 +12,7 @@ main run loop that ties context initialization to PostScript execution.
 from __future__ import annotations
 
 import argparse
+import importlib
 import os
 import shutil
 import tempfile
@@ -111,7 +112,10 @@ def _setup_device(ctxt: ps.Context, args: argparse.Namespace, system_params: dic
     elif args.outputfile and not device:
         # Output file specified - infer device from extension
         ext = os.path.splitext(args.outputfile)[1].lower().lstrip(".")
-        if ext in available_devices:
+        ext_to_device = {"tif": "tiff", "tiff": "tiff"}
+        if ext in ext_to_device and ext_to_device[ext] in available_devices:
+            device = ext_to_device[ext]
+        elif ext in available_devices:
             device = ext
         else:
             # Fall back to first available file-output device
@@ -282,6 +286,12 @@ def _configure_page_device(ctxt: ps.Context, args: argparse.Namespace, inputfile
         if args.text_as_paths:
             ctxt.gstate.page_device[b"TextRenderingMode"] = ps.Name(b"GlyphPaths")
 
+        # Store TIFF-specific flags in page device
+        if getattr(args, 'multipage_tiff', False):
+            ctxt.gstate.page_device[b"MultiPageTiff"] = ps.Bool(True)
+        if getattr(args, 'cmyk', False):
+            ctxt.gstate.page_device[b"CMYKOutput"] = ps.Bool(True)
+
         # Store anti-aliasing mode if --antialias flag was provided
         if args.antialias:
             aa_bytes = bytes(args.antialias, "ascii")
@@ -418,6 +428,16 @@ def _run_batch_jobs(ctxt: ps.Context, args: argparse.Namespace, inputfiles: list
             print("Full traceback:")
             traceback.print_exc()
             continue
+
+    # Finalize device (e.g., multi-page TIFF assembly)
+    if ctxt.gstate.page_device and b"OutputDevice" in ctxt.gstate.page_device:
+        device_name = ctxt.gstate.page_device[b"OutputDevice"].val.decode()
+        try:
+            device_mod = importlib.import_module(f"postforge.devices.{device_name}.{device_name}")
+            if hasattr(device_mod, 'finalize'):
+                device_mod.finalize(ctxt.gstate.page_device)
+        except (ImportError, AttributeError):
+            pass
 
     # Final memory analysis after all jobs
     if memory_profile:

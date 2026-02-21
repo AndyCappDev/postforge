@@ -4,8 +4,8 @@
 
 PostForge is a Python implementation of a PostScript interpreter that provides
 **strict Level 2 compatibility** while implementing Level 3 features. It can
-render PostScript files to PNG, PDF, SVG, or display them in an interactive Qt
-window.
+render PostScript files to PNG, PDF, SVG, TIFF, or display them in an interactive
+Qt window.
 
 This guide covers installation, command line usage, the interactive display,
 output options, and debugging features.
@@ -128,7 +128,7 @@ in the prompt.
 
 | Option | Description |
 |--------|-------------|
-| `-d`, `--device` | Output device: `png`, `pdf`, `svg`, or `qt` (default: `qt` if available, otherwise `png`) |
+| `-d`, `--device` | Output device: `png`, `pdf`, `svg`, `tiff`, or `qt` (default: `qt` if available, otherwise `png`) |
 | `-o`, `--output` | Output filename (base name for page numbering; device inferred from extension if `-d` not given) |
 | `--output-dir` | Output directory (default: `pf_output`) |
 
@@ -139,7 +139,9 @@ in the prompt.
 | `-r`, `--resolution` | Device resolution in DPI (default: 300 for PNG, 72 for PDF/SVG, screen resolution for Qt) |
 | `--pages` | Page range to output (e.g., `1-5`, `3`, `1-3,7,10-12`) |
 | `--antialias` | Anti-aliasing mode: `none`, `fast`, `good`, `best`, `gray`, `subpixel` (default: `gray`) |
-| `--text-as-paths` | Render text as path outlines instead of native text objects. Primarily affects PDF and SVG output; bitmap devices (PNG, Qt) already render text as paths by default. |
+| `--text-as-paths` | Render text as path outlines instead of native text objects. Primarily affects PDF and SVG output; bitmap devices (PNG, TIFF, Qt) already render text as paths by default. |
+| `--multipage-tiff` | Combine all pages into a single multi-page TIFF file (only with tiff device) |
+| `--cmyk` | Output TIFF in CMYK color space using ICC profile conversion (only with tiff device) |
 
 ### Color Management
 
@@ -213,6 +215,33 @@ pf -d svg document.ps                   # Selectable text (needs matching fonts)
 pf --text-as-paths -d svg document.ps   # Path outlines (always looks correct)
 ```
 
+### TIFF (`-d tiff`)
+
+Renders each page to a separate TIFF file. Supports multi-page output and
+CMYK color space conversion for prepress workflows.
+
+```bash
+pf -d tiff document.ps                        # One .tif per page (RGB, 300 DPI)
+pf -d tiff -r 600 document.ps                 # 600 DPI
+pf -d tiff --multipage-tiff document.ps        # All pages in one .tif
+pf -d tiff --cmyk document.ps                  # CMYK output with embedded ICC profile
+pf -d tiff --cmyk --multipage-tiff document.ps # CMYK multi-page
+```
+
+**Multi-page mode** (`--multipage-tiff`) accumulates all pages and writes them
+to a single `.tif` file after all jobs complete. The output file is named
+`{base_name}.tif` (without page numbering). Without this flag, each page is
+saved as `{base_name}-{page_number}.tif`.
+
+**CMYK mode** (`--cmyk`) converts the rendered RGB output to CMYK using the
+system CMYK ICC profile (the same profile used for DeviceCMYK color
+management). The ICC profile is embedded in the TIFF for downstream color
+management. If no CMYK profile is found, output falls back to RGB with a
+warning. Use `--cmyk-profile` to specify a custom profile.
+
+**Note:** Most Linux image viewers (Evince, Okular, Gwenview) do not properly
+color-manage CMYK TIFFs. Use GIMP for accurate CMYK viewing on Linux.
+
 ### Qt Display (`-d qt`)
 
 Opens an interactive display window. This is the default device when Qt is
@@ -231,7 +260,7 @@ controls and keybindings.
 
 ### Output File Naming
 
-File-based devices (PNG, PDF, SVG) save output to a `pf_output` directory in
+File-based devices (PNG, PDF, SVG, TIFF) save output to a `pf_output` directory in
 the current working directory. The directory is created automatically if it
 does not exist. Use `--output-dir` to specify a different location.
 

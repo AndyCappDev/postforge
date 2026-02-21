@@ -3,7 +3,7 @@
 <p align="center"><strong>A modern, open-source PostScript interpreter written in Python.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/AndyCappDev/postforge/releases"><img src="https://img.shields.io/badge/Version-0.9.1-green.svg" alt="Version 0.9.0"></a>
+  <a href="https://github.com/AndyCappDev/postforge/releases"><img src="https://img.shields.io/badge/Version-0.9.2-green.svg" alt="Version 0.9.0"></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.13%2B-blue.svg" alt="Python 3.13+"></a>
 </p>
@@ -13,7 +13,7 @@
 PostForge is a complete PostScript interpreter that faithfully implements the
 PostScript Level 2 specification while adding selected Level 3 enhancements.
 It reads PostScript files and produces PNG images, PDF documents, SVG files,
-or renders them in an interactive Qt display window.
+TIFF images, or renders them in an interactive Qt display window.
 
 PostForge is designed as an open-source alternative to GhostScript for use
 cases where Python integration, transparency, and debuggability matter more
@@ -52,9 +52,10 @@ See the [sample gallery](docs/samples.md) for larger rendered examples.
   exploration, debugging, and experimentation
 - **Cython-Accelerated Execution** — Optional Cython-compiled execution loop
   providing 15–40% speedup depending on workload
-- **Multiple Output Formats** — PNG, PDF, and SVG output via Cairo graphics
-  backend, plus an interactive Qt display window with a PostScript command
-  prompt; extensible architecture makes it straightforward to add new devices
+- **Multiple Output Formats** — PNG, PDF, SVG, and TIFF output via Cairo
+  graphics backend, plus an interactive Qt display window with a PostScript
+  command prompt; TIFF supports multi-page and CMYK output for prepress
+  workflows; extensible architecture makes it straightforward to add new devices
 - **PDF Font Embedding** — Type 1 font reconstruction and subsetting,
   TrueType/CID font extraction with CIDToGIDMap and ToUnicode support
 - **EPS Support** — Automatic page cropping to EPS content dimensions with
@@ -154,6 +155,15 @@ pf -d pdf samples/tiger.ps
 # Save as SVG → pf_output/tiger-0001.svg
 pf -d svg samples/tiger.ps
 
+# Save as TIFF → pf_output/tiger-0001.tif
+pf -d tiff samples/tiger.ps
+
+# Multi-page TIFF → pf_output/document.tif
+pf -d tiff --multipage-tiff document.ps
+
+# CMYK TIFF for prepress → pf_output/tiger-0001.tif
+pf -d tiff --cmyk samples/tiger.ps
+
 # Render an EPS file (auto-crops to content)
 pf -d png samples/fancy.eps
 
@@ -164,7 +174,7 @@ pf -o result.png --output-dir renders samples/tiger.ps
 pf -d pdf --pages 1-3,7 document.ps
 
 # SVG with text rendered as path outlines instead of <text> elements
-pf --text-as-paths -d svg samples/tiger.ps
+pf --text-as-paths -d svg samples/test1.ps
 
 # Pipe PostScript from stdin
 cat document.ps | pf -d png -
@@ -242,7 +252,7 @@ most rendering tasks.*
 - [Architecture Overview](docs/developer/architecture-overview.md) — How PostForge works internally
 - [Implementing Operators](docs/developer/operator-implementation.md) — Adding new PostScript operators
 - [Testing Guide](docs/developer/testing-guide.md) — Writing and running PostScript-based tests
-- [Visual Regression Testing](docs/developer/visual-regression-testing.md) — PNG, PDF, and SVG visual comparison
+- [Visual Regression Testing](docs/developer/visual-regression-testing.md) — PNG, PDF, SVG, and TIFF visual comparison
 - [Adding Output Devices](docs/developer/adding-output-devices.md) — Creating new output backends
 - [Profiling](docs/developer/profiling.md) — Performance and memory analysis
 

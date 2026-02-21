@@ -195,6 +195,14 @@ def build_argument_parser(available_devices: list[str]) -> argparse.ArgumentPars
              "bitmap devices already render text as paths)"
     )
     parser.add_argument(
+        "--multipage-tiff", action="store_true",
+        help="Combine all pages into a single multi-page TIFF file (only with tiff device)"
+    )
+    parser.add_argument(
+        "--cmyk", action="store_true",
+        help="Output TIFF in CMYK color space using ICC profile conversion (only with tiff device)"
+    )
+    parser.add_argument(
         "--no-icc", action="store_true",
         help="Disable ICC color management (use PLRM formulas)"
     )

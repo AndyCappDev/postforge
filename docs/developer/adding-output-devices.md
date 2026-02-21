@@ -5,13 +5,14 @@ device takes the PostScript display list — the accumulated graphics operations
 from a page — and renders it to some output format (image file, PDF, screen
 display, etc.).
 
-PostForge ships with four devices:
+PostForge ships with five devices:
 
 | Device | Output | Complexity |
 |--------|--------|------------|
 | **PNG** | One PNG file per page | Simple — stateless, single-page |
 | **PDF** | Single multi-page PDF | Complex — persistent state, font embedding |
 | **SVG** | One SVG file per page | Moderate — post-processing for text elements |
+| **TIFF** | One TIFF per page or multi-page | Moderate — optional multi-page accumulation, CMYK conversion |
 | **Qt** | Interactive window | Complex — live rendering, zoom/pan |
 
 The PNG device is the simplest and is used as the primary example throughout
@@ -541,6 +542,17 @@ for font matching. Each page is a separate `.svg` file.
 
 Key features: text as selectable/searchable elements, CSS font-family
 fallbacks, Cairo-based vector rendering.
+
+### TIFF (`postforge/devices/tiff/`)
+
+Renders to a Cairo ImageSurface (like PNG), then converts to a PIL Image for
+TIFF encoding via Pillow. Supports single-page (one `.tif` per page) and
+multi-page (all pages in one `.tif`) modes. Optional CMYK output via ICC
+profile conversion (sRGB→CMYK using the system CMYK profile). ~200 lines of
+code.
+
+Key features: multi-page accumulation with `finalize()`, CMYK conversion via
+ImageCms, ICC profile embedding, LZW compression, DPI metadata.
 
 ### Qt (`postforge/devices/qt/`)
 

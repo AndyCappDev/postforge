@@ -35,7 +35,7 @@ python -m postforge samples/tiger.ps  # After pip install -e .
 |-----------|---------|
 | `postforge/core/` | PostScript execution infrastructure (types, tokenizer, error handling, color spaces) |
 | `postforge/operators/` | PostScript language operators organized by functional area |
-| `postforge/devices/` | Output devices (PNG, PDF, SVG, Qt) |
+| `postforge/devices/` | Output devices (PNG, PDF, SVG, TIFF, Qt) |
 | `postforge/utils/` | System utilities (memory analysis, profiling) |
 | `postforge/resources/` | PostScript resource files (fonts, encodings, initialization scripts, device configs) |
 | `unit_tests/` | PostScript-based test suite |

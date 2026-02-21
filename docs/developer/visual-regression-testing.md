@@ -6,7 +6,8 @@ This catches unintended visual changes introduced by code modifications.
 
 Three output devices are tested: **PNG** (direct pixel output), **PDF**
 (rasterized via PyMuPDF at 300 DPI), and **SVG** (rasterized via PyMuPDF
-at 300 DPI). All three are tested by default.
+at 300 DPI). All three are tested by default. The TIFF device uses the same
+Cairo rendering pipeline as PNG and is not separately tested.
 
 ## Requirements
 
