@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostScript strokepath operator.
 
@@ -16,7 +18,7 @@ from ..core import types as ps
 from . import strokepath_algorithm as algo
 
 
-def _ps_path_to_algo(ps_path):
+def _ps_path_to_algo(ps_path: ps.Path) -> list[list[algo.MoveTo | algo.LineTo | algo.CurveTo | algo.ClosePath]]:
     """Convert ps.Path → algorithm format (list of list of algo path elements)."""
     result = []
     for subpath in ps_path:
@@ -37,7 +39,7 @@ def _ps_path_to_algo(ps_path):
     return result
 
 
-def _algo_path_to_ps(algo_groups):
+def _algo_path_to_ps(algo_groups: list[list[algo.SubPath]]) -> ps.Path:
     """Convert algorithm output (list of groups of subpaths) back to ps.Path."""
     _Point = ps.Point
     _MoveTo = ps.MoveTo
@@ -71,7 +73,7 @@ def _algo_path_to_ps(algo_groups):
     return path
 
 
-def _snap_path_to_pixels(algo_path, half_width):
+def _snap_path_to_pixels(algo_path: list[algo.SubPath], half_width: float) -> None:
     """Snap axis-aligned line segments to device pixel grid for crisp outlines.
 
     Only snaps coordinates for horizontal and vertical line segments.
@@ -113,7 +115,7 @@ def _snap_path_to_pixels(algo_path, half_width):
             i += 1
 
 
-def _update_point_x(sp, idx, x):
+def _update_point_x(sp: algo.SubPath, idx: int, x: float) -> None:
     """Update the x coordinate of element at idx."""
     elem = sp[idx]
     if isinstance(elem, algo.MoveTo):
@@ -122,7 +124,7 @@ def _update_point_x(sp, idx, x):
         sp[idx] = algo.LineTo(x, elem.y)
 
 
-def _update_point_y(sp, idx, y):
+def _update_point_y(sp: algo.SubPath, idx: int, y: float) -> None:
     """Update the y coordinate of element at idx."""
     elem = sp[idx]
     if isinstance(elem, algo.MoveTo):
@@ -131,12 +133,12 @@ def _update_point_y(sp, idx, y):
         sp[idx] = algo.LineTo(elem.x, y)
 
 
-def _snap_coord(val, half_width):
+def _snap_coord(val: float, half_width: float) -> float:
     """Snap a single coordinate so that val ± half_width lands on integers."""
     return round(val - half_width) + half_width
 
 
-def _transform_algo_path(algo_path, m_a, m_b, m_c, m_d, tx, ty):
+def _transform_algo_path(algo_path: list[algo.SubPath], m_a: float, m_b: float, m_c: float, m_d: float, tx: float, ty: float) -> list[algo.SubPath]:
     """Transform algo path points using a 2x2 matrix with translation offset.
 
     For device→user: pass inverse CTM components; tx/ty are the CTM translation
@@ -169,7 +171,7 @@ def _transform_algo_path(algo_path, m_a, m_b, m_c, m_d, tx, ty):
     return result
 
 
-def _transform_stroke_groups(groups, a, b, c, d, tx, ty):
+def _transform_stroke_groups(groups: list[list[algo.SubPath]], a: float, b: float, c: float, d: float, tx: float, ty: float) -> list[list[algo.SubPath]]:
     """Transform **stroke** outline groups from user space back to device space."""
     result = []
     for group in groups:
@@ -199,7 +201,7 @@ def _transform_stroke_groups(groups, a, b, c, d, tx, ty):
     return result
 
 
-def strokepath(ctxt, ostack):
+def strokepath(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **strokepath** –
     Replaces the current path with a path that outlines the area that would

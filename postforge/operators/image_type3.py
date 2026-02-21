@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 # Type 3 Masked Image Support
 #
 # Implements LanguageLevel 3 ImageType 3 (masked images) per PLRM Table 4.22.
@@ -14,7 +16,7 @@ from ..core import error as ps_error
 from .image_data import ImageDataProcessor, _read_raw_bytes
 
 
-def _image_type3_dict_form(ctxt, ostack):
+def _image_type3_dict_form(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """Handle LanguageLevel 3 ImageType 3 (masked images) per PLRM Table 4.22
 
     The outer dictionary contains:
@@ -197,7 +199,7 @@ def _image_type3_dict_form(ctxt, ostack):
     ctxt.display_list.append(image_element)
 
 
-def _separate_interleave_type1(raw_data, image_element, bps, width, height, ncomp, mask_polarity):
+def _separate_interleave_type1(raw_data: bytes, image_element: ps.ImageElement, bps: int, width: int, height: int, ncomp: int, mask_polarity: bool) -> None:
     """Separate InterleaveType 1 data: mask sample precedes color samples per pixel.
 
     For BPS=8: straightforward byte separation.
@@ -356,8 +358,8 @@ def _separate_interleave_type1(raw_data, image_element, bps, width, height, ncom
     image_element.stencil_mask_polarity = mask_polarity
 
 
-def _read_interleave_type2(data_source, image_element, ctxt, img_bps, img_width, img_height,
-                           mask_width, mask_height, ncomp, mask_polarity):
+def _read_interleave_type2(data_source: ps.PSObject, image_element: ps.ImageElement, ctxt: ps.Context, img_bps: int, img_width: int, img_height: int,
+                           mask_width: int, mask_height: int, ncomp: int, mask_polarity: bool) -> None:
     """Read InterleaveType 2: rows of mask data followed by rows of image data in blocks.
 
     One height must be an integral multiple of the other.

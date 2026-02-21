@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -81,8 +80,8 @@ class ClosePath:
 
 
 PathElement = MoveTo | LineTo | CurveTo | ClosePath
-SubPath = List[PathElement]
-Path = List[SubPath]
+SubPath = list[PathElement]
+Path = list[SubPath]
 
 
 def subpath_is_closed(sp: SubPath) -> bool:
@@ -96,7 +95,7 @@ def subpath_start(sp: SubPath) -> Point:
     return Point(0.0, 0.0)
 
 
-def segment_endpoint(seg) -> Point:
+def segment_endpoint(seg: PathElement) -> Point | None:
     if isinstance(seg, (MoveTo, LineTo)):
         return Point(seg.x, seg.y)
     if isinstance(seg, CurveTo):
@@ -112,7 +111,7 @@ def _lerp(a: Point, b: Point, t: float) -> Point:
     return Point(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
 
 
-def split_cubic(p0: Point, p1: Point, p2: Point, p3: Point, t: float):
+def split_cubic(p0: Point, p1: Point, p2: Point, p3: Point, t: float) -> tuple[tuple[Point, Point, Point, Point], tuple[Point, Point, Point, Point]]:
     """Split cubic Bézier at parameter t. Returns (left_cps, right_cps) each as 4 Points."""
     q0 = _lerp(p0, p1, t)
     q1 = _lerp(p1, p2, t)
@@ -150,7 +149,7 @@ def line_length(p0: Point, p1: Point) -> float:
 # Dash pattern processor
 # ---------------------------------------------------------------------------
 
-def _split_line_at_length(p0: Point, p1: Point, target_len: float):
+def _split_line_at_length(p0: Point, p1: Point, target_len: float) -> tuple[Point, Point]:
     """Split a line segment at a given **arc** length. Returns (split_point, remaining_point)."""
     total = line_length(p0, p1)
     if total < 1e-12:
@@ -161,7 +160,7 @@ def _split_line_at_length(p0: Point, p1: Point, target_len: float):
     return sp, p1
 
 
-def _find_cubic_t_for_length(p0, p1, p2, p3, target_len, depth=20):
+def _find_cubic_t_for_length(p0: Point, p1: Point, p2: Point, p3: Point, target_len: float, depth: int = 20) -> float:
     """Find parameter t where cumulative **arc** length ≈ target_len. Binary **search**."""
     lo, hi = 0.0, 1.0
     for _ in range(depth):
@@ -175,7 +174,7 @@ def _find_cubic_t_for_length(p0, p1, p2, p3, target_len, depth=20):
     return (lo + hi) / 2.0
 
 
-def apply_dash_pattern(subpaths: Path, dash_array: List[float], dash_offset: float) -> Path:
+def apply_dash_pattern(subpaths: Path, dash_array: list[float], dash_offset: float) -> Path:
     """
     Apply dash pattern to path, returning new list of subpaths (dashed segments).
     Empty dash_array = solid (return as-is but split into segments suitable for stroking).
@@ -397,7 +396,7 @@ def _normal(p0: Point, p1: Point) -> Point:
     return Point(-d.y / ln, d.x / ln)
 
 
-def _offset_line(p0: Point, p1: Point, dist: float) -> Tuple[Point, Point]:
+def _offset_line(p0: Point, p1: Point, dist: float) -> tuple[Point, Point]:
     """Offset line segment by dist along its left normal."""
     n = _normal(p0, p1)
     off = n * dist
@@ -412,7 +411,7 @@ def _offset_line(p0: Point, p1: Point, dist: float) -> Tuple[Point, Point]:
 _hypot = math.hypot
 _fabs = abs
 
-def _normal_raw(p0x, p0y, p1x, p1y):
+def _normal_raw(p0x: float, p0y: float, p1x: float, p1y: float) -> tuple[float, float]:
     """Unit normal as (nx, ny) from raw float coords."""
     dx = p1x - p0x
     dy = p1y - p0y
@@ -422,8 +421,10 @@ def _normal_raw(p0x, p0y, p1x, p1y):
     return -dy / ln, dx / ln
 
 
-def _offset_cubic_recursive_raw(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y,
-                                 dist, tol, depth, max_depth, result):
+def _offset_cubic_recursive_raw(p0x: float, p0y: float, p1x: float, p1y: float,
+                                 p2x: float, p2y: float, p3x: float, p3y: float,
+                                 dist: float, tol: float, depth: int,
+                                 max_depth: int, result: list[CurveTo]) -> tuple[float, float]:
     """
     Offset a cubic Bézier using raw floats.  Appends CurveTo elements to
     *result* list in-place and returns (off_start_x, off_start_y).
@@ -518,7 +519,7 @@ def _normals_are_close(n0: Point, n3: Point, dist: float, tol: float) -> bool:
     return deviation <= tol
 
 
-def offset_segment(start: Point, seg, dist: float, tol: float = 0.1):
+def offset_segment(start: Point, seg: PathElement, dist: float, tol: float = 0.1) -> tuple[list[PathElement], Point, Point]:
     """
     Offset a single path segment. Returns (list_of_elements, offset_start, offset_end).
     Elements are LineTo or CurveTo.
@@ -555,7 +556,7 @@ def offset_segment(start: Point, seg, dist: float, tol: float = 0.1):
     return [], start, start
 
 
-def _tangent_at_start(start: Point, seg) -> Point:
+def _tangent_at_start(start: Point, seg: PathElement) -> Point:
     """Get tangent direction at start of segment."""
     if isinstance(seg, LineTo):
         return Point(seg.x - start.x, seg.y - start.y)
@@ -569,7 +570,7 @@ def _tangent_at_start(start: Point, seg) -> Point:
     return Point(1, 0)
 
 
-def _tangent_at_end(start: Point, seg) -> Point:
+def _tangent_at_end(start: Point, seg: PathElement) -> Point:
     """Get tangent direction at end of segment."""
     if isinstance(seg, LineTo):
         return Point(seg.x - start.x, seg.y - start.y)
@@ -588,7 +589,7 @@ def _tangent_at_end(start: Point, seg) -> Point:
 # Line joins
 # ---------------------------------------------------------------------------
 
-def _arc_to_cubics(center: Point, radius: float, start_angle: float, end_angle: float) -> List[CurveTo]:
+def _arc_to_cubics(center: Point, radius: float, start_angle: float, end_angle: float) -> list[CurveTo]:
     """Convert **arc** to cubic Bézier approximations (max 90° per segment)."""
     result = []
     angle = end_angle - start_angle
@@ -624,7 +625,7 @@ def _arc_to_cubics(center: Point, radius: float, start_angle: float, end_angle: 
 
 
 def _circle_line_intersection(center: Point, radius: float,
-                              line_pt: Point, line_dir: Point) -> List[Point]:
+                              line_pt: Point, line_dir: Point) -> list[Point]:
     """Find intersections of a circle with a line (point + direction vector).
     Returns 0, 1, or 2 intersection points."""
     dx = line_pt.x - center.x
@@ -646,7 +647,7 @@ def _circle_line_intersection(center: Point, radius: float,
     ]
 
 
-def _line_line_intersection(p1: Point, d1: Point, p2: Point, d2: Point) -> Optional[Point]:
+def _line_line_intersection(p1: Point, d1: Point, p2: Point, d2: Point) -> Point | None:
     """Intersect ray p1+t*d1 with ray p2+s*d2. Returns intersection point or None."""
     denom = d1.x * d2.y - d1.y * d2.x
     if abs(denom) < 1e-12:
@@ -659,7 +660,7 @@ def _line_line_intersection(p1: Point, d1: Point, p2: Point, d2: Point) -> Optio
 
 def _compute_inner_join_point(prev_end: Point, prev_tangent: Point,
                               next_start: Point, next_tangent: Point,
-                              half_width: float = 0.0) -> Optional[Point]:
+                              half_width: float = 0.0) -> Point | None:
     """Compute intersection of inner offset lines at a join to prevent self-crossing.
 
     Rejects intersections that are unreasonably far from the join, using
@@ -703,7 +704,7 @@ def _compute_inner_join_point(prev_end: Point, prev_tangent: Point,
 
 def make_join(prev_end: Point, prev_tangent: Point, next_start: Point,
               next_tangent: Point, half_width: float, join_type: int,
-              miter_limit: float, side: float) -> List:
+              miter_limit: float, side: float) -> list[PathElement]:
     """
     Generate join geometry between two consecutive offset segments.
     side: +1 for left offset, -1 for right offset.
@@ -804,7 +805,7 @@ def make_join(prev_end: Point, prev_tangent: Point, next_start: Point,
 # ---------------------------------------------------------------------------
 
 def make_cap(point: Point, tangent: Point, half_width: float, cap_type: int,
-             is_start: bool) -> List:
+             is_start: bool) -> list[PathElement]:
     """
     Generate cap geometry at an endpoint.
     tangent: direction of travel AT the endpoint.
@@ -848,7 +849,7 @@ def make_cap(point: Point, tangent: Point, half_width: float, cap_type: int,
 # Outline assembly
 # ---------------------------------------------------------------------------
 
-def _get_geometric_segments(sp: SubPath):
+def _get_geometric_segments(sp: SubPath) -> list[tuple[Point, PathElement]]:
     """Extract geometric segments from a subpath. Returns list of (start_point, element)."""
     segments = []
     current = subpath_start(sp)
@@ -883,7 +884,7 @@ def _get_geometric_segments(sp: SubPath):
     return segments
 
 
-def _filter_uturn_segments(segments, half_width):
+def _filter_uturn_segments(segments: list[tuple[Point, PathElement]], half_width: float) -> list[tuple[Point, PathElement]]:
     """Remove short segments that create back-to-back U-turns.
 
     When roundpath creates nearly-overlapping arcs, a tiny connecting segment
@@ -895,7 +896,7 @@ def _filter_uturn_segments(segments, half_width):
     if len(segments) < 3:
         return segments
 
-    def _is_uturn(tangent_a, tangent_b):
+    def _is_uturn(tangent_a: Point, tangent_b: Point) -> bool:
         la = tangent_a.length()
         lb = tangent_b.length()
         if la < 1e-10 or lb < 1e-10:
@@ -956,7 +957,7 @@ def _filter_uturn_segments(segments, half_width):
 
 def strokepath(path: Path, line_width: float, line_cap: int = 0,
                line_join: int = 0, miter_limit: float = 10.0,
-               dash_array: Optional[List[float]] = None,
+               dash_array: list[float] | None = None,
                dash_offset: float = 0.0, tolerance: float = 0.1) -> Path:
     """
     Convert a stroked path to a filled outline path.
@@ -974,9 +975,9 @@ def strokepath(path: Path, line_width: float, line_cap: int = 0,
 
 def strokepath_grouped(path: Path, line_width: float, line_cap: int = 0,
                        line_join: int = 0, miter_limit: float = 10.0,
-                       dash_array: Optional[List[float]] = None,
+                       dash_array: list[float] | None = None,
                        dash_offset: float = 0.0,
-                       tolerance: float = 0.1) -> List[Path]:
+                       tolerance: float = 0.1) -> list[Path]:
     """
     Convert a stroked path to filled outline path(s), returned as groups.
 
@@ -998,7 +999,7 @@ def strokepath_grouped(path: Path, line_width: float, line_cap: int = 0,
     else:
         working_subpaths = path
 
-    groups: List[Path] = []
+    groups: list[Path] = []
 
     for sp in working_subpaths:
         closed = subpath_is_closed(sp)
@@ -1172,7 +1173,7 @@ def _trim_outline_end(outline: SubPath, pt: Point) -> None:
             return
 
 
-def _trim_elements_start(elems: List, pt: Point) -> List:
+def _trim_elements_start(elems: list[PathElement], pt: Point) -> list[PathElement]:
     """Return a copy of elems with the first element's implicit start replaced.
 
     For the first element, we adjust so the segment starts from pt instead of
@@ -1186,8 +1187,10 @@ def _trim_elements_start(elems: List, pt: Point) -> List:
     return elems
 
 
-def _assemble_closed_outline(segments, offsets, half_width, line_join,
-                              miter_limit, side) -> SubPath:
+def _assemble_closed_outline(segments: list[tuple[Point, PathElement]],
+                              offsets: list[tuple[list[PathElement], Point, Point]],
+                              half_width: float, line_join: int,
+                              miter_limit: float, side: float) -> SubPath:
     """Assemble a closed outline from offset segments with joins."""
     if not offsets:
         return []
@@ -1233,8 +1236,11 @@ def _assemble_closed_outline(segments, offsets, half_width, line_join,
     return outline
 
 
-def _assemble_open_outline(segments, left_offsets, right_offsets,
-                            half_width, line_cap, line_join, miter_limit) -> SubPath:
+def _assemble_open_outline(segments: list[tuple[Point, PathElement]],
+                            left_offsets: list[tuple[list[PathElement], Point, Point]],
+                            right_offsets: list[tuple[list[PathElement], Point, Point]],
+                            half_width: float, line_cap: int, line_join: int,
+                            miter_limit: float) -> SubPath:
     """Assemble an open subpath outline: left → end cap → right reversed → start cap."""
     if not left_offsets:
         return []
@@ -1616,7 +1622,7 @@ def _assemble_open_outline(segments, left_offsets, right_offsets,
     return outline
 
 
-def _reverse_offset_elements(elems: List, start: Point) -> List:
+def _reverse_offset_elements(elems: list[PathElement], start: Point) -> list[PathElement]:
     """Reverse a list of offset elements (LineTo/CurveTo) so they go backwards."""
     if not elems:
         return []

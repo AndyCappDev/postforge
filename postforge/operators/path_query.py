@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 import copy
 import math
 
@@ -11,7 +13,7 @@ from .matrix import _transform_point, itransform
 from .path import _setcurrentpoint
 
 
-def currentpoint(ctxt, ostack):
+def currentpoint(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentpoint** x y
 
@@ -33,7 +35,7 @@ def currentpoint(ctxt, ostack):
     itransform(ctxt, ostack)
 
 
-def pathbbox(ctxt, ostack):
+def pathbbox(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **pathbbox** llx lly urx ury
 
@@ -149,7 +151,7 @@ def pathbbox(ctxt, ostack):
     ostack.append(ps.Real(round(float(max_y), 6)))
 
 
-def pathforall(ctxt, ostack):
+def pathforall(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     move line curve close **pathforall** -
 
@@ -195,7 +197,7 @@ def pathforall(ctxt, ostack):
     ctxt.o_stack.pop()
 
 
-def reversepath(ctxt, ostack):
+def reversepath(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **reversepath** -
 
@@ -276,7 +278,7 @@ def reversepath(ctxt, ostack):
         ctxt.gstate.currentpoint = None
 
 
-def flattenpath(ctxt, ostack):
+def flattenpath(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **flattenpath** -
 
@@ -314,7 +316,9 @@ def flattenpath(ctxt, ostack):
         new_path.append(new_subpath)
 
 
-def _flatten_cubic_bezier_curve(p0, p1, p2, p3, flatness):
+def _flatten_cubic_bezier_curve(
+    p0: ps.Point, p1: ps.Point, p2: ps.Point, p3: ps.Point, flatness: float,
+) -> list[ps.Point]:
     """
     Flatten a cubic Bezier curve into line segments.
 
@@ -374,7 +378,7 @@ def _flatten_cubic_bezier_curve(p0, p1, p2, p3, flatness):
     return segments
 
 
-def setbbox(ctxt, ostack):
+def setbbox(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     llx lly urx ury **setbbox** -
 

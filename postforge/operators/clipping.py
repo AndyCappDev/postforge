@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 import copy
 
 from ..core import error as ps_error
@@ -10,7 +12,7 @@ from ..core.display_list_builder import DisplayListBuilder
 from .matrix import _transform_point
 
 
-def clip(ctxt, ostack):
+def clip(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **clip** –
 
@@ -44,7 +46,7 @@ def clip(ctxt, ostack):
     # The current path remains unchanged
 
 
-def eoclip(ctxt, ostack):
+def eoclip(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **eoclip** –
 
@@ -78,7 +80,7 @@ def eoclip(ctxt, ostack):
     # The current path remains unchanged
 
 
-def clippath(ctxt, ostack):
+def clippath(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **clippath** –
 
@@ -112,7 +114,7 @@ def clippath(ctxt, ostack):
         ctxt.gstate.currentpoint = None
 
 
-def clipsave(ctxt, ostack):
+def clipsave(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **clipsave** –
 
@@ -129,7 +131,7 @@ def clipsave(ctxt, ostack):
     ctxt.gstate.clip_path_stack.append(copy.deepcopy(ctxt.gstate.clip_path))
 
 
-def cliprestore(ctxt, ostack):
+def cliprestore(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **cliprestore** –
 
@@ -185,7 +187,7 @@ def cliprestore(ctxt, ostack):
         ctxt.display_list_builder.current_clip_version = ctxt.gstate.clip_path_version
 
 
-def initclip(ctxt, ostack):
+def initclip(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **initclip** -
 
@@ -246,7 +248,7 @@ def initclip(ctxt, ostack):
     ctxt.display_list_builder.current_clip_version = ctxt.gstate.clip_path_version
 
 
-def rectclip(ctxt, ostack):
+def rectclip(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     x y width height **rectclip** –
            numarray **rectclip** –

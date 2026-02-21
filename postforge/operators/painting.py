@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 from copy import copy
 
 from ..core import color_space
@@ -18,7 +20,7 @@ from ..core.display_list_builder import DisplayListBuilder
 
 
 
-def erasepage(ctxt, ostack) -> None:
+def erasepage(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **erasepage** -
 
@@ -51,7 +53,7 @@ def erasepage(ctxt, ostack) -> None:
             pass
 
 
-def fill(ctxt, ostack) -> None:
+def fill(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **fill** -
 
@@ -114,7 +116,7 @@ def fill(ctxt, ostack) -> None:
         ctxt.gstate.currentpoint = None
 
 
-def eofill(ctxt, ostack) -> None:
+def eofill(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **eofill** -
 
@@ -166,7 +168,7 @@ def eofill(ctxt, ostack) -> None:
         ctxt.gstate.currentpoint = None
 
 
-def rectfill(ctxt, ostack) -> None:
+def rectfill(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
       x y width height **rectfill** -
               numarray **rectfill** -
@@ -352,7 +354,7 @@ def rectfill(ctxt, ostack) -> None:
     return ps_error.e(ctxt, ps_error.UNSUPPORTED, rectfill.__name__)
 
 
-def _build_rect_path(ctm, x, y, w, h):
+def _build_rect_path(ctm: ps.Array, x: float, y: float, w: float, h: float) -> ps.SubPath:
     """Build a single rectangle subpath transformed through CTM."""
     sub_path = ps.SubPath()
     sub_path.append(ps.MoveTo(ps.Point(*_transform_point(ctm, x, y))))
@@ -363,7 +365,7 @@ def _build_rect_path(ctm, x, y, w, h):
     return sub_path
 
 
-def rectstroke(ctxt, ostack) -> None:
+def rectstroke(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     x y width height **rectstroke** –
     x y width height matrix **rectstroke** –
@@ -463,7 +465,7 @@ def rectstroke(ctxt, ostack) -> None:
     return ps_error.e(ctxt, ps_error.TYPECHECK, rectstroke.__name__)
 
 
-def _stroke_rect_path(ctxt, path, matrix_operand):
+def _stroke_rect_path(ctxt: ps.Context, path: ps.Path, matrix_operand: ps.Array | None) -> None:
     """Stroke a rectangle path, optionally concatenating a matrix for **stroke** params."""
     # Read StrokeMethod from page device (default: StrokePathFill for bitmap safety)
     page_device = getattr(ctxt.gstate, 'page_device', {})
@@ -534,7 +536,7 @@ def _stroke_rect_path(ctxt, path, matrix_operand):
         ctxt.gstate.currentpoint = saved_cp
 
 
-def stroke(ctxt, ostack) -> None:
+def stroke(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **stroke** -
 
@@ -592,7 +594,7 @@ def stroke(ctxt, ostack) -> None:
             fill(ctxt, ostack)
 
 
-def shfill(ctxt, ostack) -> None:
+def shfill(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     dict **shfill** -
 
@@ -737,7 +739,7 @@ def shfill(ctxt, ostack) -> None:
     ostack.pop()
 
 
-def _resolve_color_space(cs_obj):
+def _resolve_color_space(cs_obj: ps.PSObject) -> tuple[str, dict | None, ps.PSObject]:
     """Extract color space name string and optional CIE dict from a PostScript color space object.
 
     Returns:
@@ -774,7 +776,7 @@ def _resolve_color_space(cs_obj):
     return "DeviceRGB", None, cs_obj
 
 
-def _get_shading_float_array(d, key, default):
+def _get_shading_float_array(d: dict, key: bytes, default: list[float] | None) -> list[float] | None:
     """Get a list of floats from a PostScript array entry in a dict."""
     if key not in d:
         return default
@@ -784,7 +786,7 @@ def _get_shading_float_array(d, key, default):
     return default
 
 
-def _sample_shading_function(func_obj, domain, num_samples, shading_cs, ctxt, cie_dict=None, cs_array=None):
+def _sample_shading_function(func_obj: ps.PSObject, domain: list[float], num_samples: int, shading_cs: str, ctxt: ps.Context, cie_dict: dict | None = None, cs_array: ps.PSObject | None = None) -> list[tuple[float, tuple[float, float, float]]]:
     """
     Sample a shading Function across domain to produce device RGB color stops.
 
@@ -810,7 +812,7 @@ def _sample_shading_function(func_obj, domain, num_samples, shading_cs, ctxt, ci
     return color_stops
 
 
-def _build_function_shading(d, func_obj, shading_cs, ctm, bbox, ctxt, cie_dict=None, cs_array=None):
+def _build_function_shading(d: dict, func_obj: ps.PSObject, shading_cs: str, ctm: tuple[float, ...], bbox: list[float] | None, ctxt: ps.Context, cie_dict: dict | None = None, cs_array: ps.PSObject | None = None) -> ps.FunctionShadingFill | None:
     """
     Build a FunctionShadingFill display list element for Type 1 shading.
 
@@ -877,7 +879,7 @@ def _build_function_shading(d, func_obj, shading_cs, ctm, bbox, ctxt, cie_dict=N
     return ps.FunctionShadingFill(pixel_data, raster_w, raster_h, combined, ctm, bbox)
 
 
-def _build_mesh_shading(d, shading_type, shading_cs, ctm, bbox, ctxt, func_obj=None, cie_dict=None, cs_array=None):
+def _build_mesh_shading(d: dict, shading_type: int, shading_cs: str, ctm: tuple[float, ...], bbox: list[float] | None, ctxt: ps.Context, func_obj: ps.PSObject | None = None, cie_dict: dict | None = None, cs_array: ps.PSObject | None = None) -> ps.MeshShadingFill | ps.PatchShadingFill | None:
     """Build a MeshShadingFill or PatchShadingFill for Types 4-7."""
     # Extract common parameters
     bpc = _get_shading_int(d, b"BitsPerCoordinate", 8)
@@ -926,7 +928,7 @@ def _build_mesh_shading(d, shading_type, shading_cs, ctm, bbox, ctxt, func_obj=N
     return None
 
 
-def _build_mesh_from_array(values, shading_type, d, shading_cs, ctm, bbox, cie_dict, n_comps, cs_array=None, ctxt=None):
+def _build_mesh_from_array(values: list[float], shading_type: int, d: dict, shading_cs: str, ctm: tuple[float, ...], bbox: list[float] | None, cie_dict: dict | None, n_comps: int, cs_array: ps.PSObject | None = None, ctxt: ps.Context | None = None) -> ps.MeshShadingFill | ps.PatchShadingFill | None:
     """Build mesh shading from an array-based DataSource (flat list of numbers).
 
     Array format varies by type:
@@ -1060,7 +1062,7 @@ def _build_mesh_from_array(values, shading_type, d, shading_cs, ctm, bbox, cie_d
     return None
 
 
-def _triangles_to_element(triangles, shading_cs, ctm, bbox, cie_dict, cs_array=None, ctxt=None):
+def _triangles_to_element(triangles: list, shading_cs: str, ctm: tuple[float, ...], bbox: list[float] | None, cie_dict: dict | None, cs_array: ps.PSObject | None = None, ctxt: ps.Context | None = None) -> ps.MeshShadingFill | None:
     """Convert parsed mesh triangles to a MeshShadingFill display list element.
 
     Optimized with color caching to avoid redundant conversions (especially important
@@ -1101,7 +1103,7 @@ def _triangles_to_element(triangles, shading_cs, ctm, bbox, cie_dict, cs_array=N
     return ps.MeshShadingFill(converted, ctm, bbox)
 
 
-def _patches_to_element(patches, shading_cs, ctm, bbox, cie_dict, cs_array=None, ctxt=None):
+def _patches_to_element(patches: list, shading_cs: str, ctm: tuple[float, ...], bbox: list[float] | None, cie_dict: dict | None, cs_array: ps.PSObject | None = None, ctxt: ps.Context | None = None) -> ps.PatchShadingFill | None:
     """Convert parsed Coons/tensor patches to a PatchShadingFill display list element.
 
     Optimized with color caching to avoid redundant conversions.
@@ -1127,7 +1129,7 @@ def _patches_to_element(patches, shading_cs, ctm, bbox, cie_dict, cs_array=None,
     return ps.PatchShadingFill(converted, ctm, bbox)
 
 
-def _get_shading_int(d, key, default):
+def _get_shading_int(d: dict, key: bytes, default: int) -> int:
     """Get an integer value from a shading dictionary."""
     if key not in d:
         return default
@@ -1137,7 +1139,7 @@ def _get_shading_int(d, key, default):
     return int(obj) if obj is not None else default
 
 
-def _get_color_space_ncomps(space_name, cs_array=None):
+def _get_color_space_ncomps(space_name: str, cs_array: ps.PSObject | None = None) -> int:
     """Get the number of color components for a named color space."""
     counts = {"DeviceGray": 1, "DeviceRGB": 3, "DeviceCMYK": 4,
               "CIEBasedABC": 3, "CIEBasedA": 1, "CIEBasedDEF": 3,
@@ -1159,7 +1161,7 @@ def _get_color_space_ncomps(space_name, cs_array=None):
     return 3
 
 
-def _get_data_source(d):
+def _get_data_source(d: dict) -> bytes | None:
     """Extract binary data from a shading dictionary's DataSource entry."""
     if b"DataSource" not in d:
         return None
@@ -1174,7 +1176,7 @@ def _get_data_source(d):
     return None
 
 
-def _tint_transform_to_rgb(components, cs_array, ctxt):
+def _tint_transform_to_rgb(components: list[float], cs_array: ps.PSObject, ctxt: ps.Context) -> tuple[float, float, float]:
     """Execute a DeviceN/Separation tint **transform** and convert result to RGB.
 
     Args:
@@ -1221,7 +1223,7 @@ def _tint_transform_to_rgb(components, cs_array, ctxt):
     return _color_to_rgb(result, alt_name)
 
 
-def _iccbased_cs_list(cs_array):
+def _iccbased_cs_list(cs_array: ps.PSObject | list) -> list:
     """Build a Python list from a PS ICCBased color space array object."""
     if hasattr(cs_array, 'TYPE') and cs_array.TYPE in ps.ARRAY_TYPES:
         return ["ICCBased"] + [cs_array.val[i] for i in range(cs_array.start + 1, cs_array.start + cs_array.length)]
@@ -1230,7 +1232,7 @@ def _iccbased_cs_list(cs_array):
     return ["ICCBased"]
 
 
-def _color_to_rgb(components, space_name, cie_dict=None, cs_array=None, ctxt=None):
+def _color_to_rgb(components: list[float], space_name: str, cie_dict: dict | None = None, cs_array: ps.PSObject | None = None, ctxt: ps.Context | None = None) -> tuple[float, float, float]:
     """Convert color components from a named color space to (r, g, b) tuple.
 
     Args:

@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 import copy
 
 from ..core import error as ps_error
@@ -11,7 +13,7 @@ from ..core import color_space
 from ..core.color_space import ColorSpaceEngine
 
 
-def setgray(ctxt, ostack) -> None:
+def setgray(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num **setgray** -
 
@@ -55,7 +57,7 @@ def setgray(ctxt, ostack) -> None:
     ostack.pop()
 
 
-def setcolor(ctxt, ostack) -> None:
+def setcolor(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
             comp(1) ... comp(n) **setcolor** -
                         pattern **setcolor** -
@@ -348,7 +350,7 @@ def setcolor(ctxt, ostack) -> None:
         ostack.pop()
 
 
-def setcolorspace(ctxt, ostack) -> None:
+def setcolorspace(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     array **setcolorspace** -
      name **setcolorspace** -
@@ -652,7 +654,7 @@ def setcolorspace(ctxt, ostack) -> None:
     ostack.pop()
 
 
-def _get_color_space_name(space_obj):
+def _get_color_space_name(space_obj: ps.PSObject) -> str | None:
     """
     Extract color space name from a space object (Name or Array).
 
@@ -671,7 +673,7 @@ def _get_color_space_name(space_obj):
     return None
 
 
-def _execute_tint_transform(ctxt, tint_values, tint_transform, alt_space_name):
+def _execute_tint_transform(ctxt: ps.Context, tint_values: list[float], tint_transform: ps.Array, alt_space_name: str) -> list[float]:
     """
     Execute a tint **transform** procedure to convert tint values to alternative color space.
 
@@ -716,7 +718,7 @@ def _execute_tint_transform(ctxt, tint_values, tint_transform, alt_space_name):
     return result
 
 
-def _lookup_palette_color(ctxt, index, color_space_array):
+def _lookup_palette_color(ctxt: ps.Context, index: int, color_space_array: list) -> list[float]:
     """
     Look up a color in an Indexed color space palette.
 
@@ -778,7 +780,7 @@ def _lookup_palette_color(ctxt, index, color_space_array):
     return [0.0] * base_component_count
 
 
-def _extract_cie_dict(color_space_array):
+def _extract_cie_dict(color_space_array: list) -> dict:
     """Extract the CIE dictionary (Python dict) from a CIEBasedABC/A color space array."""
     if len(color_space_array) >= 2:
         dict_obj = color_space_array[1]
@@ -787,7 +789,7 @@ def _extract_cie_dict(color_space_array):
     return {}
 
 
-def currentcolorspace(ctxt, ostack) -> None:
+def currentcolorspace(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentcolorspace** array
 
@@ -829,7 +831,7 @@ def currentcolorspace(ctxt, ostack) -> None:
     ostack.append(ps_array)
 
 
-def currentcolor(ctxt, ostack) -> None:
+def currentcolor(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentcolor** num₁ ... numₙ
 
@@ -857,7 +859,7 @@ def currentcolor(ctxt, ostack) -> None:
             ostack.append(component)
 
 
-def _icc_to_rgb(components, color_space_array, color_engine):
+def _icc_to_rgb(components: list[float], color_space_array: list, color_engine: color_space.ColorSpaceEngine) -> list[float]:
     """Convert ICCBased color to RGB, trying Tier 2 ICC then Tier 1 fallback.
 
     Returns:
@@ -881,7 +883,7 @@ def _icc_to_rgb(components, color_space_array, color_engine):
     return [0.0, 0.0, 0.0]
 
 
-def currentgray(ctxt, ostack) -> None:
+def currentgray(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentgray** num
 
@@ -934,7 +936,7 @@ def currentgray(ctxt, ostack) -> None:
     ostack.append(ps.Real(gray_value))
 
 
-def currentrgbcolor(ctxt, ostack) -> None:
+def currentrgbcolor(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentrgbcolor** red green blue
 
@@ -975,7 +977,7 @@ def currentrgbcolor(ctxt, ostack) -> None:
     ostack.append(ps.Real(rgb_values[2]))  # Blue
 
 
-def currenthsbcolor(ctxt, ostack) -> None:
+def currenthsbcolor(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currenthsbcolor** hue saturation brightness
 
@@ -1019,7 +1021,7 @@ def currenthsbcolor(ctxt, ostack) -> None:
     ostack.append(ps.Real(hsb_values[2]))  # Brightness
 
 
-def currentcmykcolor(ctxt, ostack) -> None:
+def currentcmykcolor(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentcmykcolor** cyan magenta yellow black
 
@@ -1076,7 +1078,7 @@ def currentcmykcolor(ctxt, ostack) -> None:
     ostack.append(ps.Real(cmyk_values[3]))  # Black
 
 
-def _hsb_to_rgb(h, s, b):
+def _hsb_to_rgb(h: float, s: float, b: float) -> tuple[float, float, float]:
     """
     Convert HSB to RGB using hexcone model as specified in PLRM.
 
@@ -1128,7 +1130,7 @@ def _hsb_to_rgb(h, s, b):
         return (b, p, q)
 
 
-def sethsbcolor(ctxt, ostack) -> None:
+def sethsbcolor(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     hue saturation brightness **sethsbcolor** -
 
@@ -1181,7 +1183,7 @@ def sethsbcolor(ctxt, ostack) -> None:
     ostack.pop()
 
 
-def setrgbcolor(ctxt, ostack) -> None:
+def setrgbcolor(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     red green blue **setrgbcolor** -
 
@@ -1231,7 +1233,7 @@ def setrgbcolor(ctxt, ostack) -> None:
     ostack.pop()
 
 
-def setcmykcolor(ctxt, ostack) -> None:
+def setcmykcolor(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     cyan magenta yellow black **setcmykcolor** –
 

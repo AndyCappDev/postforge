@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 # Image Data Processing - ImageDataProcessor class and raw byte reading
 #
 # Device-independent image data source processing for PostScript compliance.
@@ -19,7 +21,7 @@ class ImageDataProcessor:
     """Device-independent image data source processor for PostScript compliance"""
 
     @staticmethod
-    def validate_data_source(data_source, ctxt, operator_name):
+    def validate_data_source(data_source: ps.PSObject, ctxt: ps.Context, operator_name: str) -> str | int:
         """Validate PostScript data source - PLRM Section 4.10.2"""
         if data_source.TYPE in ps.ARRAY_TYPES and data_source.attrib == ps.ATTRIB_EXEC:
             # Procedure data source - LanguageLevel 1+
@@ -40,7 +42,7 @@ class ImageDataProcessor:
             return ps_error.e(ctxt, ps_error.TYPECHECK, operator_name)
 
     @staticmethod
-    def validate_image_matrix(matrix_obj, ctxt, operator_name):
+    def validate_image_matrix(matrix_obj: ps.PSObject, ctxt: ps.Context, operator_name: str) -> bool | int:
         """Validate 6-element transformation matrix - PLRM Section 4.10.3"""
         if matrix_obj.TYPE not in ps.ARRAY_TYPES:
             return ps_error.e(ctxt, ps_error.TYPECHECK, operator_name)
@@ -68,7 +70,7 @@ class ImageDataProcessor:
         return True
 
     @staticmethod
-    def read_all_image_data(data_source, image_element, ctxt):
+    def read_all_image_data(data_source: ps.PSObject, image_element: ps.ImageElement, ctxt: ps.Context) -> bool:
         """Read ALL image data immediately - no VM references in display list"""
 
         # Calculate total bytes needed
@@ -130,7 +132,7 @@ class ImageDataProcessor:
             return False
 
     @staticmethod
-    def _read_from_procedure(procedure, image_element, ctxt, bytes_needed):
+    def _read_from_procedure(procedure: ps.PSObject, image_element: ps.ImageElement, ctxt: ps.Context, bytes_needed: int) -> bool:
         """Read from PostScript procedure data source - with proper error handling"""
         try:
             # Execute procedure multiple times to get strings until we have enough data
@@ -180,7 +182,7 @@ class ImageDataProcessor:
             return False
 
     @staticmethod
-    def _read_one_scanline(data_source, bytes_needed, ctxt):
+    def _read_one_scanline(data_source: ps.PSObject, bytes_needed: int, ctxt: ps.Context) -> bytes | None:
         """Read a single scanline from a procedure data source.
 
         Returns the scanline data bytes, or None on error.
@@ -229,7 +231,7 @@ class ImageDataProcessor:
         return None
 
     @staticmethod
-    def _execute_procedure_once(procedure, ctxt):
+    def _execute_procedure_once(procedure: ps.PSObject, ctxt: ps.Context) -> bytes | None:
         """Execute a procedure once and return its string result, or None."""
         try:
             ctxt.e_stack.append(ps.HardReturn())
@@ -253,7 +255,7 @@ class ImageDataProcessor:
             return None
 
     @staticmethod
-    def read_all_colorimage_data(data_sources, color_element, ctxt, multi):
+    def read_all_colorimage_data(data_sources: list[ps.PSObject], color_element: ps.ColorImageElement, ctxt: ps.Context, multi: bool) -> bool:
         """Read ALL **colorimage** data immediately - handles multiple data sources
 
         For multi=true with procedures: Uses round-robin reading to support procedures
@@ -359,7 +361,7 @@ class ImageDataProcessor:
             return False
 
     @staticmethod
-    def _interleave_component_data(component_data_list, ncomp, width, height, bits_per_component):
+    def _interleave_component_data(component_data_list: list[bytes], ncomp: int, width: int, height: int, bits_per_component: int) -> bytes | None:
         """Interleave separate component data into single array"""
         try:
             if bits_per_component == 8:
@@ -503,7 +505,7 @@ class ImageDataProcessor:
             return None
 
     @staticmethod
-    def apply_transfer_function(sample_data, transfer_proc, ctxt):
+    def apply_transfer_function(sample_data: bytes, transfer_proc: ps.PSObject, ctxt: ps.Context) -> bytes:
         """Apply standard gamma 2.2 transfer function per PLRM Section 7.3"""
         try:
             processed_data = bytearray()
@@ -526,7 +528,7 @@ class ImageDataProcessor:
             return sample_data  # Return original data on error
 
 
-def _read_raw_bytes(data_source, count, ctxt):
+def _read_raw_bytes(data_source: ps.PSObject, count: int, ctxt: ps.Context) -> bytes | None:
     """Read exactly count bytes from a data source using a temporary ImageElement."""
     temp = ps.ImageElement([0], ctxt.gstate, 'image')
     temp.width = count

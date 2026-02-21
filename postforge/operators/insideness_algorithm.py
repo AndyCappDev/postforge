@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 Point-in-path insideness testing algorithm.
 
@@ -14,7 +16,7 @@ from ..core import types as ps
 from .path_query import _flatten_cubic_bezier_curve
 
 
-def _flatten_subpath(subpath, flatness):
+def _flatten_subpath(subpath: list, flatness: float) -> tuple[list[tuple[float, float, float, float]], float, float, float, float, bool]:
     """Flatten a subpath's curves into (x0, y0, x1, y1) line segments.
 
     Returns (segments, moveto_x, moveto_y, last_x, last_y, has_close).
@@ -47,7 +49,7 @@ def _flatten_subpath(subpath, flatness):
     return segments, mx, my, cx, cy, has_close
 
 
-def point_in_path(path, px, py, flatness, use_winding):
+def point_in_path(path: ps.Path, px: float, py: float, flatness: float, use_winding: bool) -> bool:
     """Ray-casting point-in-path test on a device-space ps.Path.
 
     Casts a horizontal ray from (px, py) towards +x and counts crossings

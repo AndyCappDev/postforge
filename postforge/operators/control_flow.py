@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostScript compound operators
 """
@@ -13,7 +15,7 @@ from ..core import error as ps_error
 from ..core import types as ps
 
 
-def ps_copy(ctxt, ostack):
+def ps_copy(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
         any(0) ... any(n) n **copy** any₁ ... any(n) any(1) ... any(n)
 
@@ -219,7 +221,7 @@ def ps_copy(ctxt, ostack):
     return None
 
 
-def get(ctxt, ostack):
+def get(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
           array index **get** any
     **packedarray** index **get** any
@@ -280,7 +282,7 @@ def get(ctxt, ostack):
     return None
 
 
-def getinterval(ctxt, ostack):
+def getinterval(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
           array index count **getinterval** subarray
     **packedarray** index count **getinterval** subarray
@@ -333,7 +335,7 @@ def getinterval(ctxt, ostack):
     return None
 
 
-def length(ctxt, ostack):
+def length(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
           array length int
     packedarray length int
@@ -385,7 +387,7 @@ def length(ctxt, ostack):
     return None
 
 
-def put(ctxt, ostack):
+def put(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
      array index any **put** -
         dict key any **put** -
@@ -467,7 +469,7 @@ def put(ctxt, ostack):
     ostack.pop()
 
 
-def putinterval(ctxt, ostack):
+def putinterval(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
           array₁ index array₂ **putinterval** -
     array₁ index packedarray₂ **putinterval** -
@@ -541,7 +543,7 @@ def putinterval(ctxt, ostack):
     return None
 
 
-def reverse(ctxt, ostack):
+def reverse(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     array|packedarray|string **reverse** array|packedarray|string
 

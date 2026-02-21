@@ -2,14 +2,21 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 # JPEG/DCT Filters
 #
 # Implements DCTDecode and DCTEncode filters per PLRM Section 3.13.
 # Requires optional jpeglib and numpy dependencies.
 
+from typing import TYPE_CHECKING
+
 from ..core import types as ps
 from ..core import error as ps_error
 from .filter import FilterBase
+
+if TYPE_CHECKING:
+    from .filter import DataSource
 
 # DCT filter dependencies (with error handling)
 try:
@@ -33,7 +40,7 @@ except ImportError as e:
 class DCTDecodeFilter(FilterBase):
     """DCTDecode filter - JPEG baseline decoding per PLRM Section 3.13"""
 
-    def __init__(self, data_source, params=None):
+    def __init__(self, data_source: DataSource, params: dict | ps.Dict | None = None) -> None:
         super().__init__(data_source, params)
 
         # Check for DCT filter availability
@@ -53,7 +60,7 @@ class DCTDecodeFilter(FilterBase):
         self.decoding_complete = False
         self.image_info = None
 
-    def read_data(self, ctxt, max_bytes=None):
+    def read_data(self, ctxt: ps.Context, max_bytes: int | None = None) -> bytes:
         """Decode JPEG data to raw image samples"""
         if self.eof_reached:
             return b''
@@ -91,7 +98,7 @@ class DCTDecodeFilter(FilterBase):
         except Exception as e:
             return ps_error.e(ctxt, ps_error.IOERROR, "DCTDecode")
 
-    def _read_and_decode_jpeg(self, ctxt):
+    def _read_and_decode_jpeg(self, ctxt: ps.Context) -> None:
         """Read all JPEG data from source and decode it"""
         # Read all JPEG data from data source
         while not self.data_source.at_eof():
@@ -199,7 +206,7 @@ class DCTDecodeFilter(FilterBase):
         self.decoded_data_buffer.extend(decoded_bytes)
         self.decoding_complete = True
 
-    def _parse_adobe_app14_marker(self, jpeg_obj):
+    def _parse_adobe_app14_marker(self, jpeg_obj: object) -> int | None:
         """
         Parse Adobe APP14 marker to extract ColorTransform value.
 
@@ -232,7 +239,7 @@ class DCTDecodeFilter(FilterBase):
             # Don't fail if marker parsing has issues, just return None
             return None
 
-    def _get_marker_data(self, marker):
+    def _get_marker_data(self, marker: object) -> bytes | None:
         """Extract raw data from jpeglib marker object"""
         try:
             # jpeglib Marker objects have .content attribute with bytes
@@ -247,7 +254,7 @@ class DCTDecodeFilter(FilterBase):
         except Exception as e:
             return None
 
-    def _parse_adobe_marker_data(self, marker_data):
+    def _parse_adobe_marker_data(self, marker_data: bytes) -> int | None:
         """
         Parse Adobe APP14 marker data structure.
 
@@ -288,7 +295,7 @@ class DCTDecodeFilter(FilterBase):
 class DCTEncodeFilter(FilterBase):
     """DCTEncode filter - JPEG baseline encoding per PLRM Section 3.13"""
 
-    def __init__(self, data_target, params):
+    def __init__(self, data_target: DataSource, params: ps.Dict) -> None:
         super().__init__(data_target, params)
 
         # Check for DCT filter availability
@@ -315,7 +322,7 @@ class DCTEncodeFilter(FilterBase):
         self.image_buffer = bytearray()
         self.encoding_complete = False
 
-    def write_data(self, ctxt, data):
+    def write_data(self, ctxt: ps.Context, data: bytes) -> None:
         """Buffer image data and encode when complete"""
         # Check for DCT availability
         if not self.available:
@@ -348,7 +355,7 @@ class DCTEncodeFilter(FilterBase):
         except Exception as e:
             return ps_error.e(ctxt, ps_error.IOERROR, "DCTEncode")
 
-    def _encode_and_write(self, ctxt):
+    def _encode_and_write(self, ctxt: ps.Context) -> None:
         """Encode buffered image data to JPEG"""
         try:
             # Reshape raw bytes to image array
@@ -409,7 +416,7 @@ class DCTEncodeFilter(FilterBase):
         except Exception as e:
             return ps_error.e(ctxt, ps_error.IOERROR, "DCTEncode")
 
-    def _prepare_jpeglib_params(self):
+    def _prepare_jpeglib_params(self) -> dict:
         """Prepare jpeglib encoding parameters from PostScript parameters"""
         params = {}
 
@@ -439,7 +446,7 @@ class DCTEncodeFilter(FilterBase):
 
         return params
 
-    def _write_to_target(self, ctxt, jpeg_bytes):
+    def _write_to_target(self, ctxt: ps.Context, jpeg_bytes: bytes) -> None:
         """Write JPEG bytes to data target"""
         # Write to underlying data target
         # This depends on the target type (file, string, procedure)
@@ -451,7 +458,7 @@ class DCTEncodeFilter(FilterBase):
 
         return None
 
-    def close(self, ctxt):
+    def close(self, ctxt: ps.Context) -> None:
         """Close **filter** and ensure all data is flushed"""
         if not self.encoding_complete and self.bytes_received > 0:
             # Data was provided but encoding not complete

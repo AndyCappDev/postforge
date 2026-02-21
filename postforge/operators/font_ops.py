@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 Font Dictionary Operations
 
@@ -15,7 +17,7 @@ from ..core import error as ps_error
 from ..core import types as ps
 
 
-def scalefont(ctxt, ostack):
+def scalefont(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     font **scale** **scalefont** font'
 
@@ -58,7 +60,7 @@ def scalefont(ctxt, ostack):
     ostack[-1] = new_font  # Replace original font with scaled font
 
 
-def makefont(ctxt, ostack):
+def makefont(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     font matrix **makefont** font'
 
@@ -114,7 +116,7 @@ def makefont(ctxt, ostack):
     ostack[-1] = new_font  # Replace original font with transformed font
 
 
-def setfont(ctxt, ostack):
+def setfont(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     font **setfont** -
 
@@ -149,7 +151,7 @@ def setfont(ctxt, ostack):
     ostack.pop()
 
 
-def currentfont(ctxt, ostack):
+def currentfont(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **currentfont** font|cidfont
 
@@ -181,7 +183,7 @@ def currentfont(ctxt, ostack):
         ostack.append(current_font)
 
 
-def rootfont(ctxt, ostack):
+def rootfont(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **rootfont** font
 
@@ -205,7 +207,7 @@ def rootfont(ctxt, ostack):
         ostack.append(current_font)
 
 
-def composefont(ctxt, ostack):
+def composefont(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     key cmapname array **composefont** font
 
@@ -307,7 +309,7 @@ def composefont(ctxt, ostack):
 
 # Helper Functions
 
-def _is_valid_font_dict(font_dict):
+def _is_valid_font_dict(font_dict: ps.Dict) -> bool:
     """Check if dictionary is a valid font dictionary"""
     if font_dict.TYPE != ps.T_DICT:
         return False
@@ -357,7 +359,7 @@ def _is_valid_font_dict(font_dict):
         return False
 
 
-def _create_font_copy_in_same_vm(ctxt, original_font, modifications):
+def _create_font_copy_in_same_vm(ctxt: ps.Context, original_font: ps.Dict, modifications: dict) -> ps.Dict:
     """
     Create font copy preserving original VM allocation mode using deepcopy
 
@@ -421,7 +423,7 @@ def _create_font_copy_in_same_vm(ctxt, original_font, modifications):
         ctxt.vm_alloc_mode = old_vm_mode
 
 
-def _compose_matrices(matrix1, matrix2):
+def _compose_matrices(matrix1: list, matrix2: list) -> list:
     """
     Compose two 6-element transformation matrices
 
@@ -446,7 +448,7 @@ def _compose_matrices(matrix1, matrix2):
     return [a, b, c, d, tx, ty]
 
 
-def _get_glyph_name(font_dict, char_code):
+def _get_glyph_name(font_dict: ps.Dict, char_code: int) -> bytes:
     """Get glyph name from character code using font encoding"""
     encoding = font_dict.val.get(b'Encoding')
     if encoding and encoding.TYPE in ps.ARRAY_TYPES and char_code < len(encoding.val):
@@ -458,7 +460,7 @@ def _get_glyph_name(font_dict, char_code):
     return b'.notdef'
 
 
-def _get_charstring(font_dict, glyph_name):
+def _get_charstring(font_dict: ps.Dict, glyph_name: bytes) -> bytes | None:
     """Get encrypted CharString for glyph name"""
     charstrings = font_dict.val.get(b'CharStrings')
 
@@ -472,7 +474,7 @@ def _get_charstring(font_dict, glyph_name):
     return None
 
 
-def _find_resource(ctxt, name, category):
+def _find_resource(ctxt: ps.Context, name: bytes, category: bytes) -> ps.PSObject | None:
     """Look up a resource instance by name and category.
 
     Searches global then local resource dictionaries.
@@ -499,7 +501,7 @@ def _find_resource(ctxt, name, category):
     return None
 
 
-def nextfid(ctxt, ostack):
+def nextfid(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     Internal operator: **.nextfid** fontID
 

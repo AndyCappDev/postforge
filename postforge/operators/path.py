@@ -2,15 +2,16 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 import copy
 import math
-from typing import Union
 
 from ..core import error as ps_error
 from ..core import types as ps
 from .matrix import _transform_delta, _transform_point
 
-def _setcurrentpoint(ctxt, x: Union[int, float], y: Union[int, float]):
+def _setcurrentpoint(ctxt: ps.Context, x: int | float, y: int | float) -> None:
     # the currentpoint is always cast to float
     if ctxt.gstate.currentpoint is not None:
         ctxt.gstate.currentpoint.x = float(x)
@@ -21,8 +22,8 @@ def _setcurrentpoint(ctxt, x: Union[int, float], y: Union[int, float]):
 
 
 def _acuteArcToBezier(
-    start: Union[int, float], size: Union[int, float]
-):
+    start: int | float, size: int | float
+) -> tuple[float, float, float, float, float, float, float, float]:
     # Evaluate constants.
     alpha = size / 2.0
 
@@ -51,7 +52,7 @@ def _acuteArcToBezier(
     )  # p3.y
 
 
-def arc(ctxt, ostack):
+def arc(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     x y r angle₁ angle₂ **arc** -
 
@@ -176,7 +177,7 @@ def arc(ctxt, ostack):
     ostack.pop()
 
 
-def arcn(ctxt, ostack):
+def arcn(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     x y r angle₁ angle₂ **arcn** -
 
@@ -285,7 +286,10 @@ def arcn(ctxt, ostack):
     ostack.pop()
 
 
-def _compute_arc_from_tangents(x0, y0, x1, y1, x2, y2, r):
+def _compute_arc_from_tangents(
+    x0: float, y0: float, x1: float, y1: float,
+    x2: float, y2: float, r: float,
+) -> tuple[float, float, float, float, float, float, float, float, bool] | str:
     """
     Compute **arc** center, tangent points, angles, and direction from tangent line geometry.
     For **arct**: x0,y0 -> x1,y1 -> x2,y2 with radius r
@@ -382,7 +386,7 @@ def _compute_arc_from_tangents(x0, y0, x1, y1, x2, y2, r):
     return (cx, cy, xt1, yt1, xt2, yt2, start_angle, end_angle, clockwise)
 
 
-def arct(ctxt, ostack):
+def arct(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     x1 y1 x2 y2 r **arct** -
     
@@ -559,7 +563,7 @@ def arct(ctxt, ostack):
     _setcurrentpoint(ctxt, xt2, yt2)
 
 
-def arcto(ctxt, ostack):
+def arcto(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     x1 y1 x2 y2 r **arcto** xt1 yt1 xt2 yt2
     
@@ -742,7 +746,7 @@ def arcto(ctxt, ostack):
     ostack.append(ps.Real(yt2_user))
 
 
-def closepath(ctxt, ostack):
+def closepath(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **closepath** -
 
@@ -775,7 +779,7 @@ def closepath(ctxt, ostack):
             ctxt.gstate.currentpoint = copy.copy(subpath[i].p)
 
 
-def curveto(ctxt, ostack):
+def curveto(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     x₁ y₁ x₂ y₂ x₃ y₃ **cureveto** -
 
@@ -839,7 +843,7 @@ def curveto(ctxt, ostack):
         ostack.pop()
 
 
-def lineto(ctxt, ostack):
+def lineto(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     x y **lineto** -
 
@@ -878,7 +882,7 @@ def lineto(ctxt, ostack):
     ostack.pop()
 
 
-def moveto(ctxt, ostack):
+def moveto(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     x y **moveto** -
 
@@ -923,7 +927,7 @@ def moveto(ctxt, ostack):
     ostack.pop()
 
 
-def newpath(ctxt, ostack):
+def newpath(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **newpath** -
 
@@ -939,7 +943,7 @@ def newpath(ctxt, ostack):
     ctxt.gstate.bbox = None
 
 
-def rcurveto(ctxt, ostack):
+def rcurveto(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     dx₁ dy₁ dx₂ dy₂ dx₃ dy₃ **rcurveto** -
 
@@ -988,7 +992,7 @@ def rcurveto(ctxt, ostack):
         ostack.pop()
 
 
-def rmoveto(ctxt, ostack):
+def rmoveto(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     dx dy **rmoveto** -
 
@@ -1040,7 +1044,7 @@ def rmoveto(ctxt, ostack):
     ostack.pop()
 
 
-def rlineto(ctxt, ostack):
+def rlineto(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     dx dy **rlineto** -
 

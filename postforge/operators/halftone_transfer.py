@@ -2,12 +2,14 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 from ..core import error as ps_error
 from ..core import types as ps
 
 
 # device dependant
-def setscreen(ctxt, ostack) -> None:
+def setscreen(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
         frequency angle proc **setscreen** -
     frequency angle halftone **setscreen** -
@@ -76,7 +78,7 @@ def setscreen(ctxt, ostack) -> None:
     ctxt.gstate.color_screen_params = None
 
 
-def currentscreen(ctxt, ostack) -> None:
+def currentscreen(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentscreen** frequency angle proc
     - **currentscreen** frequency angle halftone
@@ -134,7 +136,7 @@ def currentscreen(ctxt, ostack) -> None:
         ostack.append(empty_proc)
 
 
-def currenthalftone(ctxt, ostack) -> None:
+def currenthalftone(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currenthalftone** halftone
 
@@ -162,7 +164,7 @@ def currenthalftone(ctxt, ostack) -> None:
         ostack.append(ht)
 
 
-def sethalftone(ctxt, ostack) -> None:
+def sethalftone(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     halftone **sethalftone** -
 
@@ -184,7 +186,7 @@ def sethalftone(ctxt, ostack) -> None:
     ctxt.gstate.color_screen_params = None
 
 
-def settransfer(ctxt, ostack) -> None:
+def settransfer(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     proc **settransfer** -
 
@@ -218,7 +220,7 @@ def settransfer(ctxt, ostack) -> None:
     ctxt.gstate.transfer_function = transfer_proc
 
 
-def setblackgeneration(ctxt, ostack) -> None:
+def setblackgeneration(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     proc **setblackgeneration** -
 
@@ -247,7 +249,7 @@ def setblackgeneration(ctxt, ostack) -> None:
     ctxt.gstate.black_generation = ostack.pop()
 
 
-def currentblackgeneration(ctxt, ostack) -> None:
+def currentblackgeneration(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentblackgeneration** proc
 
@@ -269,7 +271,7 @@ def currentblackgeneration(ctxt, ostack) -> None:
         ostack.append(empty_proc)
 
 
-def setundercolorremoval(ctxt, ostack) -> None:
+def setundercolorremoval(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     proc **setundercolorremoval** -
 
@@ -298,7 +300,7 @@ def setundercolorremoval(ctxt, ostack) -> None:
     ctxt.gstate.undercolor_removal = ostack.pop()
 
 
-def currentundercolorremoval(ctxt, ostack) -> None:
+def currentundercolorremoval(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentundercolorremoval** proc
 

@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostScript insideness testing operators: infill, ineofill, instroke.
 
@@ -21,7 +23,7 @@ from . import strokepath_algorithm as sp_algo
 from .matrix import _transform_point
 
 
-def infill(ctxt, ostack):
+def infill(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     x y **infill** bool
     Tests whether the point (x, y) in user space would be inside the area
@@ -51,7 +53,7 @@ def infill(ctxt, ostack):
     ostack.append(ps.Bool(result))
 
 
-def ineofill(ctxt, ostack):
+def ineofill(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     x y **ineofill** bool
     Tests whether the point (x, y) in user space would be inside the area
@@ -81,7 +83,7 @@ def ineofill(ctxt, ostack):
     ostack.append(ps.Bool(result))
 
 
-def instroke(ctxt, ostack):
+def instroke(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     x y **instroke** bool
     Tests whether the point (x, y) in user space would be inside the area

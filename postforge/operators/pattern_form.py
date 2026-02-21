@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 import copy
 import math
 
@@ -11,7 +13,7 @@ from .graphics_state import gsave, grestore
 from .matrix import _setCTM
 
 
-def makepattern(ctxt, ostack) -> None:
+def makepattern(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     dict matrix **makepattern** pattern
 
@@ -244,7 +246,7 @@ def makepattern(ctxt, ostack) -> None:
         return ps_error.e(ctxt, ps_error.VMERROR, makepattern.__name__)
 
 
-def setpattern(ctxt, ostack) -> None:
+def setpattern(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
               pattern **setpattern** –
     comp1 ... compn pattern **setpattern** –
@@ -355,7 +357,7 @@ def setpattern(ctxt, ostack) -> None:
 _form_cache = {}
 
 
-def _compose_ctm_tuple(cached, real):
+def _compose_ctm_tuple(cached: tuple[float, ...], real: tuple[float, ...]) -> tuple[float, float, float, float, float, float]:
     """Compose two affine **transform** tuples: result = cached · real.
 
     Each tuple is (a, b, c, d, tx, ty) in PostScript matrix convention.
@@ -368,7 +370,7 @@ def _compose_ctm_tuple(cached, real):
             ctx * ra + cty * rc + rtx, ctx * rb + cty * rd + rty)
 
 
-def _ctm_scale(ctm_tuple):
+def _ctm_scale(ctm_tuple: tuple[float, ...]) -> float:
     """Compute geometric mean **scale** factor from a CTM tuple."""
     a, b, c, d = ctm_tuple[0], ctm_tuple[1], ctm_tuple[2], ctm_tuple[3]
     sx = math.sqrt(a * a + b * b)
@@ -376,7 +378,7 @@ def _ctm_scale(ctm_tuple):
     return math.sqrt(sx * sy)
 
 
-def _replay_form_elements(cached_elements, ctm, display_list):
+def _replay_form_elements(cached_elements: list, ctm: ps.Array, display_list: ps.DisplayList) -> None:
     """Transform cached form-space display list elements to device space and append.
 
     Cached elements were captured with an identity CTM, so their coordinates are
@@ -511,7 +513,7 @@ def _replay_form_elements(cached_elements, ctm, display_list):
             display_list.append(elem)
 
 
-def execform(ctxt, ostack) -> None:
+def execform(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     form **execform** –
 

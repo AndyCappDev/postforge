@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 import copy
 import fnmatch
 import sys
@@ -14,7 +16,7 @@ from ..core import system_font_loader as sfl
 from ..core import types as ps
 
 
-def categoryimpdict(ctxt, ostack) -> None:
+def categoryimpdict(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - <**categoryimpdict**> dict
     """
@@ -25,7 +27,7 @@ def categoryimpdict(ctxt, ostack) -> None:
     ostack.append(copy.copy(ps.global_resources.get_gvm().val[b"resource"].val[b"Category"]))
 
 
-def createresourcecategory(ctxt, ostack) -> None:
+def createresourcecategory(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     category instancetype resourcedir resourceextension <**createresourcecategory**> -
 
@@ -39,7 +41,7 @@ def createresourcecategory(ctxt, ostack) -> None:
     ctxt.e_stack.append(proc)
 
 
-def globalresourcedict(ctxt, ostack) -> None:
+def globalresourcedict(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     category <**globalresourcedict**> dict true
     category <**globalresourcedict**> false
@@ -60,7 +62,7 @@ def globalresourcedict(ctxt, ostack) -> None:
         ostack.append(ps.Bool(True))
 
 
-def localresourcedict(ctxt, ostack) -> None:
+def localresourcedict(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     category <**localresourcedict**> dict true
     category <**localresourcedict**> false
@@ -81,7 +83,7 @@ def localresourcedict(ctxt, ostack) -> None:
         ostack.append(ps.Bool(True))
 
 
-def findresource(ctxt, ostack) -> None:
+def findresource(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     key category **findresource** instance
 
@@ -222,7 +224,7 @@ def findresource(ctxt, ostack) -> None:
         ostack[-1] = resource_dict
 
 
-def defineresource(ctxt, ostack) -> None:
+def defineresource(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     key instance category **defineresource** instance
 
@@ -469,7 +471,7 @@ def defineresource(ctxt, ostack) -> None:
             ostack.pop()
 
 
-def resourcestatus(ctxt, ostack) -> None:
+def resourcestatus(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     key category **resourcestatus** status size true    (if resource exists)
                                 false               (if not)
@@ -587,7 +589,7 @@ def resourcestatus(ctxt, ostack) -> None:
         ostack[-1] = ps.Bool(False)  # replace key with false
 
 
-def undefineresource(ctxt, ostack) -> None:
+def undefineresource(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     key category **undefineresource** —
 
@@ -703,7 +705,7 @@ def undefineresource(ctxt, ostack) -> None:
         ostack.pop()  # key
 
 
-def resourceforall(ctxt, ostack) -> None:
+def resourceforall(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     template proc scratch category **resourceforall** —
 
@@ -858,7 +860,7 @@ def resourceforall(ctxt, ostack) -> None:
             break
 
 
-def loadsystemfont(ctxt, ostack):
+def loadsystemfont(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """Look up a system font path from the system font cache.
 
     Stack: font_name_key  .loadsystemfont  path_string true  |  false
@@ -905,7 +907,7 @@ def loadsystemfont(ctxt, ostack):
         ostack.append(ps.Bool(True))
 
 
-def loadbinarysystemfont(ctxt, ostack):
+def loadbinarysystemfont(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """Load a binary system font (OTF/TTF) directly.
 
     Stack: font_name_key  .loadbinarysystemfont  true  |  false
@@ -957,7 +959,7 @@ def loadbinarysystemfont(ctxt, ostack):
     ostack.append(ps.Bool(success))
 
 
-def loadbinaryfontfile(ctxt, ostack):
+def loadbinaryfontfile(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """Load a binary font (OTF/TTF) from an explicit file path.
 
     Stack: font_name_key  file_path_string  .loadbinaryfontfile  true | false

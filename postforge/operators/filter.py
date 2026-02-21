@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 # PostScript Filter System Implementation
 #
 # Implements PostScript Language Reference Manual Section 3.8.4 filter functionality
@@ -18,23 +20,23 @@ from . import control as ps_control
 class FilterBase:
     """Abstract base class for all PostScript filters"""
 
-    def __init__(self, data_source, params=None):
+    def __init__(self, data_source: DataSource, params: dict | ps.Dict | None = None) -> None:
         self.data_source = data_source
         self.params = params or {}
         self.closed = False
         self.buffer = bytearray()
         self.eof_reached = False
         self.eod_reached = False  # End-of-data marker seen (for filters with EOD markers)
-        
-    def read_data(self, ctxt, max_bytes=None):
+
+    def read_data(self, ctxt: ps.Context, max_bytes: int | None = None) -> bytes:
         """Read and decode data from underlying source"""
         raise NotImplementedError("Subclasses must implement read_data")
-        
-    def write_data(self, ctxt, data):
+
+    def write_data(self, ctxt: ps.Context, data: bytes) -> None:
         """Encode and write data to underlying target"""
         raise NotImplementedError("Subclasses must implement write_data")
-        
-    def close(self, ctxt):
+
+    def close(self, ctxt: ps.Context) -> None:
         """Close **filter** and underlying source/target"""
         if not self.closed:
             self.closed = True
@@ -46,14 +48,14 @@ class FilterBase:
 class DataSource:
     """Abstraction for file/string/procedure data sources"""
 
-    def __init__(self, source_obj, ctxt):
+    def __init__(self, source_obj: ps.File | ps.String | ps.Array, ctxt: ps.Context) -> None:
         self.source = source_obj
         self.exhausted = False
         self.string_data = None  # Cache for string data
         self.string_position = 0  # Current position in string
         self.putback_buffer = bytearray()  # Buffer for pushed-back bytes
 
-    def putback(self, data):
+    def putback(self, data: bytes | bytearray) -> None:
         """Push bytes back to be read again on next read_data call.
 
         This is essential for filters like ASCII85Decode that may read past
@@ -75,7 +77,7 @@ class DataSource:
             # If we had marked exhausted but now have data, clear that flag
             self.exhausted = False
 
-    def read_data(self, ctxt, max_bytes=None):
+    def read_data(self, ctxt: ps.Context, max_bytes: int | None = None) -> bytes:
         """Read data based on source type"""
         # First return any data from putback buffer
         if self.putback_buffer:
@@ -175,7 +177,7 @@ class DataSource:
         else:
             raise TypeError(f"Unsupported data source type: {type(self.source)}")
     
-    def at_eof(self):
+    def at_eof(self) -> bool:
         return self.exhausted
 
 
@@ -190,7 +192,7 @@ class _FilterReadState:
     """
     __slots__ = ('buffer', 'buf_pos', 'last_read_byte', 'has_unread_byte')
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.buffer = bytearray()
         self.buf_pos = 0
         self.last_read_byte = None
@@ -200,7 +202,7 @@ class _FilterReadState:
 class FilterFile(ps.File):
     """File object representing a filtered stream - implements delegation pattern"""
 
-    def __init__(self, underlying_source, filter_impl, ctxt, is_input=True):
+    def __init__(self, underlying_source: ps.File | ps.String | ps.Array, filter_impl: FilterBase, ctxt: ps.Context, is_input: bool = True) -> None:
         # Initialize as File with appropriate attributes
         mode = "r" if is_input else "w"
 
@@ -219,7 +221,7 @@ class FilterFile(ps.File):
         self.is_real_file = False          # FilterFile is not a real disk file
         self.ctxt = ctxt                   # Store context for later use
 
-    def __copy__(self):
+    def __copy__(self) -> FilterFile:
         """Optimized copy for FilterFile - includes **filter**-specific attributes.
 
         The _state object is shared (not copied) so that all copies of the same
@@ -247,7 +249,7 @@ class FilterFile(ps.File):
         new_obj.ctxt = self.ctxt
         return new_obj
 
-    def filename(self):
+    def filename(self) -> str:
         """Return a descriptive name for this filtered file."""
         # Try to get the underlying file's name if it has one
         if hasattr(self.underlying, 'filename') and callable(self.underlying.filename):
@@ -261,14 +263,14 @@ class FilterFile(ps.File):
         filter_name = getattr(self.filter, '__class__', type(self.filter)).__name__
         return f"<{filter_name} filter of {underlying_name}>"
         
-    def _compact_buffer(self):
+    def _compact_buffer(self) -> None:
         """Discard consumed bytes from the front of the buffer."""
         s = self._state
         if s.buf_pos > 0:
             del s.buffer[:s.buf_pos]
             s.buf_pos = 0
 
-    def reset(self):
+    def reset(self) -> None:
         """Discard all buffered data for this **filter** file.
 
         Used by the **resetfile** operator to **clear** internal buffers without
@@ -280,7 +282,7 @@ class FilterFile(ps.File):
         s.last_read_byte = None
         s.has_unread_byte = False
 
-    def putback(self, data):
+    def putback(self, data: bytes | bytearray) -> None:
         """Push bytes back to be read again on next read call.
 
         For pass-through filters (SubFileDecode), always propagate the putback
@@ -321,7 +323,7 @@ class FilterFile(ps.File):
                 self._compact_buffer()
                 self._state.buffer = bytearray(data) + self._state.buffer
 
-    def unread(self):
+    def unread(self) -> None:
         """Push the last read byte back to be read again.
 
         This is essential for the tokenizer which may need to look ahead
@@ -331,7 +333,7 @@ class FilterFile(ps.File):
         if s.last_read_byte is not None and not s.has_unread_byte:
             s.has_unread_byte = True
 
-    def read(self, ctxt):
+    def read(self, ctxt: ps.Context) -> int | None:
         """Read single byte through **filter** delegation chain"""
         s = self._state
         # Return unread byte if available
@@ -368,7 +370,7 @@ class FilterFile(ps.File):
         except Exception:
             raise
 
-    def read_bulk(self, ctxt, count):
+    def read_bulk(self, ctxt: ps.Context, count: int) -> bytes:
         """Read up to *count* bytes efficiently.  Returns bytes (may be shorter at EOF)."""
         s = self._state
         result = bytearray()
@@ -401,7 +403,7 @@ class FilterFile(ps.File):
 
         return bytes(result)
     
-    def write(self, ctxt, byte_val):
+    def write(self, ctxt: ps.Context, byte_val: int) -> None:
         """Write single byte through **filter** delegation chain"""
         if self.is_input:
             return ps_error.e(ctxt, ps_error.IOERROR, "write")
@@ -411,7 +413,7 @@ class FilterFile(ps.File):
         except Exception as e:
             return ps_error.e(ctxt, ps_error.IOERROR, "write")
     
-    def close(self):
+    def close(self) -> None:
         """Close **filter** and underlying source"""
         if not hasattr(self, 'closed'):
             self.closed = False
@@ -423,7 +425,7 @@ class FilterFile(ps.File):
 
 # Core Filter Operator Implementation
 
-def ps_filter(ctxt, ostack):
+def ps_filter(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     source/target param1 … paramn filtername **filter** file
 
@@ -701,7 +703,7 @@ def ps_filter(ctxt, ostack):
     ostack.append(filter_file)
 
 
-def create_filter(filter_name, data_source, params, ctxt):
+def create_filter(filter_name: bytes, data_source: ps.File | ps.String | ps.Array, params: dict | ps.Dict | None, ctxt: ps.Context) -> FilterBase | None:
     """Factory function to create specific **filter** implementations"""
     # Deferred imports to avoid circular dependency (leaf modules import FilterBase
     # from this module)
@@ -758,9 +760,9 @@ def create_filter(filter_name, data_source, params, ctxt):
 class SubFileDecodeFilter(FilterBase):
     """SubFileDecode filter - PLRM compliant subfile detection with EOD handling"""
     
-    def __init__(self, data_source, params=None):
+    def __init__(self, data_source: DataSource, params: dict | ps.Dict | None = None) -> None:
         super().__init__(data_source, params)
-        
+
         # Extract required parameters from dictionary or defaults
         self.eod_count = 0
         self.eod_string = b''
@@ -795,7 +797,7 @@ class SubFileDecodeFilter(FilterBase):
         self.search_buffer = bytearray()
         self.byte_count = 0  # For zero-length EOD strings
         
-    def read_data(self, ctxt, max_bytes=None):
+    def read_data(self, ctxt: ps.Context, max_bytes: int | None = None) -> bytes:
         """Read data through **filter** until EOD condition is met - PLRM Section 3.13"""
         if self.eof_reached:
             return b''
@@ -857,7 +859,7 @@ class SubFileDecodeFilter(FilterBase):
         
         return bytes(result)
     
-    def _read_byte_count_mode(self, ctxt, target_bytes):
+    def _read_byte_count_mode(self, ctxt: ps.Context, target_bytes: int) -> bytes:
         """Handle zero-length EOD string case - just pass through EODCount bytes"""
         if self.byte_count >= self.eod_count:
             self.eof_reached = True
@@ -880,7 +882,7 @@ class SubFileDecodeFilter(FilterBase):
             
         return source_data
     
-    def _check_eod_match(self):
+    def _check_eod_match(self) -> bool:
         """Check if EOD string matches at start of **search** buffer - PLRM case-sensitive"""
         if len(self.search_buffer) < len(self.eod_string):
             return False
@@ -892,7 +894,7 @@ class SubFileDecodeFilter(FilterBase):
                 
         return True
     
-    def close(self, ctxt):
+    def close(self, ctxt: ps.Context) -> None:
         """Close **filter** and optionally **close** source based on CloseSource parameter"""
         if not self.closed:
             if self.close_source:

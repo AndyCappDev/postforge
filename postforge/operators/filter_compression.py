@@ -2,19 +2,26 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 # Lossless Compression Filters
 #
 # Implements RunLength, LZW, and Flate encode/decode filters per PLRM Section 3.13.
 
 import zlib
+from typing import TYPE_CHECKING
+
 from ..core import types as ps
 from .filter import FilterBase
+
+if TYPE_CHECKING:
+    from .filter import DataSource
 
 
 class RunLengthDecodeFilter(FilterBase):
     """RunLengthDecode filter - PLRM compliant run-length decompression"""
 
-    def __init__(self, data_source, params=None):
+    def __init__(self, data_source: DataSource, params: dict | ps.Dict | None = None) -> None:
         super().__init__(data_source, params)
         self.decode_state = 'length'  # 'length' or 'data'
         self.run_length = 0
@@ -22,7 +29,7 @@ class RunLengthDecodeFilter(FilterBase):
         self.remaining_copies = 0
         self.literal_remaining = 0
 
-    def read_data(self, ctxt, max_bytes=None):
+    def read_data(self, ctxt: ps.Context, max_bytes: int | None = None) -> bytes:
         """Decode run-length data - PLRM Section 3.13"""
         if self.eof_reached:
             return b''
@@ -93,7 +100,7 @@ class RunLengthDecodeFilter(FilterBase):
 class RunLengthEncodeFilter(FilterBase):
     """RunLengthEncode filter - PLRM compliant run-length compression"""
 
-    def __init__(self, data_source, params=None):
+    def __init__(self, data_source: DataSource, params: dict | ps.Dict | None = None) -> None:
         super().__init__(data_source, params)
 
         # Extract RecordSize parameter
@@ -109,7 +116,7 @@ class RunLengthEncodeFilter(FilterBase):
         self.input_buffer = bytearray()
         self.record_position = 0
 
-    def write_data(self, ctxt, data):
+    def write_data(self, ctxt: ps.Context, data: bytes) -> None:
         """Encode data using run-length compression - PLRM algorithm"""
         self.input_buffer.extend(data)
 
@@ -119,7 +126,7 @@ class RunLengthEncodeFilter(FilterBase):
             if encoded_data:
                 self._write_encoded_data(ctxt, encoded_data)
 
-    def _can_process_data(self):
+    def _can_process_data(self) -> bool:
         """Check if we have data ready to process"""
         if self.record_size == 0:
             return len(self.input_buffer) > 0
@@ -127,7 +134,7 @@ class RunLengthEncodeFilter(FilterBase):
             # Process when we have a complete record or at end of data
             return (self.record_position + len(self.input_buffer) >= self.record_size)
 
-    def _encode_next_segment(self, ctxt):
+    def _encode_next_segment(self, ctxt: ps.Context) -> bytes:
         """Encode the next segment of data"""
         if not self.input_buffer:
             return b''
@@ -194,13 +201,13 @@ class RunLengthEncodeFilter(FilterBase):
         self.input_buffer = self.input_buffer[i:]
         return bytes(encoded)
 
-    def _write_encoded_data(self, ctxt, encoded_data):
+    def _write_encoded_data(self, ctxt: ps.Context, encoded_data: bytes) -> None:
         """Write encoded data to target"""
         if isinstance(self.data_source.source, ps.File):
             for byte_val in encoded_data:
                 self.data_source.source.write(ctxt, byte_val)
 
-    def close(self, ctxt):
+    def close(self, ctxt: ps.Context) -> None:
         """Encode remaining data and write EOD marker"""
         # Process any remaining data
         if self.input_buffer:
@@ -218,7 +225,7 @@ class RunLengthEncodeFilter(FilterBase):
 class LZWDecodeFilter(FilterBase):
     """LZWDecode filter - PLRM compliant Lempel-Ziv-Welch decompression"""
 
-    def __init__(self, data_source, params=None):
+    def __init__(self, data_source: DataSource, params: dict | ps.Dict | None = None) -> None:
         super().__init__(data_source, params)
 
         # Extract parameters from dictionary
@@ -248,7 +255,7 @@ class LZWDecodeFilter(FilterBase):
         self.bits_available = 0
         self.input_buffer = bytearray()
 
-    def reset_decoder(self):
+    def reset_decoder(self) -> None:
         """Reset LZW decoder state to initial conditions"""
         # Initialize string table with single-character entries
         self.string_table = {}
@@ -259,7 +266,7 @@ class LZWDecodeFilter(FilterBase):
         self.code_length = self.unit_length + 1  # Start with 9 bits for unit_length=8
         self.previous_code = None
 
-    def read_data(self, ctxt, max_bytes=None):
+    def read_data(self, ctxt: ps.Context, max_bytes: int | None = None) -> bytes:
         """Decode LZW data to binary - PLRM Section 3.13"""
         if self.eof_reached:
             return b''
@@ -323,7 +330,7 @@ class LZWDecodeFilter(FilterBase):
 
         return bytes(result)
 
-    def read_code(self):
+    def read_code(self) -> int | None:
         """Read next code from bit stream"""
         # Need enough bits for current code length
         while self.bits_available < self.code_length and self.input_buffer:
@@ -352,7 +359,7 @@ class LZWDecodeFilter(FilterBase):
         self.bits_available -= self.code_length
         return code
 
-    def update_code_length(self):
+    def update_code_length(self) -> None:
         """Update code length when string table grows"""
         # PLRM: Check if we need to increase code length
         if self.code_length < 12:
@@ -371,7 +378,7 @@ class LZWDecodeFilter(FilterBase):
 class LZWEncodeFilter(FilterBase):
     """LZWEncode filter - PLRM compliant Lempel-Ziv-Welch compression"""
 
-    def __init__(self, data_source, params=None):
+    def __init__(self, data_source: DataSource, params: dict | ps.Dict | None = None) -> None:
         super().__init__(data_source, params)
 
         # Extract parameters - encoding only supports default values per PLRM
@@ -395,7 +402,7 @@ class LZWEncodeFilter(FilterBase):
         # Write initial clear-table code
         self.write_code(self.clear_code)
 
-    def reset_encoder(self):
+    def reset_encoder(self) -> None:
         """Reset LZW encoder state to initial conditions"""
         # Initialize string table with single-character entries
         self.string_table = {}
@@ -405,7 +412,7 @@ class LZWEncodeFilter(FilterBase):
         self.next_code = self.clear_code + 2  # First available code after clear/eod
         self.code_length = self.unit_length + 1  # Start with 9 bits
 
-    def write_data(self, ctxt, data):
+    def write_data(self, ctxt: ps.Context, data: bytes) -> None:
         """Encode data using LZW compression"""
         self.input_sequence.extend(data)
 
@@ -440,7 +447,7 @@ class LZWEncodeFilter(FilterBase):
         # Keep w for next write_data call (don't output yet)
         self._pending_string = w
 
-    def write_code(self, code):
+    def write_code(self, code: int) -> None:
         """Write code to bit stream"""
         # Pack code into bit buffer (high-order bit first)
         self.bit_buffer = (self.bit_buffer << self.code_length) | code
@@ -455,14 +462,14 @@ class LZWEncodeFilter(FilterBase):
 
         # Output buffer will be written in close() method when we have context
 
-    def _write_output_buffer(self, ctxt):
+    def _write_output_buffer(self, ctxt: ps.Context) -> None:
         """Write output buffer to target"""
         if isinstance(self.data_source.source, ps.File):
             for byte_val in self.output_buffer:
                 self.data_source.source.write(ctxt, byte_val)
             self.output_buffer.clear()
 
-    def update_code_length(self):
+    def update_code_length(self) -> None:
         """Update code length when string table grows"""
         if self.code_length < 12:
             # Calculate threshold (early change by default)
@@ -470,7 +477,7 @@ class LZWEncodeFilter(FilterBase):
             if self.next_code >= threshold:
                 self.code_length += 1
 
-    def close(self, ctxt):
+    def close(self, ctxt: ps.Context) -> None:
         """Finish encoding and write EOD marker"""
         # Output final pending string if any
         if hasattr(self, '_pending_string') and self._pending_string:
@@ -493,7 +500,7 @@ class LZWEncodeFilter(FilterBase):
         super().close(ctxt)
 
 
-def _paeth_predictor(a, b, c):
+def _paeth_predictor(a: int, b: int, c: int) -> int:
     """PNG Paeth predictor function per PNG specification."""
     p = a + b - c
     pa = abs(p - a)
@@ -510,7 +517,7 @@ def _paeth_predictor(a, b, c):
 class FlateDecodeFilter(FilterBase):
     """FlateDecode filter - PLRM compliant zlib/deflate decompression (LanguageLevel 3)"""
 
-    def __init__(self, data_source, params=None):
+    def __init__(self, data_source: DataSource, params: dict | ps.Dict | None = None) -> None:
         super().__init__(data_source, params)
 
         # Extract parameters from dictionary
@@ -550,7 +557,7 @@ class FlateDecodeFilter(FilterBase):
         self.input_buffer = bytearray()
         self.output_buffer = bytearray()
 
-    def read_data(self, ctxt, max_bytes=None):
+    def read_data(self, ctxt: ps.Context, max_bytes: int | None = None) -> bytes:
         """Decompress zlib/deflate data - PLRM Section 3.13"""
         if self.eof_reached:
             return b''
@@ -616,7 +623,7 @@ class FlateDecodeFilter(FilterBase):
 
         return bytes(result)
 
-    def _process_predictor_rows(self):
+    def _process_predictor_rows(self) -> None:
         """Process complete rows from _predictor_buffer into output_buffer."""
         while len(self._predictor_buffer) >= self._raw_row_len:
             raw_row = self._predictor_buffer[:self._raw_row_len]
@@ -630,7 +637,7 @@ class FlateDecodeFilter(FilterBase):
             self.output_buffer.extend(decoded)
             self._prev_row = bytearray(decoded)
 
-    def _decode_png_row(self, raw_row):
+    def _decode_png_row(self, raw_row: bytearray | bytes) -> bytearray:
         """Decode a single PNG-predicted row. First byte is filter type (0-4)."""
         filter_type = raw_row[0]
         filtered = raw_row[1:]
@@ -668,7 +675,7 @@ class FlateDecodeFilter(FilterBase):
 
         return row
 
-    def _decode_tiff_row(self, raw_row):
+    def _decode_tiff_row(self, raw_row: bytearray | bytes) -> bytearray:
         """Decode a single TIFF Predictor 2 row (horizontal undifferencing)."""
         row = bytearray(raw_row)
 
@@ -694,7 +701,7 @@ class FlateDecodeFilter(FilterBase):
 class FlateEncodeFilter(FilterBase):
     """FlateEncode filter - PLRM compliant zlib/deflate compression (LanguageLevel 3)"""
 
-    def __init__(self, data_source, params=None):
+    def __init__(self, data_source: DataSource, params: dict | ps.Dict | None = None) -> None:
         super().__init__(data_source, params)
 
         # Extract parameters from dictionary
@@ -739,7 +746,7 @@ class FlateEncodeFilter(FilterBase):
         self.compressor = zlib.compressobj(level=compression_level)
         self.input_buffer = bytearray()
 
-    def write_data(self, ctxt, data):
+    def write_data(self, ctxt: ps.Context, data: bytes) -> None:
         """Compress data using zlib/deflate - PLRM Section 3.13"""
         if self.predictor > 1:
             self._encode_buffer.extend(data)
@@ -753,7 +760,7 @@ class FlateEncodeFilter(FilterBase):
             except zlib.error:
                 raise IOError("Flate compression error")
 
-    def _process_encode_rows(self, ctxt):
+    def _process_encode_rows(self, ctxt: ps.Context) -> None:
         """Process complete rows from _encode_buffer, encode and compress."""
         while len(self._encode_buffer) >= self.row_width:
             row = self._encode_buffer[:self.row_width]
@@ -773,7 +780,7 @@ class FlateEncodeFilter(FilterBase):
             except zlib.error:
                 raise IOError("Flate compression error")
 
-    def _encode_png_row(self, row):
+    def _encode_png_row(self, row: bytearray | bytes) -> bytearray:
         """Encode a row using PNG Sub filter (type 1)."""
         bpp = self.bpp
         encoded = bytearray(1 + self.row_width)
@@ -783,7 +790,7 @@ class FlateEncodeFilter(FilterBase):
             encoded[1 + i] = (row[i] - left) & 0xFF
         return encoded
 
-    def _encode_tiff_row(self, row):
+    def _encode_tiff_row(self, row: bytearray | bytes) -> bytearray:
         """Encode a row using TIFF Predictor 2 (horizontal differencing)."""
         encoded = bytearray(row)
 
@@ -803,13 +810,13 @@ class FlateEncodeFilter(FilterBase):
 
         return encoded
 
-    def _write_compressed_data(self, ctxt, compressed_data):
+    def _write_compressed_data(self, ctxt: ps.Context, compressed_data: bytes) -> None:
         """Write compressed data to target"""
         if isinstance(self.data_source.source, ps.File):
             for byte_val in compressed_data:
                 self.data_source.source.write(ctxt, byte_val)
 
-    def close(self, ctxt):
+    def close(self, ctxt: ps.Context) -> None:
         """Flush compressor and write final data"""
         # Flush any remaining encode buffer (partial row)
         if self.predictor > 1 and self._encode_buffer:

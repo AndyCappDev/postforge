@@ -2,24 +2,31 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 # ASCII Encoding/Decoding Filters
 #
 # Implements ASCIIHex and ASCII85 encode/decode filters per PLRM Section 3.13,
 # plus NullEncode pass-through filter.
 
+from typing import TYPE_CHECKING
+
 from ..core import types as ps
 from .filter import FilterBase
+
+if TYPE_CHECKING:
+    from .filter import DataSource
 
 
 class ASCIIHexDecodeFilter(FilterBase):
     """ASCII Hexadecimal decode filter - converts hex digits to bytes"""
 
-    def __init__(self, data_source, params=None):
+    def __init__(self, data_source: DataSource, params: dict | None = None) -> None:
         super().__init__(data_source, params)
         self.hex_buffer = bytearray()
         self.eod_reached = False
 
-    def read_data(self, ctxt, max_bytes=None):
+    def read_data(self, ctxt: ps.Context, max_bytes: int | None = None) -> bytes:
         """Decode hex data to binary"""
         if self.eof_reached or self.eod_reached:
             return b''
@@ -85,7 +92,7 @@ class ASCIIHexDecodeFilter(FilterBase):
 class ASCIIHexEncodeFilter(FilterBase):
     """ASCII Hexadecimal encode filter - converts bytes to hex digits"""
 
-    def write_data(self, ctxt, data):
+    def write_data(self, ctxt: ps.Context, data: bytes) -> None:
         """Encode binary data to hex"""
         # Convert each byte to two hex digits
         hex_data = bytearray()
@@ -97,7 +104,7 @@ class ASCIIHexEncodeFilter(FilterBase):
             for byte_val in hex_data:
                 self.data_source.source.write(ctxt, byte_val)
 
-    def close(self, ctxt):
+    def close(self, ctxt: ps.Context) -> None:
         """Write EOD marker and **close**"""
         if isinstance(self.data_source.source, ps.File):
             self.data_source.source.write(ctxt, ord('>'))
@@ -107,11 +114,11 @@ class ASCIIHexEncodeFilter(FilterBase):
 class NullEncodeFilter(FilterBase):
     """Null encode filter - pass-through filter for testing"""
 
-    def read_data(self, ctxt, max_bytes=None):
+    def read_data(self, ctxt: ps.Context, max_bytes: int | None = None) -> bytes:
         """Pass through data unchanged"""
         return self.data_source.read_data(ctxt, max_bytes)
 
-    def write_data(self, ctxt, data):
+    def write_data(self, ctxt: ps.Context, data: bytes) -> None:
         """Pass through data unchanged"""
         if isinstance(self.data_source.source, ps.File):
             for byte_val in data:
@@ -121,12 +128,12 @@ class NullEncodeFilter(FilterBase):
 class ASCII85DecodeFilter(FilterBase):
     """ASCII85 decode filter - PLRM compliant base-85 ASCII to binary conversion"""
 
-    def __init__(self, data_source, params=None):
+    def __init__(self, data_source: DataSource, params: dict | None = None) -> None:
         super().__init__(data_source, params)
         self.decode_buffer = bytearray()
         self.eod_reached = False  # End of ASCII85 data stream (not end of file)
 
-    def read_data(self, ctxt, max_bytes=None):
+    def read_data(self, ctxt: ps.Context, max_bytes: int | None = None) -> bytes:
         """Decode ASCII85 data to binary - PLRM Section 3.13
 
         Uses a "read all and cache" strategy: on first call, reads and decodes
@@ -150,7 +157,7 @@ class ASCII85DecodeFilter(FilterBase):
 
         return result
 
-    def _decode_entire_stream(self, ctxt):
+    def _decode_entire_stream(self, ctxt: ps.Context) -> bytes:
         """Read and decode the entire ASCII85 stream until ~> is found.
 
         Reads source data in large chunks and iterates with an index to avoid
@@ -257,7 +264,7 @@ class ASCII85DecodeFilter(FilterBase):
 
         return bytes(result)
 
-    def _decode_ascii85_group(self, values):
+    def _decode_ascii85_group(self, values: list[int]) -> bytes:
         """Decode ASCII85 5-tuple to 4 bytes - PLRM algorithm"""
         group_len = len(values)
 
@@ -300,12 +307,12 @@ class ASCII85DecodeFilter(FilterBase):
 class ASCII85EncodeFilter(FilterBase):
     """ASCII85 encode filter - PLRM compliant binary to base-85 ASCII conversion"""
 
-    def __init__(self, data_source, params=None):
+    def __init__(self, data_source: DataSource, params: dict | None = None) -> None:
         super().__init__(data_source, params)
         self.encode_buffer = bytearray()
         self.column_count = 0  # Track output column for line breaks
 
-    def write_data(self, ctxt, data):
+    def write_data(self, ctxt: ps.Context, data: bytes) -> None:
         """Encode binary data to ASCII85 - PLRM Section 3.13"""
         self.encode_buffer.extend(data)
 
@@ -332,7 +339,7 @@ class ASCII85EncodeFilter(FilterBase):
                 for char in reversed(chars):
                     self._write_char(ctxt, ord('!') + char)
 
-    def _write_char(self, ctxt, char_code):
+    def _write_char(self, ctxt: ps.Context, char_code: int) -> None:
         """Write single character with line break management"""
         if isinstance(self.data_source.source, ps.File):
             self.data_source.source.write(ctxt, char_code)
@@ -343,7 +350,7 @@ class ASCII85EncodeFilter(FilterBase):
                 self.data_source.source.write(ctxt, ord('\n'))
                 self.column_count = 0
 
-    def close(self, ctxt):
+    def close(self, ctxt: ps.Context) -> None:
         """Encode remaining bytes and write EOD marker - PLRM algorithm"""
         # Handle remaining bytes (1-3 bytes)
         if self.encode_buffer:

@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostScript Control Flow and Execution Engine
 
@@ -23,8 +25,6 @@ import copy
 import os
 import re
 import time
-from typing import Any
-
 from . import dict as ps_dict
 from ..core import error as ps_error
 from . import graphics_state as ps_gs
@@ -33,7 +33,7 @@ from ..core import tokenizer as ps_token
 from ..core import types as ps
 from . import vm as ps_vm
 
-def ps_break(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
+def ps_break(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     PostScript **break** operator for debugging.
 
@@ -49,7 +49,7 @@ def ps_break(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
     ostack = ostack
 
 
-def ps_breaki(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
+def ps_breaki(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     PostScript **breaki** operator for debugging.
 
@@ -65,7 +65,7 @@ def ps_breaki(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
     ostack = ostack
 
 
-def start(ctxt: "ps.Context") -> None:
+def start(ctxt: ps.Context) -> None:
     """
     Initialize PostScript execution context for job execution.
 
@@ -85,7 +85,7 @@ _HIRES_BBOX_RE = re.compile(
 )
 
 
-def _read_eps_bounding_box(filepath):
+def _read_eps_bounding_box(filepath: str) -> tuple[float, float, float, float] | None:
     """Read bounding box from an EPS file, handling DOS EPS binary headers.
 
     Prefers %%HiResBoundingBox (sub-point float precision) when available,
@@ -112,7 +112,7 @@ def _read_eps_bounding_box(filepath):
     return None
 
 
-def execjob(ctxt: "ps.Context", filepath: str) -> None:
+def execjob(ctxt: ps.Context, filepath: str) -> None:
     """
     Execute a PostScript file as a complete encapsulated job.
     
@@ -250,7 +250,7 @@ def execjob(ctxt: "ps.Context", filepath: str) -> None:
         print(f"\nJob execution time: {job_duration:.3f} seconds")
 
 
-def _cleanup_job(ctxt: "ps.Context", job_save: "ps.Save") -> None:
+def _cleanup_job(ctxt: ps.Context, job_save: ps.Save) -> None:
     """
     Perform PostScript job cleanup per job server specification.
     
@@ -304,7 +304,7 @@ def _cleanup_job(ctxt: "ps.Context", job_save: "ps.Save") -> None:
         ps_vm.restore(ctxt, ctxt.o_stack)
 
 
-def _finalize_output_devices(ctxt: "ps.Context") -> None:
+def _finalize_output_devices(ctxt: ps.Context) -> None:
     """
     Finalize any open output devices at job end.
 
@@ -333,7 +333,7 @@ def _finalize_output_devices(ctxt: "ps.Context") -> None:
         print(f"Warning: Error finalizing PDF output: {e}")
 
 
-def ps_exec(ctxt, ostack):
+def ps_exec(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     any **exec** –
 
@@ -406,7 +406,7 @@ def ps_exec(ctxt, ostack):
     return None
 
 
-def exec_exec_with_keyboard_interrupt(ctxt: "ps.Context", o_stack: "ps.Stack", e_stack: "ps.Stack") -> None:
+def exec_exec_with_keyboard_interrupt(ctxt: ps.Context, o_stack: ps.Stack, e_stack: ps.Stack) -> None:
     """
     Wrapper for exec_exec that handles KeyboardInterrupt with detailed execution context.
     
@@ -455,7 +455,7 @@ def exec_exec_with_keyboard_interrupt(ctxt: "ps.Context", o_stack: "ps.Stack", e
         # raise
 
 
-def _show_execution_context_on_interrupt(ctxt: "ps.Context", o_stack: "ps.Stack", e_stack: "ps.Stack") -> None:
+def _show_execution_context_on_interrupt(ctxt: ps.Context, o_stack: ps.Stack, e_stack: ps.Stack) -> None:
     """
     Display detailed execution context when KeyboardInterrupt occurs.
     
@@ -579,7 +579,7 @@ def _show_execution_context_on_interrupt(ctxt: "ps.Context", o_stack: "ps.Stack"
     print(f"   Save level: {len(ctxt.g_stack)} (graphics state stack depth)")
 
 
-def _describe_postscript_object(obj) -> str:
+def _describe_postscript_object(obj: ps.PSObject) -> str:
     """Return a brief description of a PostScript object for debugging."""
     if obj.TYPE == ps.T_NAME:
         name = obj.val.decode('ascii') if hasattr(obj.val, 'decode') else str(obj.val)
@@ -605,7 +605,7 @@ def _describe_postscript_object(obj) -> str:
         return f"{type(obj).__name__}"
 
 
-def exec_exec(ctxt: "ps.Context", o_stack: "ps.Stack", e_stack: "ps.Stack") -> None:
+def exec_exec(ctxt: ps.Context, o_stack: ps.Stack, e_stack: ps.Stack) -> None:
     """
     Main PostScript execution engine - the heart of the interpreter.
 
@@ -1203,7 +1203,7 @@ except ImportError:
     pass
 
 
-def countexecstack(ctxt, ostack):
+def countexecstack(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **countexecstack** int
 
@@ -1221,7 +1221,7 @@ def countexecstack(ctxt, ostack):
     ostack.append(ps.Int(len(ctxt.e_stack)))
 
 
-def ps_exit(ctxt, ostack):
+def ps_exit(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **exit** -
 
@@ -1279,7 +1279,7 @@ def ps_exit(ctxt, ostack):
     quit()
 
 
-def execstack(ctxt, ostack):
+def execstack(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     array **execstack** subarray
 
@@ -1326,7 +1326,7 @@ def execstack(ctxt, ostack):
     ostack[-1] = sub_array
 
 
-def stop(ctxt, ostack):
+def stop(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **stop** -
 
@@ -1380,7 +1380,7 @@ def stop(ctxt, ostack):
     quit()
 
 
-def _cleanup_orphaned_category_dicts(ctxt):
+def _cleanup_orphaned_category_dicts(ctxt: ps.Context) -> None:
     """
     Clean up any orphaned resource category implementation dictionaries from d_stack.
 
@@ -1415,7 +1415,7 @@ def _cleanup_orphaned_category_dicts(ctxt):
         break
 
 
-def stopped(ctxt, ostack):
+def stopped(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     any **stopped** bool
 
@@ -1462,7 +1462,7 @@ def stopped(ctxt, ostack):
     ostack.pop()
 
 
-def ps_if(ctxt, ostack):
+def ps_if(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     bool proc **if** -
 
@@ -1495,7 +1495,7 @@ def ps_if(ctxt, ostack):
     ctxt.o_stack.pop()
 
 
-def ifelse(ctxt, ostack):
+def ifelse(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     bool proc₁ proc₂ **ifelse** -
 
@@ -1535,7 +1535,7 @@ def ifelse(ctxt, ostack):
     ctxt.o_stack.pop()
 
 
-def ps_for(ctxt, ostack):
+def ps_for(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     initial increment limit proc **for** -
 
@@ -1614,7 +1614,7 @@ def ps_for(ctxt, ostack):
     ctxt.o_stack.pop()
 
 
-def forall(ctxt, ostack):
+def forall(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
           array proc **forall** -
     **packedarray** proc **forall** -
@@ -1704,7 +1704,7 @@ def forall(ctxt, ostack):
     ctxt.o_stack.pop()
 
 
-def loop(ctxt, ostack):
+def loop(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     proc **loop** -
 
@@ -1735,7 +1735,7 @@ def loop(ctxt, ostack):
     ctxt.o_stack.pop()
 
 
-def repeat(ctxt, ostack):
+def repeat(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     int proc **repeat** -
 

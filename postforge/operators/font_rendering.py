@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 Glyph Rendering Engine
 
@@ -12,6 +14,7 @@ Handles Type 1, Type 3, Type 0/CID font rendering.
 import copy
 import math
 import struct
+from collections.abc import Callable
 
 from ..core import error as ps_error
 from ..core import types as ps
@@ -30,7 +33,7 @@ from . import font_ops
 _font_max_bbox = {}
 
 
-def _update_font_max_bbox(font_dict, char_bbox):
+def _update_font_max_bbox(font_dict: ps.Dict, char_bbox: tuple) -> None:
     """Update max bounding box tracker for a Type 3 font."""
     font_id = id(font_dict.val)
     height = abs(char_bbox[3] - char_bbox[1])
@@ -39,7 +42,7 @@ def _update_font_max_bbox(font_dict, char_bbox):
         _font_max_bbox[font_id] = (char_bbox, height)
 
 
-def _render_type3_character(ctxt, font_dict, char_code):
+def _render_type3_character(ctxt: ps.Context, font_dict: ps.Dict, char_code: int) -> tuple[float, float] | None:
     """
     Render a Type 3 font character by executing BuildGlyph or BuildChar procedure.
 
@@ -227,7 +230,7 @@ def _render_type3_character(ctxt, font_dict, char_code):
         ctxt._font_cache_mode = False
 
 
-def _get_metrics_width(font_dict, glyph_name, char_code):
+def _get_metrics_width(font_dict: ps.Dict, glyph_name: bytes, char_code: int) -> float | None:
     """Get character width override from Metrics dictionary (PLRM 5.9.2).
 
     When a font has a Metrics dictionary, its entries override the advance
@@ -286,7 +289,7 @@ def _get_metrics_width(font_dict, glyph_name, char_code):
     return wx * 0.001  # Default FontMatrix[0]
 
 
-def _render_type1_character(ctxt, font_dict, char_code):
+def _render_type1_character(ctxt: ps.Context, font_dict: ps.Dict, char_code: int) -> float | None:
     """Render a Type 1 font character with bitmap cache support.
 
     On cache hit: emits GlyphRef to display list, returns char_width.
@@ -362,7 +365,7 @@ def _render_type1_character(ctxt, font_dict, char_code):
     return char_width
 
 
-def _render_type2_character(ctxt, font_dict, char_code):
+def _render_type2_character(ctxt: ps.Context, font_dict: ps.Dict, char_code: int) -> float | None:
     """Render a Type 2 (CFF) font character with bitmap cache support.
 
     Same GlyphStart/GlyphEnd/GlyphRef cache pattern as _render_type1_character().
@@ -465,7 +468,7 @@ def _render_type2_character(ctxt, font_dict, char_code):
     return char_width
 
 
-def _render_type42_character(ctxt, font_dict, char_code):
+def _render_type42_character(ctxt: ps.Context, font_dict: ps.Dict, char_code: int) -> float | None:
     """Render a simple (non-CID) Type 42 font character with bitmap cache support.
 
     Looks up the glyph name from Encoding, maps to GID via CharStrings,
@@ -598,7 +601,7 @@ def _render_type42_character(ctxt, font_dict, char_code):
     return char_width
 
 
-def _get_glyf_data_from_sfnts(font_data, gid):
+def _get_glyf_data_from_sfnts(font_data: bytes, gid: int) -> bytes | None:
     """Extract glyf table data for a specific GID from raw TrueType font data.
 
     Parses the table directory to find loca and glyf tables, determines the
@@ -671,7 +674,7 @@ def _get_glyf_data_from_sfnts(font_data, gid):
     return font_data[abs_off1:abs_off2]
 
 
-def _render_type2_for_composite(ctxt, desc_font, char_code, type0_font):
+def _render_type2_for_composite(ctxt: ps.Context, desc_font: ps.Dict, char_code: int, type0_font: ps.Dict) -> float | None:
     """Render a Type 2 (CFF) glyph as a descendant of a Type 0 composite font.
 
     Composes the descendant's FontMatrix with the Type 0's FontMatrix so that
@@ -775,7 +778,7 @@ def _render_type2_for_composite(ctxt, desc_font, char_code, type0_font):
     return char_width
 
 
-def _normalize_display_elements(display_elements, origin_x, origin_y):
+def _normalize_display_elements(display_elements: list, origin_x: float, origin_y: float) -> list:
     """Normalize display elements so glyph is at origin (0,0).
 
     Translates coordinates by (-origin_x, -origin_y) so the cached
@@ -810,7 +813,7 @@ def _normalize_display_elements(display_elements, origin_x, origin_y):
     return normalized
 
 
-def _translate_path(path, dx, dy):
+def _translate_path(path: ps.Path, dx: float, dy: float) -> ps.Path:
     """Translate all coordinates in a Path by (dx, dy)."""
     translated = ps.Path()
     for subpath in path:
@@ -821,7 +824,7 @@ def _translate_path(path, dx, dy):
     return translated
 
 
-def _translate_path_element(element, dx, dy):
+def _translate_path_element(element: ps.PSObject, dx: float, dy: float) -> ps.PSObject:
     """Translate a path element by (dx, dy) in device space."""
     if isinstance(element, ps.MoveTo):
         return ps.MoveTo(ps.Point(element.p.x + dx, element.p.y + dy))
@@ -838,7 +841,7 @@ def _translate_path_element(element, dx, dy):
     return element
 
 
-def _decode_type0_characters(cmap_dict, text_bytes):
+def _decode_type0_characters(cmap_dict: ps.Dict, text_bytes: bytes) -> tuple[list[tuple[int, int]], int]:
     """
     Decode a byte string through a CMap's codespace ranges to produce
     a list of (cid, font_index) tuples.
@@ -910,7 +913,7 @@ def _decode_type0_characters(cmap_dict, text_bytes):
     return characters, byte_width
 
 
-def _string_to_int(obj):
+def _string_to_int(obj: ps.PSObject) -> int:
     """Convert a PS string object to an integer (big-endian byte interpretation)."""
     if obj.TYPE in ps.NUMERIC_TYPES:
         return int(obj.val)
@@ -925,7 +928,7 @@ def _string_to_int(obj):
     return 0
 
 
-def _decode_fmap_characters(font_dict, text_bytes):
+def _decode_fmap_characters(font_dict: ps.Dict, text_bytes: bytes) -> tuple[list[tuple[int, int]], int]:
     """
     Decode a byte string using the FMapType encoding scheme (pre-CIDFont era).
 
@@ -1009,7 +1012,7 @@ def _decode_fmap_characters(font_dict, text_bytes):
     return characters, 1
 
 
-def _compose_font_matrices(fm1, fm2):
+def _compose_font_matrices(fm1: ps.Array | None, fm2: ps.Array | None) -> ps.Array:
     """
     Compose two 6-element font matrices: result = fm1 * fm2.
 
@@ -1050,7 +1053,7 @@ def _compose_font_matrices(fm1, fm2):
     return result
 
 
-def _render_type1_for_composite(ctxt, desc_font, char_code, type0_font):
+def _render_type1_for_composite(ctxt: ps.Context, desc_font: ps.Dict, char_code: int, type0_font: ps.Dict) -> float | None:
     """
     Render a Type 1 glyph as a descendant of a Type 0 composite font.
 
@@ -1136,7 +1139,7 @@ def _render_type1_for_composite(ctxt, desc_font, char_code, type0_font):
     return char_width
 
 
-def _render_type0_string(ctxt, font_dict, text_bytes):
+def _render_type0_string(ctxt: ps.Context, font_dict: ps.Dict, text_bytes: bytes) -> list[tuple[float, int]]:
     """
     Render a string using a Type 0 composite font.
 
@@ -1197,7 +1200,7 @@ def _render_type0_string(ctxt, font_dict, text_bytes):
     return results
 
 
-def _render_fmap_type0_string(ctxt, font_dict, text_bytes, fdep_vector):
+def _render_fmap_type0_string(ctxt: ps.Context, font_dict: ps.Dict, text_bytes: bytes, fdep_vector: ps.Array) -> list[tuple[float, int]]:
     """
     Render a string using a legacy FMapType-based Type 0 composite font.
 
@@ -1269,7 +1272,7 @@ def _render_fmap_type0_string(ctxt, font_dict, text_bytes, fdep_vector):
     return results
 
 
-def _render_cidfont_glyph(ctxt, cidfont_dict, cid, type0_font):
+def _render_cidfont_glyph(ctxt: ps.Context, cidfont_dict: ps.Dict, cid: int, type0_font: ps.Dict | None) -> float | None:
     """
     Render a glyph from a CIDFont by CID.
 
@@ -1369,7 +1372,7 @@ def _render_cidfont_glyph(ctxt, cidfont_dict, cid, type0_font):
 
 _sfnts_cache = {}
 
-def _get_sfnts_data(cidfont_dict):
+def _get_sfnts_data(cidfont_dict: ps.Dict) -> bytes | None:
     """Concatenate sfnts array into a single byte buffer. Cached by dict id."""
     cache_key = id(cidfont_dict)
     if cache_key in _sfnts_cache:
@@ -1404,7 +1407,7 @@ def _get_sfnts_data(cidfont_dict):
     return result
 
 
-def _get_truetype_units_per_em(cidfont_dict):
+def _get_truetype_units_per_em(cidfont_dict: ps.Dict) -> int:
     """Get unitsPerEm from the TrueType head table in sfnts."""
     font_data = _get_sfnts_data(cidfont_dict)
     if font_data is None or len(font_data) < 12:
@@ -1424,7 +1427,7 @@ def _get_truetype_units_per_em(cidfont_dict):
     return 1000
 
 
-def _get_truetype_advance_width(cidfont_dict, cid):
+def _get_truetype_advance_width(cidfont_dict: ps.Dict, cid: int) -> int | None:
     """
     Get advance width for a CID from the sfnts hmtx table.
     Returns width in font units, or None if not available.
@@ -1479,7 +1482,7 @@ def _get_truetype_advance_width(cidfont_dict, cid):
     return None
 
 
-def _parse_simple_glyph(data):
+def _parse_simple_glyph(data: bytes) -> tuple[list[int], list[int], list[int], list[int]] | None:
     """Parse a simple TrueType glyph's contour data from raw glyf bytes.
 
     Args:
@@ -1576,7 +1579,7 @@ def _parse_simple_glyph(data):
     return (end_pts, flags, x_coords, y_coords)
 
 
-def _parse_composite_glyph(data, glyf_resolver, depth=0):
+def _parse_composite_glyph(data: bytes, glyf_resolver: Callable[[int], bytes | None], depth: int = 0) -> tuple[list[int], list[int], list[float], list[float]] | None:
     """Parse a composite TrueType glyph by resolving and merging components.
 
     Composite glyphs reference other glyphs (simple or composite) with optional
@@ -1718,13 +1721,13 @@ def _parse_composite_glyph(data, glyf_resolver, depth=0):
     return (all_end_pts, all_flags, all_x_coords, all_y_coords)
 
 
-def _make_glyph_dir_resolver(glyph_dir):
+def _make_glyph_dir_resolver(glyph_dir: ps.Dict) -> Callable[[int], bytes | None]:
     """Create a glyf_resolver callback for GlyphDirectory-based CID fonts.
 
     Returns a closure that looks up GID in a GlyphDirectory dict and returns
     raw glyf bytes, or None if not found.
     """
-    def resolver(gid):
+    def resolver(gid: int) -> bytes | None:
         entry = glyph_dir.val.get(gid)
         if entry is None:
             entry = glyph_dir.val.get(ps.Int(gid))
@@ -1737,8 +1740,9 @@ def _make_glyph_dir_resolver(glyph_dir):
     return resolver
 
 
-def _render_truetype_glyf(ctxt, cidfont_dict, cid, glyf_data, type0_font=None,
-                           glyf_resolver=None):
+def _render_truetype_glyf(ctxt: ps.Context, cidfont_dict: ps.Dict, cid: int, glyf_data: bytes,
+                           type0_font: ps.Dict | None = None,
+                           glyf_resolver: Callable[[int], bytes | None] | None = None) -> float | None:
     """
     Parse TrueType glyf table entry and render as PostScript path.
     Converts quadratic B-splines to cubic Bezier curves.
@@ -1864,7 +1868,7 @@ def _render_truetype_glyf(ctxt, cidfont_dict, cid, glyf_data, type0_font=None,
     return advance_width * width_scale
 
 
-def _emit_truetype_contour(path, points):
+def _emit_truetype_contour(path: ps.Path, points: list[tuple[float, float, bool]]) -> None:
     """
     Emit a single TrueType contour as PostScript path operations.
     Converts quadratic B-splines to cubic Bezier curves.
@@ -1948,7 +1952,7 @@ def _emit_truetype_contour(path, points):
     path.append(subpath)
 
 
-def _calculate_inverse_ctm(ctm):
+def _calculate_inverse_ctm(ctm: list[float]) -> list[float]:
     """Calculate inverse of 6-element CTM [a, b, c, d, tx, ty]."""
     a, b, c, d, tx, ty = ctm
     determinant = a * d - b * c

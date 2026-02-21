@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 Show Variant Operators: kshow, glyphshow
 
@@ -16,7 +18,7 @@ from ..core import types as ps
 from .matrix import _transform_delta
 
 
-def _render_and_advance_single_glyph(ctxt, font_dict, char_code, font_type):
+def _render_and_advance_single_glyph(ctxt: ps.Context, font_dict: ps.Dict, char_code: int, font_type: int) -> bool:
     """Render one glyph at **currentpoint** and advance **currentpoint** by its width.
 
     Based on **show**()'s inner **loop** pattern. Handles Type 1 and Type 3 fonts.
@@ -73,7 +75,7 @@ def _render_and_advance_single_glyph(ctxt, font_dict, char_code, font_type):
     return True
 
 
-def kshow(ctxt, ostack):
+def kshow(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     proc string **kshow** -
 
@@ -135,7 +137,7 @@ def kshow(ctxt, ostack):
     ostack.pop()
 
 
-def glyphshow(ctxt, ostack):
+def glyphshow(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     name **glyphshow** -    (base fonts)
     cid **glyphshow** -     (CIDFonts)
@@ -255,7 +257,7 @@ def glyphshow(ctxt, ostack):
     ctxt.gstate.path = saved_path
 
 
-def _render_type3_glyph_by_name(ctxt, font_dict, glyph_name):
+def _render_type3_glyph_by_name(ctxt: ps.Context, font_dict: ps.Dict, glyph_name: bytes) -> tuple[float, float] | None:
     """Render a Type 3 glyph by name using BuildGlyph procedure.
 
     Similar to _render_type3_character but takes glyph_name directly
@@ -327,7 +329,7 @@ def _render_type3_glyph_by_name(ctxt, font_dict, glyph_name):
         ctxt._font_cache_mode = False
 
 
-def _reverse_encoding_lookup(font_dict, glyph_name):
+def _reverse_encoding_lookup(font_dict: ps.Dict, glyph_name: bytes) -> int | None:
     """Find char_code for a glyph name by searching the Encoding array.
 
     Returns the first matching char_code, or None if not found.

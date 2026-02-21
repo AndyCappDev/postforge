@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 # CCITTFax Decode Filter
 #
 # Implements CCITTFaxDecode per PLRM Section 3.13, Table 3.21.
@@ -9,13 +11,18 @@
 
 import io
 import struct
+from typing import TYPE_CHECKING
 
 from PIL import Image
 
+from ..core import types as ps
 from .filter import FilterBase
 
+if TYPE_CHECKING:
+    from .filter import DataSource
 
-def _extract_param(params, key, default):
+
+def _extract_param(params: ps.Dict | dict | None, key: bytes, default: object) -> object:
     """Extract a parameter value from a PS Dict or plain dict."""
     if params is None:
         return default
@@ -52,7 +59,7 @@ class CCITTFaxDecodeFilter(FilterBase):
         DamagedRowsBeforeError int 0  Error tolerance
     """
 
-    def __init__(self, data_source, params=None):
+    def __init__(self, data_source: DataSource, params: ps.Dict | dict | None = None) -> None:
         super().__init__(data_source, params)
 
         self.k = _extract_param(params, b'K', 0)
@@ -68,8 +75,8 @@ class CCITTFaxDecodeFilter(FilterBase):
         self._buf_pos = 0
         self._decoded = False
 
-    def read_data(self, ctxt, max_bytes=None):
-        """Decode CCITT fax data via TIFF wrapping — PLRM Section 3.13."""
+    def read_data(self, ctxt: ps.Context, max_bytes: int | None = None) -> bytes:
+        """Decode CCITT fax data via TIFF wrapping -- PLRM Section 3.13."""
         if self.eof_reached:
             return b''
 
@@ -89,7 +96,7 @@ class CCITTFaxDecodeFilter(FilterBase):
 
         return chunk
 
-    def _decode_all(self, ctxt):
+    def _decode_all(self, ctxt: ps.Context) -> None:
         """Read all encoded data from upstream and decode via TIFF wrapping."""
         self._decoded = True
 
@@ -112,7 +119,7 @@ class CCITTFaxDecodeFilter(FilterBase):
         else:
             self.eof_reached = True
 
-    def _decode_via_tiff(self, encoded_data):
+    def _decode_via_tiff(self, encoded_data: bytes) -> bytes | None:
         """Wrap CCITT data in a minimal TIFF and decode with Pillow.
 
         Returns packed 1-bit data (8 pixels per byte, MSB first, rows padded
@@ -158,7 +165,7 @@ class CCITTFaxDecodeFilter(FilterBase):
                         continue
             return None
 
-    def _pack_image_bits(self, img):
+    def _pack_image_bits(self, img: Image.Image) -> bytes:
         """Convert Pillow image to packed 1-bit PostScript data.
 
         Pillow mode '1' tobytes() returns packed bits (8 pixels/byte, MSB first,
@@ -179,7 +186,7 @@ class CCITTFaxDecodeFilter(FilterBase):
 
         return packed
 
-    def _estimate_rows(self, encoded_data):
+    def _estimate_rows(self, encoded_data: bytes) -> int:
         """Estimate image height when Rows=0.
 
         Group 4 typically compresses to ~1/10 of raw size for text.
@@ -192,7 +199,7 @@ class CCITTFaxDecodeFilter(FilterBase):
         # Clamp to a reasonable range
         return min(rows, 100000)
 
-    def _build_tiff(self, encoded_data, columns, rows, compression, photometric):
+    def _build_tiff(self, encoded_data: bytes, columns: int, rows: int, compression: int, photometric: int) -> bytes:
         """Build a minimal TIFF file wrapping the CCITT encoded data."""
         # IFD tags to include
         tags = []

@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostScript user path operators: ucache, uappend, upath, ufill, ueofill,
 ustroke, ustrokepath, inufill, inueofill, inustroke.
@@ -49,7 +51,7 @@ _ENCODED_OPS = {
 
 # ── ucache ────────────────────────────────────────────────────────────
 
-def ucache(ctxt, ostack):
+def ucache(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **ucache** -
     Declares that the enclosing user path should be cached.
@@ -61,7 +63,7 @@ def ucache(ctxt, ostack):
 
 # ── Internal helpers ──────────────────────────────────────────────────
 
-def _uappend_ordinary(ctxt, ostack, userpath):
+def _uappend_ordinary(ctxt: ps.Context, ostack: ps.Stack, userpath: ps.PSObject) -> ps.PSObject | None:
     """Interpret an ordinary (procedure-body) user path array."""
     sysdict = ctxt.d_stack[0]
     ctxt.d_stack.append(sysdict)
@@ -90,7 +92,7 @@ def _uappend_ordinary(ctxt, ostack, userpath):
     return None
 
 
-def _uappend_encoded(ctxt, ostack, data_arr, opcode_str):
+def _uappend_encoded(ctxt: ps.Context, ostack: ps.Stack, data_arr: ps.PSObject, opcode_str: ps.PSObject) -> ps.PSObject | None:
     """Interpret an encoded user path (data array + opcode string)."""
     sysdict = ctxt.d_stack[0]
     data = data_arr.val
@@ -134,7 +136,7 @@ def _uappend_encoded(ctxt, ostack, data_arr, opcode_str):
     return None
 
 
-def _is_encoded_userpath(userpath):
+def _is_encoded_userpath(userpath: ps.PSObject) -> bool:
     """Check if userpath is in encoded format: [data_array opcode_string]."""
     if userpath.length != 2:
         return False
@@ -145,7 +147,7 @@ def _is_encoded_userpath(userpath):
 
 # ── uappend ───────────────────────────────────────────────────────────
 
-def uappend(ctxt, ostack):
+def uappend(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     userpath **uappend** -
     Interprets the user path description and appends the resulting path
@@ -168,7 +170,7 @@ def uappend(ctxt, ostack):
 
 # ── upath ─────────────────────────────────────────────────────────────
 
-def upath(ctxt, ostack):
+def upath(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     bool **upath** userpath
     Creates a user path description from the current path. If bool is true,
@@ -269,7 +271,7 @@ def upath(ctxt, ostack):
 
 # ── ufill / ueofill ──────────────────────────────────────────────────
 
-def ufill(ctxt, ostack):
+def ufill(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     userpath **ufill** -
     Paints the area enclosed by the user path using the nonzero winding
@@ -296,7 +298,7 @@ def ufill(ctxt, ostack):
     ps_gstate.grestore(ctxt, ostack)
 
 
-def ueofill(ctxt, ostack):
+def ueofill(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     userpath **ueofill** -
     Paints the area enclosed by the user path using the even-odd rule.
@@ -325,7 +327,7 @@ def ueofill(ctxt, ostack):
 
 # ── ustroke ───────────────────────────────────────────────────────────
 
-def _is_matrix_array(obj):
+def _is_matrix_array(obj: ps.PSObject) -> bool:
     """Check if obj is a 6-element numeric array (a matrix)."""
     if obj.TYPE not in ARRAY_TYPES:
         return False
@@ -334,7 +336,7 @@ def _is_matrix_array(obj):
     return all(item.TYPE in NUMERIC_TYPES for item in obj.val)
 
 
-def ustroke(ctxt, ostack):
+def ustroke(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     userpath **ustroke** -
     userpath matrix **ustroke** -
@@ -392,7 +394,7 @@ def ustroke(ctxt, ostack):
 
 # ── ustrokepath ───────────────────────────────────────────────────────
 
-def ustrokepath(ctxt, ostack):
+def ustrokepath(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     userpath **ustrokepath** -
     userpath matrix **ustrokepath** -
@@ -449,7 +451,7 @@ def ustrokepath(ctxt, ostack):
 
 # ── inufill / inueofill / inustroke ───────────────────────────────────
 
-def inufill(ctxt, ostack):
+def inufill(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     x y userpath **inufill** bool
     Tests whether the point (x, y) would lie inside the area painted by
@@ -489,7 +491,7 @@ def inufill(ctxt, ostack):
     ostack.append(result)
 
 
-def inueofill(ctxt, ostack):
+def inueofill(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     x y userpath **inueofill** bool
     Tests whether the point (x, y) would lie inside the area painted by
@@ -528,7 +530,7 @@ def inueofill(ctxt, ostack):
     ostack.append(result)
 
 
-def inustroke(ctxt, ostack):
+def inustroke(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     x y userpath **inustroke** bool
     x y userpath matrix **inustroke** bool

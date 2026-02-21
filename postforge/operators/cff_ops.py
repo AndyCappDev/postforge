@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 CFF Font Operators
 
@@ -12,7 +14,7 @@ parses it with core.cff_parser, and registers each font via the resource system.
 
 from ..core import types as ps
 from ..core import error as ps_error
-from ..core.cff_parser import parse_cff, CFFError
+from ..core.cff_parser import CFFFont, parse_cff, CFFError
 
 # Registry mapping id(CharStrings.val) -> raw CFF binary bytes.
 # Used by PDF embedding to retrieve the original CFF data for /FontFile3.
@@ -21,7 +23,7 @@ from ..core.cff_parser import parse_cff, CFFError
 _cff_registry = {}
 
 
-def _make_ps_string(ctxt, raw_bytes):
+def _make_ps_string(ctxt: ps.Context, raw_bytes: bytes) -> ps.String:
     """Create a ps.String from raw bytes by writing into VM string storage."""
     strings = ps.global_resources.global_strings if ctxt.vm_alloc_mode else ctxt.local_strings
     offset = len(strings)
@@ -30,14 +32,14 @@ def _make_ps_string(ctxt, raw_bytes):
     return ps.String(ctxt.id, offset, length, is_global=ctxt.vm_alloc_mode)
 
 
-def _make_ps_array(ctxt_id, elements, is_global=True):
+def _make_ps_array(ctxt_id: int | None, elements: list, is_global: bool = True) -> ps.Array:
     """Create a ps.Array with proper length tracking from a list of PS objects."""
     arr = ps.Array(ctxt_id, is_global=is_global)
     arr.setval(elements)
     return arr
 
 
-def cff_startdata(ctxt, ostack):
+def cff_startdata(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     byte_count .cff_startdata -
 
@@ -116,7 +118,7 @@ def cff_startdata(ctxt, ostack):
         ctxt.vm_alloc_mode = saved_vm_mode
 
 
-def _register_cff_font(ctxt, cff_font, cff_bytes):
+def _register_cff_font(ctxt: ps.Context, cff_font: CFFFont, cff_bytes: bytes) -> None:
     """Build a PostScript font dictionary from a parsed CFFFont and register it.
 
     Must be called with ctxt.vm_alloc_mode = True (global VM) so that
@@ -224,7 +226,7 @@ def _register_cff_font(ctxt, cff_font, cff_bytes):
 
 
 
-def _define_font_resource(ctxt, font_name_bytes, font_dict):
+def _define_font_resource(ctxt: ps.Context, font_name_bytes: bytes, font_dict: ps.Dict) -> None:
     """Register a font dictionary using defineresource logic.
 
     Mirrors the behavior of: fontname fontdict /Font defineresource

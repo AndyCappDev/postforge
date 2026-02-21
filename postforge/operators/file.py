@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 import copy
 import glob
 import os
@@ -13,7 +15,7 @@ from ..core.binary_token import _SYSTEM_NAME_TABLE
 from ..core.tokenizer import FORM_FEED, LINE_FEED, RETURN
 
 
-def _resolve_filename(ctxt, filename):
+def _resolve_filename(ctxt: ps.Context, filename: str) -> str:
     """Resolve a relative filename against likely directories.
 
     Tries multiple locations in order:
@@ -62,7 +64,7 @@ def _resolve_filename(ctxt, filename):
     return filename
 
 
-def closefile(ctxt, ostack):
+def closefile(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     file **closefile** -
 
@@ -99,7 +101,7 @@ def closefile(ctxt, ostack):
     ostack.pop()
 
 
-def currentfile(ctxt, ostack):
+def currentfile(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentfile** file
 
@@ -147,7 +149,7 @@ def currentfile(ctxt, ostack):
             break
 
 
-def ps_file(ctxt, ostack):
+def ps_file(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     filename access **file** **file**
 
@@ -263,7 +265,7 @@ def ps_file(ctxt, ostack):
     ostack[-1] = file_obj
 
 
-def filename(ctxt, ostack):
+def filename(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     file **filename** name
 
@@ -298,7 +300,7 @@ def filename(ctxt, ostack):
     ostack[-1] = ps.Name(name_bytes)
 
 
-def filenameforall(ctxt, ostack):
+def filenameforall(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     template proc scratch **filenameforall** -
 
@@ -369,7 +371,7 @@ def filenameforall(ctxt, ostack):
     ctxt.o_stack.pop()
 
 
-def fileposition(ctxt, ostack):
+def fileposition(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     file **fileposition** position
 
@@ -413,7 +415,7 @@ def fileposition(ctxt, ostack):
     ostack[-1] = ps.Int(file_obj.val.tell())
 
 
-def flush(ctxt, ostack):
+def flush(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **flush** -
 
@@ -436,7 +438,7 @@ def flush(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.IOERROR, flush.__name__)
 
 
-def flushfile(ctxt, ostack):
+def flushfile(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     file **flushfile** -
 
@@ -480,7 +482,7 @@ def flushfile(ctxt, ostack):
     ostack.pop()
 
 
-def line(ctxt, ostack):
+def line(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     file   **line** linenumber
     string **line** linenumber
@@ -503,7 +505,7 @@ def line(ctxt, ostack):
     ostack[-1] = ps.Int(ostack[-1].line_num)
 
 
-def ps_print(ctxt, ostack):
+def ps_print(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     string **print** -
 
@@ -535,7 +537,7 @@ def ps_print(ctxt, ostack):
 
 
 # custom operator
-def printarray(ctxt, ostack):
+def printarray(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     array **printarray** –
 
@@ -554,7 +556,7 @@ def printarray(ctxt, ostack):
     ostack.pop()
 
 
-def read(ctxt, ostack):
+def read(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     file **read** int true  (if not end-of-file)
               false     (if end-of-file)
@@ -591,7 +593,7 @@ def read(ctxt, ostack):
         ostack.append(ps.Bool(True))
 
 
-def readstring(ctxt, ostack):
+def readstring(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     file string **readstring** substring bool
 
@@ -667,7 +669,7 @@ def readstring(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.IOERROR, readstring.__name__)
 
 
-def readhexstring(ctxt, ostack):
+def readhexstring(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     file string **readhexstring** substring bool
 
@@ -774,7 +776,7 @@ def readhexstring(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.IOERROR, readhexstring.__name__)
 
 
-def readline(ctxt, ostack):
+def readline(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     file string **readline** substring bool
 
@@ -845,7 +847,7 @@ def readline(ctxt, ostack):
         ostack[-1] = ps.Bool(False)
 
 
-def run(ctxt, ostack):
+def run(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     filename **run** -
 
@@ -890,7 +892,7 @@ def run(ctxt, ostack):
     ctxt.o_stack.pop()
 
 
-def runlibfile(ctxt, ostack):
+def runlibfile(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     filename **runlibfile** -
 
@@ -930,7 +932,7 @@ def runlibfile(ctxt, ostack):
     ctxt.o_stack.pop()
 
 
-def status(ctxt, ostack):
+def status(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
         file **status** bool
     filename **status** pages bytes referenced created true     (if found)
@@ -1007,7 +1009,7 @@ def status(ctxt, ostack):
             ostack[-1] = ps.Bool(False)
 
 
-def write(ctxt, ostack):
+def write(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     file int **write** -
 
@@ -1040,7 +1042,7 @@ def write(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.IOERROR, write.__name__)
 
 
-def writestring(ctxt, ostack):
+def writestring(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     file string **writestring** -
 
@@ -1091,7 +1093,7 @@ def writestring(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.IOERROR, writestring.__name__)
 
 
-def writehexstring(ctxt, ostack):
+def writehexstring(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     file string **writehexstring** -
 
@@ -1146,7 +1148,7 @@ def writehexstring(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.IOERROR, writehexstring.__name__)
 
 
-def bytesavailable(ctxt, ostack):
+def bytesavailable(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     file **bytesavailable** int
 
@@ -1231,7 +1233,7 @@ def bytesavailable(ctxt, ostack):
     ostack[-1] = ps.Int(-1)
 
 
-def setfileposition(ctxt, ostack):
+def setfileposition(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     file position **setfileposition** -
 
@@ -1313,7 +1315,7 @@ def setfileposition(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.RANGECHECK, setfileposition.__name__)
 
 
-def resetfile(ctxt, ostack):
+def resetfile(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     file **resetfile** -
 
@@ -1363,7 +1365,7 @@ def resetfile(ctxt, ostack):
     ostack.pop()
 
 
-def renamefile(ctxt, ostack):
+def renamefile(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     oldname newname **renamefile** -
 
@@ -1425,7 +1427,7 @@ def renamefile(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.IOERROR, renamefile.__name__)
 
 
-def deletefile(ctxt, ostack):
+def deletefile(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     filename **deletefile** -
 
@@ -1471,7 +1473,7 @@ def deletefile(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.IOERROR, deletefile.__name__)
 
 
-def setobjectformat(ctxt, ostack):
+def setobjectformat(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     int **setobjectformat** –
 
@@ -1503,7 +1505,7 @@ def setobjectformat(ctxt, ostack):
     ctxt.object_format = val
 
 
-def currentobjectformat(ctxt, ostack):
+def currentobjectformat(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **currentobjectformat** int
 
@@ -1526,7 +1528,7 @@ def currentobjectformat(ctxt, ostack):
 _REVERSE_NAME_TABLE = None
 
 
-def _build_reverse_name_table():
+def _build_reverse_name_table() -> None:
     """Build {name_bytes: index} from the system name table (one-time)."""
     global _REVERSE_NAME_TABLE
     if _REVERSE_NAME_TABLE is not None:
@@ -1550,7 +1552,7 @@ _PS_TYPE_TO_BOS = {
 }
 
 
-def _serialize_binary_object_seq(ctxt, obj, tag, object_format):
+def _serialize_binary_object_seq(ctxt: ps.Context, obj: ps.PSObject, tag: int, object_format: int) -> bytes | str:
     """
     Serialize a PostScript object as a binary object sequence (PLRM 3.14.2).
 
@@ -1686,7 +1688,7 @@ def _serialize_binary_object_seq(ctxt, obj, tag, object_format):
     return bytes(header) + bytes(obj_data) + bytes(strings)
 
 
-def printobject(ctxt, ostack):
+def printobject(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     obj tag **printobject** –
 
@@ -1731,7 +1733,7 @@ def printobject(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.IOERROR, printobject.__name__)
 
 
-def writeobject(ctxt, ostack):
+def writeobject(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     file obj tag **writeobject** –
 

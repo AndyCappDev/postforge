@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 Device-Dependent Color State Operators
 
@@ -16,7 +18,7 @@ from ..core import error as ps_error
 from ..core import types as ps
 
 
-def currenttransfer(ctxt, ostack):
+def currenttransfer(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currenttransfer** proc
 
@@ -36,7 +38,7 @@ def currenttransfer(ctxt, ostack):
         ostack.append(empty_proc)
 
 
-def setcolorscreen(ctxt, ostack):
+def setcolorscreen(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     redfreq redang redproc greenfreq greenang greenproc bluefreq blueang blueproc grayfreq grayang grayproc **setcolorscreen** –
 
@@ -92,7 +94,7 @@ def setcolorscreen(ctxt, ostack):
     ctxt.gstate.halftone = None
 
 
-def currentcolorscreen(ctxt, ostack):
+def currentcolorscreen(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentcolorscreen** redfreq redang redproc greenfreq greenang greenproc
                          bluefreq blueang blueproc grayfreq grayang grayproc
@@ -148,7 +150,7 @@ def currentcolorscreen(ctxt, ostack):
             ostack.append(empty_proc)
 
 
-def setcolortransfer(ctxt, ostack):
+def setcolortransfer(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     redproc greenproc blueproc grayproc **setcolortransfer** -
 
@@ -178,7 +180,7 @@ def setcolortransfer(ctxt, ostack):
     ctxt.gstate.transfer_function = gray_proc
 
 
-def currentcolortransfer(ctxt, ostack):
+def currentcolortransfer(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentcolortransfer** redproc greenproc blueproc grayproc
 
@@ -206,7 +208,7 @@ def currentcolortransfer(ctxt, ostack):
             ostack.append(empty_proc)
 
 
-def setcolorrendering(ctxt, ostack):
+def setcolorrendering(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     dict **setcolorrendering** -
 
@@ -226,7 +228,7 @@ def setcolorrendering(ctxt, ostack):
     ctxt.gstate.color_rendering = ostack.pop()
 
 
-def currentcolorrendering(ctxt, ostack):
+def currentcolorrendering(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentcolorrendering** dict
 

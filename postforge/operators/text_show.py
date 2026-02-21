@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 Text Show Operators
 
@@ -24,7 +26,7 @@ from . import font_ops
 from . import font_rendering
 
 
-def show(ctxt, ostack):
+def show(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     string **show** -
 
@@ -234,7 +236,7 @@ def show(ctxt, ostack):
             pass
 
 
-def stringwidth(ctxt, ostack):
+def stringwidth(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     string **stringwidth** wx wy
 
@@ -289,7 +291,7 @@ def stringwidth(ctxt, ostack):
     ostack.append(ps.Real(total_width_y))
 
 
-def ashow(ctxt, ostack):
+def ashow(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     ax ay string **ashow** -
 
@@ -463,7 +465,7 @@ def ashow(ctxt, ostack):
             pass
 
 
-def widthshow(ctxt, ostack):
+def widthshow(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     cx cy char string **widthshow** -
 
@@ -666,7 +668,7 @@ def widthshow(ctxt, ostack):
             pass
 
 
-def awidthshow(ctxt, ostack):
+def awidthshow(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     cx cy char ax ay string **awidthshow** -
 
@@ -879,7 +881,7 @@ def awidthshow(ctxt, ostack):
             pass
 
 
-def xyshow(ctxt, ostack):
+def xyshow(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     string numarray **xyshow** -
     string numstring **xyshow** -
@@ -1078,7 +1080,7 @@ def xyshow(ctxt, ostack):
             pass
 
 
-def xshow(ctxt, ostack):
+def xshow(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     string numarray **xshow** -
     string numstring **xshow** -
@@ -1273,7 +1275,7 @@ def xshow(ctxt, ostack):
             pass
 
 
-def yshow(ctxt, ostack):
+def yshow(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     string numarray **yshow** -
     string numstring **yshow** -
@@ -1468,7 +1470,7 @@ def yshow(ctxt, ostack):
             pass
 
 
-def cshow(ctxt, ostack):
+def cshow(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     proc string **cshow** -
 
@@ -1515,7 +1517,7 @@ def cshow(ctxt, ostack):
     ostack.pop()
 
 
-def charpath(ctxt, ostack):
+def charpath(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     string bool **charpath** -
 
@@ -1689,7 +1691,7 @@ def charpath(ctxt, ostack):
 
 # Type 3 Font Support Operators
 
-def setcachedevice(ctxt, ostack):
+def setcachedevice(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     wx wy llx lly urx ury **setcachedevice** -
 
@@ -1731,7 +1733,7 @@ def setcachedevice(ctxt, ostack):
     ctxt._font_cache_mode = True
 
 
-def setcachedevice2(ctxt, ostack):
+def setcachedevice2(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     w0x w0y llx lly urx ury w1x w1y vx vy **setcachedevice2** -
 
@@ -1778,7 +1780,7 @@ def setcachedevice2(ctxt, ostack):
     ctxt._font_cache_mode = True
 
 
-def setcharwidth(ctxt, ostack):
+def setcharwidth(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     wx wy **setcharwidth** -
 
@@ -1816,7 +1818,7 @@ def setcharwidth(ctxt, ostack):
 
 # Private helpers - Text measurement & positioning
 
-def _get_type0_char_count(font_dict, text_bytes):
+def _get_type0_char_count(font_dict: ps.Dict, text_bytes: bytes) -> int:
     """Get the number of logical characters in text_bytes for a Type 0 font.
 
     For CMap-based fonts, decodes through the CMap to count characters.
@@ -1830,7 +1832,7 @@ def _get_type0_char_count(font_dict, text_bytes):
     characters, _ = font_rendering._decode_fmap_characters(font_dict, text_bytes)
     return len(characters)
 
-def _decode_type0_chars_for_show(font_dict, text_bytes):
+def _decode_type0_chars_for_show(font_dict: ps.Dict, text_bytes: bytes) -> tuple[list[tuple[int, int, ps.Dict]], bool]:
     """Decode a Type 0 font's text bytes into (char_code, font_index, desc_font) tuples.
 
     Works for both CMap-based and FMapType-based Type 0 fonts.
@@ -1857,7 +1859,7 @@ def _decode_type0_chars_for_show(font_dict, text_bytes):
     return result, is_cmap
 
 
-def _render_single_type0_char(ctxt, font_dict, desc_font, char_code, is_cmap):
+def _render_single_type0_char(ctxt: ps.Context, font_dict: ps.Dict, desc_font: ps.Dict | None, char_code: int, is_cmap: bool) -> None:
     """Render a single character from a Type 0 composite font descendant."""
     if desc_font is None:
         return
@@ -1871,7 +1873,7 @@ def _render_single_type0_char(ctxt, font_dict, desc_font, char_code, is_cmap):
             font_rendering._render_type1_for_composite(ctxt, desc_font, char_code, font_dict)
 
 
-def _xyshow_type0_glyphpaths(ctxt, font_dict, text_bytes, displacement_values):
+def _xyshow_type0_glyphpaths(ctxt: ps.Context, font_dict: ps.Dict, text_bytes: bytes, displacement_values: list[float]) -> None:
     """Render Type 0 xyshow in GlyphPaths mode — one character at a time with advancement."""
     decoded, is_cmap = _decode_type0_chars_for_show(font_dict, text_bytes)
     for i, (char_code, font_index, desc_font) in enumerate(decoded):
@@ -1887,7 +1889,7 @@ def _xyshow_type0_glyphpaths(ctxt, font_dict, text_bytes, displacement_values):
         ctxt.gstate.path[-1].append(ps.MoveTo(ps.Point(ctxt.gstate.currentpoint.x, ctxt.gstate.currentpoint.y)))
 
 
-def _xshow_type0_glyphpaths(ctxt, font_dict, text_bytes, width_values):
+def _xshow_type0_glyphpaths(ctxt: ps.Context, font_dict: ps.Dict, text_bytes: bytes, width_values: list[float]) -> None:
     """Render Type 0 xshow in GlyphPaths mode — one character at a time with advancement."""
     decoded, is_cmap = _decode_type0_chars_for_show(font_dict, text_bytes)
     for i, (char_code, font_index, desc_font) in enumerate(decoded):
@@ -1901,7 +1903,7 @@ def _xshow_type0_glyphpaths(ctxt, font_dict, text_bytes, width_values):
         ctxt.gstate.path[-1].append(ps.MoveTo(ps.Point(ctxt.gstate.currentpoint.x, ctxt.gstate.currentpoint.y)))
 
 
-def _yshow_type0_glyphpaths(ctxt, font_dict, text_bytes, height_values):
+def _yshow_type0_glyphpaths(ctxt: ps.Context, font_dict: ps.Dict, text_bytes: bytes, height_values: list[float]) -> None:
     """Render Type 0 yshow in GlyphPaths mode — one character at a time with advancement."""
     decoded, is_cmap = _decode_type0_chars_for_show(font_dict, text_bytes)
     for i, (char_code, font_index, desc_font) in enumerate(decoded):
@@ -1915,7 +1917,7 @@ def _yshow_type0_glyphpaths(ctxt, font_dict, text_bytes, height_values):
         ctxt.gstate.path[-1].append(ps.MoveTo(ps.Point(ctxt.gstate.currentpoint.x, ctxt.gstate.currentpoint.y)))
 
 
-def _calculate_string_width(text_bytes, current_font, ctxt):
+def _calculate_string_width(text_bytes: bytes, current_font: ps.Dict, ctxt: ps.Context) -> tuple[float, float]:
     """Calculate total width of string in user space (PLRM requirement)"""
 
     total_width_x = 0.0
@@ -2024,7 +2026,7 @@ def _calculate_string_width(text_bytes, current_font, ctxt):
     return total_width_x, total_width_y
 
 
-def _calculate_type0_string_width(text_bytes, font_dict, ctxt=None):
+def _calculate_type0_string_width(text_bytes: bytes, font_dict: ps.Dict, ctxt: ps.Context | None = None) -> float:
     """
     Calculate total width of a string for a Type 0 font in user space.
 
@@ -2073,7 +2075,7 @@ def _calculate_type0_string_width(text_bytes, font_dict, ctxt=None):
     return total_width
 
 
-def _calculate_fmap_type0_string_width(text_bytes, font_dict, ctxt=None):
+def _calculate_fmap_type0_string_width(text_bytes: bytes, font_dict: ps.Dict, ctxt: ps.Context | None = None) -> float:
     """
     Calculate total width for an FMapType-based Type 0 font.
 
@@ -2125,7 +2127,7 @@ def _calculate_fmap_type0_string_width(text_bytes, font_dict, ctxt=None):
     return total_width
 
 
-def _advance_current_point(ctxt, currentpoint, char_width, current_font):
+def _advance_current_point(ctxt: ps.Context, currentpoint: ps.Point, char_width: float, current_font: ps.Dict) -> None:
     """Advance current point after character rendering.
 
     For Type 1 fonts, char_width is already in user space.
@@ -2138,7 +2140,7 @@ def _advance_current_point(ctxt, currentpoint, char_width, current_font):
     ctxt.gstate.currentpoint = ps.Point(currentpoint.x + device_width_x, currentpoint.y + device_width_y)
 
 
-def _advance_current_point_with_ashow_spacing(ctxt, currentpoint, char_width, current_font, ax, ay):
+def _advance_current_point_with_ashow_spacing(ctxt: ps.Context, currentpoint: ps.Point, char_width: float, current_font: ps.Dict, ax: float, ay: float) -> None:
     """
     Advance current point after character rendering with **ashow** spacing
 
@@ -2153,7 +2155,7 @@ def _advance_current_point_with_ashow_spacing(ctxt, currentpoint, char_width, cu
     )
 
 
-def _advance_current_point_with_widthshow_spacing(ctxt, currentpoint, char_width, current_font, cx, cy):
+def _advance_current_point_with_widthshow_spacing(ctxt: ps.Context, currentpoint: ps.Point, char_width: float, current_font: ps.Dict, cx: float, cy: float) -> None:
     """
     Advance current point after character rendering with **widthshow** spacing
 
@@ -2168,7 +2170,7 @@ def _advance_current_point_with_widthshow_spacing(ctxt, currentpoint, char_width
     )
 
 
-def _advance_current_point_with_awidthshow_spacing(ctxt, currentpoint, char_width, current_font, ax, ay, cx, cy):
+def _advance_current_point_with_awidthshow_spacing(ctxt: ps.Context, currentpoint: ps.Point, char_width: float, current_font: ps.Dict, ax: float, ay: float, cx: float, cy: float) -> None:
     """
     Advance current point after character rendering with **awidthshow** spacing
 
@@ -2183,7 +2185,7 @@ def _advance_current_point_with_awidthshow_spacing(ctxt, currentpoint, char_widt
     )
 
 
-def _advance_current_point_with_custom_displacement(ctxt, currentpoint, x_displacement, y_displacement):
+def _advance_current_point_with_custom_displacement(ctxt: ps.Context, currentpoint: ps.Point, x_displacement: float, y_displacement: float) -> None:
     """
     Advance current point using custom displacement values from **xshow**/**xyshow**/**yshow**
 
@@ -2197,7 +2199,7 @@ def _advance_current_point_with_custom_displacement(ctxt, currentpoint, x_displa
     )
 
 
-def _parse_displacement_values(displacement_array, operator_name, pairs=False):
+def _parse_displacement_values(displacement_array: ps.PSObject, operator_name: str, pairs: bool = False) -> list[float]:
     """
     Parse displacement values from array or encoded number string
     """
@@ -2225,7 +2227,7 @@ def _parse_displacement_values(displacement_array, operator_name, pairs=False):
 
 # Private helpers - TextObj emission
 
-def _show_as_text_objs(ctxt, text_bytes, font_dict):
+def _show_as_text_objs(ctxt: ps.Context, text_bytes: bytes, font_dict: ps.Dict) -> None:
     """Process **show** in TextObjs mode."""
     if not text_bytes:
         return
@@ -2243,7 +2245,7 @@ def _show_as_text_objs(ctxt, text_bytes, font_dict):
     ctxt.gstate.currentpoint = ps.Point(cp.x + device_width_x, cp.y + device_width_y)
 
 
-def _ashow_as_text_objs(ctxt, text_bytes, font_dict, ax, ay):
+def _ashow_as_text_objs(ctxt: ps.Context, text_bytes: bytes, font_dict: ps.Dict, ax: float, ay: float) -> None:
     """Process **ashow** in TextObjs mode."""
     if not text_bytes:
         return
@@ -2259,7 +2261,7 @@ def _ashow_as_text_objs(ctxt, text_bytes, font_dict, ax, ay):
         ctxt.gstate.currentpoint = ps.Point(cp.x + device_dx, cp.y + device_dy)
 
 
-def _widthshow_as_text_objs(ctxt, text_bytes, font_dict, cx, cy, char_to_modify):
+def _widthshow_as_text_objs(ctxt: ps.Context, text_bytes: bytes, font_dict: ps.Dict, cx: float, cy: float, char_to_modify: int) -> None:
     """Process **widthshow** in TextObjs mode."""
     if not text_bytes:
         return
@@ -2280,7 +2282,7 @@ def _widthshow_as_text_objs(ctxt, text_bytes, font_dict, cx, cy, char_to_modify)
         ctxt.gstate.currentpoint = ps.Point(cp.x + device_dx, cp.y + device_dy)
 
 
-def _awidthshow_as_text_objs(ctxt, text_bytes, font_dict, ax, ay, cx, cy, char_to_modify):
+def _awidthshow_as_text_objs(ctxt: ps.Context, text_bytes: bytes, font_dict: ps.Dict, ax: float, ay: float, cx: float, cy: float, char_to_modify: int) -> None:
     """Process **awidthshow** in TextObjs mode."""
     if not text_bytes:
         return
@@ -2300,7 +2302,7 @@ def _awidthshow_as_text_objs(ctxt, text_bytes, font_dict, ax, ay, cx, cy, char_t
         ctxt.gstate.currentpoint = ps.Point(cp.x + device_dx, cp.y + device_dy)
 
 
-def _xyshow_as_text_objs(ctxt, text_bytes, font_dict, displacement_values):
+def _xyshow_as_text_objs(ctxt: ps.Context, text_bytes: bytes, font_dict: ps.Dict, displacement_values: list[float]) -> None:
     """Process **xyshow** in TextObjs mode."""
     if not text_bytes:
         return
@@ -2317,7 +2319,7 @@ def _xyshow_as_text_objs(ctxt, text_bytes, font_dict, displacement_values):
         ctxt.gstate.currentpoint = ps.Point(cp.x + device_dx, cp.y + device_dy)
 
 
-def _xshow_as_text_objs(ctxt, text_bytes, font_dict, width_values):
+def _xshow_as_text_objs(ctxt: ps.Context, text_bytes: bytes, font_dict: ps.Dict, width_values: list[float]) -> None:
     """Process **xshow** in TextObjs mode."""
     if not text_bytes:
         return
@@ -2334,7 +2336,7 @@ def _xshow_as_text_objs(ctxt, text_bytes, font_dict, width_values):
         ctxt.gstate.currentpoint = ps.Point(cp.x + device_dx, cp.y + device_dy)
 
 
-def _yshow_as_text_objs(ctxt, text_bytes, font_dict, height_values):
+def _yshow_as_text_objs(ctxt: ps.Context, text_bytes: bytes, font_dict: ps.Dict, height_values: list[float]) -> None:
     """Process **yshow** in TextObjs mode."""
     if not text_bytes:
         return
@@ -2351,7 +2353,7 @@ def _yshow_as_text_objs(ctxt, text_bytes, font_dict, height_values):
         ctxt.gstate.currentpoint = ps.Point(cp.x + device_dx, cp.y + device_dy)
 
 
-def _emit_text_obj(ctxt, text_bytes, font_dict):
+def _emit_text_obj(ctxt: ps.Context, text_bytes: bytes, font_dict: ps.Dict) -> None:
     """Emit a TextObj to the display list."""
     if ctxt.display_list is None:
         return
@@ -2400,7 +2402,7 @@ def _emit_text_obj(ctxt, text_bytes, font_dict):
     ctxt.display_list.append(text_obj)
 
 
-def _encode_type0_as_cid_bytes(text_bytes, font_dict):
+def _encode_type0_as_cid_bytes(text_bytes: bytes, font_dict: ps.Dict) -> bytes:
     """Decode PostScript character codes through CMap and re-encode as 2-byte CIDs."""
     cmap_dict = font_dict.val.get(b'CMap')
     if not cmap_dict:
@@ -2416,7 +2418,7 @@ def _encode_type0_as_cid_bytes(text_bytes, font_dict):
     return bytes(result)
 
 
-def _fmap_text_bytes_to_unicode(text_bytes, font_dict):
+def _fmap_text_bytes_to_unicode(text_bytes: bytes, font_dict: ps.Dict) -> str:
     """Convert FMapType Type 0 text bytes to Unicode through descendant fonts.
 
     Note: For re-encoded fonts (e.g., poppler pdftops output with cXX glyph names),
@@ -2447,7 +2449,7 @@ def _fmap_text_bytes_to_unicode(text_bytes, font_dict):
     return ''.join(result)
 
 
-def _text_bytes_to_unicode(text_bytes, font_dict):
+def _text_bytes_to_unicode(text_bytes: bytes, font_dict: ps.Dict) -> str:
     """Convert text bytes to Unicode using font encoding and glyph name mapping."""
     # FMapType Type 0 fonts use multi-byte encoding through descendant fonts
     font_type_obj = font_dict.val.get(b'FontType')
@@ -2490,7 +2492,7 @@ _TEX_LIGATURE_MAP = {
 }
 
 
-def _compute_visual_x_bounds(display_list, dl_start):
+def _compute_visual_x_bounds(display_list: ps.DisplayList, dl_start: int) -> tuple[float, float] | None:
     """Compute device-space x bounds from rendered display list elements.
 
     Scans ImageElement entries (from Type 3 BuildChar cache misses) and path
@@ -2542,7 +2544,7 @@ def _compute_visual_x_bounds(display_list, dl_start):
     return (min_x, max_x) if found else None
 
 
-def _emit_actual_text_start(ctxt, text_bytes, font_dict, start_pos=None):
+def _emit_actual_text_start(ctxt: ps.Context, text_bytes: bytes, font_dict: ps.Dict, start_pos: tuple[float, float] | None = None) -> None:
     """Emit ActualTextStart marker to display list for Type 3 font searchability."""
     if ctxt.display_list is None:
         return
@@ -2601,14 +2603,14 @@ def _emit_actual_text_start(ctxt, text_bytes, font_dict, start_pos=None):
     ))
 
 
-def _emit_actual_text_end(ctxt):
+def _emit_actual_text_end(ctxt: ps.Context) -> None:
     """Emit ActualTextEnd marker to display list."""
     if ctxt.display_list is None:
         return
     ctxt.display_list.append(ps.ActualTextEnd())
 
 
-def _compute_device_font_size(font_dict, ctm):
+def _compute_device_font_size(font_dict: ps.Dict, ctm: ps.Array) -> float:
     """Compute effective font size in device space."""
     font_type = font_dict.val.get(b'FontType')
     is_type0 = font_type and font_type.val == 0
@@ -2636,7 +2638,7 @@ def _compute_device_font_size(font_dict, ctm):
     return font_size
 
 
-def _get_current_device_color(ctxt):
+def _get_current_device_color(ctxt: ps.Context) -> list[float]:
     """Get current color converted to device RGB space."""
     device_color = color_space.convert_to_device_color(
         ctxt, ctxt.gstate.color, ctxt.gstate.color_space
@@ -2646,7 +2648,7 @@ def _get_current_device_color(ctxt):
     return device_color
 
 
-def _split_text_into_chars(text_bytes, font_dict, ctxt):
+def _split_text_into_chars(text_bytes: bytes, font_dict: ps.Dict, ctxt: ps.Context) -> list[tuple[bytes, float]]:
     """Split text bytes into individual character units with their widths."""
     font_type = font_dict.val.get(b'FontType', ps.Int(1)).val
     if font_type == 0:
@@ -2660,7 +2662,7 @@ def _split_text_into_chars(text_bytes, font_dict, ctxt):
         return result
 
 
-def _split_type0_text(text_bytes, font_dict, ctxt=None):
+def _split_type0_text(text_bytes: bytes, font_dict: ps.Dict, ctxt: ps.Context | None = None) -> list[tuple[bytes, float]]:
     """Split Type 0 text bytes into character units with widths.
 
     Supports both CMap-based (CID) fonts and FMapType-based (legacy) fonts.

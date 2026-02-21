@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 # PostScript Image Processing Operators Implementation
 #
 # Implements PostScript Language Reference Manual Section 4.10 image processing
@@ -14,7 +16,7 @@ from .image_data import ImageDataProcessor
 from .image_type3 import _image_type3_dict_form
 
 
-def _compose_matrices_for_device_space(image_matrix, ctm, scale_x, scale_y):
+def _compose_matrices_for_device_space(image_matrix: list[float], ctm: ps.Array, scale_x: float, scale_y: float) -> list[float]:
     """Compose matrices in correct PostScript order: DPI_scale . CTM . Image_matrix"""
 
     # Extract matrix components
@@ -47,7 +49,7 @@ def _compose_matrices_for_device_space(image_matrix, ctm, scale_x, scale_y):
     return [final_a, final_b, final_c, final_d, final_tx, final_ty]
 
 
-def ps_image(ctxt, ostack):
+def ps_image(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     paints a sampled **image** onto the current page
 
@@ -68,7 +70,7 @@ def ps_image(ctxt, ostack):
         return _image_five_operand_form(ctxt, ostack)
 
 
-def _image_five_operand_form(ctxt, ostack):
+def _image_five_operand_form(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """Handle 5-operand form: width height bps matrix datasrc image"""
 
     # 1. STACKUNDERFLOW - Check stack depth
@@ -146,7 +148,7 @@ def _image_five_operand_form(ctxt, ostack):
     ctxt.display_list.append(image_element)
 
 
-def _image_dict_form(ctxt, ostack):
+def _image_dict_form(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """Handle LanguageLevel 2 dictionary form of image operator"""
 
     # 1. STACKUNDERFLOW - Check stack depth
@@ -314,7 +316,7 @@ def _image_dict_form(ctxt, ostack):
     ctxt.display_list.append(image_element)
 
 
-def ps_imagemask(ctxt, ostack):
+def ps_imagemask(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     bool width height polarity matrix datasrc **imagemask** –
     dict **imagemask** –
@@ -335,7 +337,7 @@ def ps_imagemask(ctxt, ostack):
         return _imagemask_five_operand_form(ctxt, ostack)
 
 
-def _imagemask_five_operand_form(ctxt, ostack):
+def _imagemask_five_operand_form(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """Handle 5-operand form: width height polarity matrix datasrc **imagemask**"""
 
     # 1. STACKUNDERFLOW - Check stack depth
@@ -411,7 +413,7 @@ def _imagemask_five_operand_form(ctxt, ostack):
     ctxt.display_list.append(mask_element)
 
 
-def _imagemask_dict_form(ctxt, ostack):
+def _imagemask_dict_form(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """Handle LanguageLevel 2 dictionary form of **imagemask** operator"""
 
     # 1. STACKUNDERFLOW - Check stack depth
@@ -511,7 +513,7 @@ def _imagemask_dict_form(ctxt, ostack):
     ctxt.display_list.append(mask_element)
 
 
-def ps_colorimage(ctxt, ostack):
+def ps_colorimage(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     width height bits/comp matrix datasrc0 … datasrcncomp−1 multi ncomp **colorimage** –
 
