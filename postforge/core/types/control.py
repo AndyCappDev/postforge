@@ -89,6 +89,10 @@ class Loop(PSObject):
 
 class HardReturn(PSObject):
     TYPE = T_HARD_RETURN
-    
+
     def __init__(self) -> None:
         super().__init__(None, attrib=ATTRIB_EXEC)
+
+    def __copy__(self):
+        """Optimized copy for HardReturn - simple control flow object."""
+        return HardReturn()
