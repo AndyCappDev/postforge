@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 import math
 import random
 
@@ -9,7 +11,7 @@ from ..core import error as ps_error
 from ..core import types as ps
 
 
-def ps_abs(ctxt, ostack):
+def ps_abs(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num₁ **abs** num₂
 
@@ -43,7 +45,7 @@ def ps_abs(ctxt, ostack):
         ostack[-1] = ps.Real(result)
 
 
-def add(ctxt, ostack):
+def add(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num₁ num₂ **add** sum
 
@@ -77,7 +79,7 @@ def add(ctxt, ostack):
         ostack[-1] = ps.Real(result)
 
 
-def atan(ctxt, ostack):
+def atan(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num den **atan** angle
 
@@ -118,7 +120,7 @@ def atan(ctxt, ostack):
     ostack[-1] = ps.Real(result)
 
 
-def ceiling(ctxt, ostack):
+def ceiling(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num₁ **ceiling** num₂
 
@@ -150,7 +152,7 @@ def ceiling(ctxt, ostack):
         ostack[-1] = ps.Real(float(result))
 
 
-def cos(ctxt, ostack):
+def cos(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     angle **cos** real
 
@@ -177,7 +179,7 @@ def cos(ctxt, ostack):
     ostack[-1] = ps.Real(math.cos(math.radians(ostack[-1].val)))
 
 
-def div(ctxt, ostack):
+def div(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num₁ num₂ **div** quotient
 
@@ -213,7 +215,7 @@ def div(ctxt, ostack):
     ostack[-1] = ps.Real(result)
 
 
-def exp(ctxt, ostack):
+def exp(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     base exponent **exp** real
 
@@ -245,7 +247,7 @@ def exp(ctxt, ostack):
     ostack[-1] = ps.Real(result)
 
 
-def floor(ctxt, ostack):
+def floor(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num₁ **floor** num₂
 
@@ -277,7 +279,7 @@ def floor(ctxt, ostack):
         ostack[-1] = ps.Real(float(result))
 
 
-def idiv(ctxt, ostack):
+def idiv(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     int₁ int₂ **idiv** quotient
 
@@ -312,7 +314,7 @@ def idiv(ctxt, ostack):
     ostack[-1] = ps.Int(result)
 
 
-def ln(ctxt, ostack):
+def ln(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num **ln** real
 
@@ -342,7 +344,7 @@ def ln(ctxt, ostack):
     ostack[-1] = ps.Real(math.log(ostack[-1].val))
 
 
-def log(ctxt, ostack):
+def log(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num **log** real
 
@@ -371,7 +373,7 @@ def log(ctxt, ostack):
     ostack[-1] = ps.Real(math.log(ostack[-1].val, 10))
 
 
-def ps_max(ctxt, ostack):
+def ps_max(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num₁ num₂ **max** num₁|num₂
 
@@ -401,7 +403,7 @@ def ps_max(ctxt, ostack):
     ostack.pop()
 
 
-def ps_min(ctxt, ostack):
+def ps_min(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num₁ num₂ **min** num₁|num₂
 
@@ -431,7 +433,7 @@ def ps_min(ctxt, ostack):
     ostack.pop()
 
 
-def mod(ctxt, ostack):
+def mod(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     int₁ int₂ **mod** remainder
 
@@ -476,7 +478,7 @@ def mod(ctxt, ostack):
     ostack[-1] = ps.Int(result)
 
 
-def mul(ctxt, ostack):
+def mul(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num₁ num₂ **mul** product
 
@@ -506,7 +508,7 @@ def mul(ctxt, ostack):
         ostack[-1] = ps.Real(result)
 
 
-def neg(ctxt, ostack):
+def neg(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num₁ **neg** num₂
 
@@ -537,7 +539,7 @@ def neg(ctxt, ostack):
         ostack[-1] = ps.Real(result)
 
 
-def rand(ctxt, ostack):
+def rand(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **rand** int
 
@@ -557,7 +559,7 @@ def rand(ctxt, ostack):
     ostack.append(ps.Int(random.randrange(ps.MAX_POSTSCRIPT_INTEGER)))
 
 
-def rrand(ctxt, ostack):
+def rrand(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **rrand** int
 
@@ -577,7 +579,7 @@ def rrand(ctxt, ostack):
     ostack.append(ps.Int(ctxt.random_seed))
 
 
-def ps_round(ctxt, ostack):
+def ps_round(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num₁ **round** num₂
 
@@ -612,7 +614,7 @@ def ps_round(ctxt, ostack):
         ostack[-1] = ps.Real(float(result))
 
 
-def sin(ctxt, ostack):
+def sin(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     angle **sin** real
 
@@ -635,7 +637,7 @@ def sin(ctxt, ostack):
     ostack[-1] = ps.Real(math.sin(math.radians(ostack[-1].val)))
 
 
-def srand(ctxt, ostack):
+def srand(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     int **srand** -
 
@@ -663,7 +665,7 @@ def srand(ctxt, ostack):
     ostack.pop()
 
 
-def sqrt(ctxt, ostack):
+def sqrt(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num **sqrt** real
 
@@ -689,7 +691,7 @@ def sqrt(ctxt, ostack):
     ostack[-1] = ps.Real(math.sqrt(ostack[-1].val))
 
 
-def sub(ctxt, ostack):
+def sub(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num₁ num₂ **sub** difference
 
@@ -719,7 +721,7 @@ def sub(ctxt, ostack):
         ostack[-1] = ps.Real(result)
 
 
-def truncate(ctxt, ostack):
+def truncate(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num₁ **truncate** num₂
 

@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostScript Job Control Operators - startjob and exitserver
 
@@ -22,7 +24,6 @@ PLRM Compliance:
 
 import sys
 import copy
-from typing import Union
 
 from ..core import error as ps_error
 from ..core import types as ps
@@ -32,7 +33,7 @@ from . import dict as ps_dict
 from . import operand_stack as ps_operand_stack
 
 
-def startjob(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
+def startjob(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     bool password **startjob** bool
     
@@ -100,7 +101,7 @@ def startjob(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
         ostack.append(ps.Bool(False))
 
 
-def _execute_job_server_sequence(ctxt: "ps.Context", persistent: bool) -> None:
+def _execute_job_server_sequence(ctxt: ps.Context, persistent: bool) -> None:
     """
     Execute the PostScript job server sequence per PLRM Section 8.2.
 
@@ -168,7 +169,7 @@ def _execute_job_server_sequence(ctxt: "ps.Context", persistent: bool) -> None:
         ctxt.job_save_level_stack.append(job_save_copy)
 
 
-def ps_quitwithcode(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
+def ps_quitwithcode(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     int **.quitwithcode** -
 
@@ -185,7 +186,7 @@ def ps_quitwithcode(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
     ctxt.exit_code = ostack.pop().val
 
 
-def exitserver(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
+def exitserver(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     password **exitserver** -
     

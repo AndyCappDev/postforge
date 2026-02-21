@@ -2,10 +2,11 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 import copy
 import math
 from decimal import Decimal, getcontext
-from typing import Tuple, Union
 
 from ..core import error as ps_error
 from ..core import types as ps
@@ -14,7 +15,7 @@ from ..core import types as ps
 getcontext().prec = 50
 
 
-def _setCTM(ctxt, m) -> None:
+def _setCTM(ctxt: ps.Context, m: list[ps.Real]) -> None:
     """
     Sets the CTM to the matrix list m
     Also sets iCTM to the inverse of m
@@ -41,8 +42,8 @@ def _setCTM(ctxt, m) -> None:
 
 
 def _transform_point(
-    transformation_matrix, x: Union[int, float], y: Union[int, float]
-) -> Tuple[Union[int, float], Union[int, float]]:
+    transformation_matrix: ps.Array, x: int | float, y: int | float
+) -> tuple[int | float, int | float]:
     # Use high-precision decimal arithmetic to minimize rounding errors
     x_dec = Decimal(str(x))
     y_dec = Decimal(str(y))
@@ -65,8 +66,8 @@ def _transform_point(
 
 
 def _transform_delta(
-    transformation_matrix, x: Union[int, float], y: Union[int, float]
-) -> Tuple[Union[int, float], Union[int, float]]:
+    transformation_matrix: ps.Array, x: int | float, y: int | float
+) -> tuple[int | float, int | float]:
     # Use high-precision decimal arithmetic to minimize rounding errors
     x_dec = Decimal(str(x))
     y_dec = Decimal(str(y))
@@ -86,7 +87,7 @@ def _transform_delta(
     return xt, yt
 
 
-def _matmult(mat1, mat2, dst) -> None:
+def _matmult(mat1: ps.Array, mat2: ps.Array, dst: ps.Array) -> None:
     """
     Multiplies mat1 by mat2 and deposits the results into the dst matrix.
     Uses high-precision decimal arithmetic to minimize rounding errors.
@@ -132,16 +133,16 @@ def _matmult(mat1, mat2, dst) -> None:
     dst.val[5] = ps.Real(float(result_21.quantize(Decimal('0.0000000001'))))
 
 
-def _matrix_deternminant(m):
+def _matrix_deternminant(m: list[list[float]]) -> float:
     """
     Calculate matrix determinant using high-precision decimal arithmetic.
     Recursive function that handles matrices of any size.
     """
     # Convert matrix elements to Decimal for high-precision calculation
-    def to_decimal_matrix(matrix):
+    def to_decimal_matrix(matrix: list[list[float]]) -> list[list[Decimal]]:
         return [[Decimal(str(element)) for element in row] for row in matrix]
 
-    def calculate_determinant_decimal(dec_matrix):
+    def calculate_determinant_decimal(dec_matrix: list[list[Decimal]]) -> Decimal:
         # base case for 2x2 matrix
         if len(dec_matrix) == 2:
             return dec_matrix[0][0] * dec_matrix[1][1] - dec_matrix[0][1] * dec_matrix[1][0]
@@ -162,7 +163,7 @@ def _matrix_deternminant(m):
     return float(result.quantize(Decimal('0.0000000001')))
 
 
-def _matrix_inverse(m):
+def _matrix_inverse(m: list[list[float]]) -> list[list[float]] | None:
     """
     Calculate inverse of a 2D affine transformation matrix using
     high-precision decimal arithmetic with the direct formula.
@@ -194,7 +195,7 @@ def _matrix_inverse(m):
     ]
 
 
-def concat(ctxt, ostack):
+def concat(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     matrix **concat** -
 
@@ -236,7 +237,7 @@ def concat(ctxt, ostack):
     ostack.pop()
 
 
-def concatmatrix(ctxt, ostack):
+def concatmatrix(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     matrix₁ matrix₂ matrix₃ **concatmatrix** matrix₃
 
@@ -276,7 +277,7 @@ def concatmatrix(ctxt, ostack):
     ostack[-1] = mat
 
 
-def currentmatrix(ctxt, ostack):
+def currentmatrix(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     matrix **currentmatrix** matrix
 
@@ -312,7 +313,7 @@ def currentmatrix(ctxt, ostack):
         mat.val[start + i] = copy.copy(val)
 
 
-def dtransform(ctxt, ostack):
+def dtransform(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
            dx dy **dtransform** dx' dy'
     dx dy matrix **dtransform** dx' dy'
@@ -364,7 +365,7 @@ def dtransform(ctxt, ostack):
         ostack[-1] = ps.Real(y)
 
 
-def defaultmatrix(ctxt, ostack):
+def defaultmatrix(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     matrix **defaultmatrix** matrix
 
@@ -420,7 +421,7 @@ def defaultmatrix(ctxt, ostack):
     default_matrix.put(ps.Int(5), ps.Real(float(height)))
 
 
-def identmatrix(ctxt, ostack):
+def identmatrix(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     matrix **identmatrix** matrix
 
@@ -450,7 +451,7 @@ def identmatrix(ctxt, ostack):
         ostack[-1].put(ps.Int(i), ps.Int(val))
 
 
-def idtransform(ctxt, ostack):
+def idtransform(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
            dx' dy' **idtransform** dx dy
     dx' dy' matrix **idtransform** dx dy
@@ -523,7 +524,7 @@ def idtransform(ctxt, ostack):
         ostack[-1] = ps.Real(y)
 
 
-def initmatrix(ctxt, ostack):
+def initmatrix(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **initmatrix** -
 
@@ -577,7 +578,7 @@ def initmatrix(ctxt, ostack):
     pdm[b"MediaSize"] = media_size
 
 
-def invertmatrix(ctxt, ostack):
+def invertmatrix(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     matrix1 matrix2 **invertmatrix** matrix2
 
@@ -622,7 +623,7 @@ def invertmatrix(ctxt, ostack):
     ostack.pop()
 
 
-def itransform(ctxt, ostack):
+def itransform(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
            x' y' **itransform** x y
     x' y' matrix **itransform** x y
@@ -689,7 +690,7 @@ def itransform(ctxt, ostack):
         ostack[-1] = ps.Real(y)
 
 
-def matrix(ctxt, ostack):
+def matrix(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **matrix** **matrix**
 
@@ -721,7 +722,7 @@ def matrix(ctxt, ostack):
     )
 
 
-def rotate(ctxt, ostack):
+def rotate(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
            angle **rotate** -
     angle matrix **rotate** matrix
@@ -811,7 +812,7 @@ def rotate(ctxt, ostack):
         ostack.pop()
 
 
-def setmatrix(ctxt, ostack):
+def setmatrix(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     matrix **setmatrix** -
 
@@ -843,7 +844,7 @@ def setmatrix(ctxt, ostack):
     ostack.pop()
 
 
-def scale(ctxt, ostack):
+def scale(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
            sx sy **scale** -
     sx sy matrix **scale** matrix
@@ -934,7 +935,7 @@ def scale(ctxt, ostack):
         ostack.pop()
 
 
-def transform(ctxt, ostack):
+def transform(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
            x y **transform** x' y'
     x y matrix **transform** x' y'
@@ -980,7 +981,7 @@ def transform(ctxt, ostack):
         ostack[-1] = ps.Real(y)
 
 
-def translate(ctxt, ostack):
+def translate(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
            tx ty **translate** -
     tx ty matrix **translate** matrix

@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 import copy
 from typing import Any
 
@@ -44,7 +46,7 @@ from ..core import types as ps
 from . import vm as ps_vm
 
 
-def init_dictionaries(ctxt, name: str):
+def init_dictionaries(ctxt: ps.Context, name: str) -> None:
     # set the vm allocation mode to global
     ctxt.vm_alloc_mode = True
 
@@ -69,11 +71,11 @@ def init_dictionaries(ctxt, name: str):
     ctxt.vm_alloc_mode = False
 
 
-def add_to_dict(ctxt, d, name: str, the_type: Any, val) -> None:
+def add_to_dict(ctxt: ps.Context, d: ps.Dict, name: str, the_type: Any, val: Any) -> None:
     d.val[bytes(name, "ascii")] = the_type(val)
 
 
-def create_system_dict(ctxt, name: bytes) -> dict:
+def create_system_dict(ctxt: ps.Context, name: bytes) -> ps.Dict:
     obj = ps.Dict(ctxt.id, None, name, is_global=True)
 
     ops = [
@@ -467,7 +469,7 @@ def create_system_dict(ctxt, name: bytes) -> dict:
     return obj
 
 
-def dict_from_mark(ctxt, ostack):
+def dict_from_mark(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     mark key1 value1 ... keyn valuen **>>** dict
 
@@ -527,7 +529,7 @@ def dict_from_mark(ctxt, ostack):
     ostack[-1] = d
 
 
-def lookup(ctxt, obj, dictionary=None):
+def lookup(ctxt: ps.Context, obj: ps.PSObject, dictionary: ps.Dict | None = None) -> ps.PSObject | None:
     # lookup a value in the dictionary stack
     # returns the object found or None if not found
 
@@ -568,7 +570,7 @@ def lookup(ctxt, obj, dictionary=None):
         return None
 
 
-def begin(ctxt, ostack):
+def begin(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     dict **begin** –
 
@@ -602,7 +604,7 @@ def begin(ctxt, ostack):
     ctxt.o_stack.pop()
 
 
-def countdictstack(ctxt, ostack):
+def countdictstack(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **countdictstack** int
 
@@ -617,7 +619,7 @@ def countdictstack(ctxt, ostack):
     ostack.append(ps.Int(len(ctxt.d_stack)))
 
 
-def currentdict(ctxt, ostack):
+def currentdict(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **currentdict** dict
 
@@ -636,7 +638,7 @@ def currentdict(ctxt, ostack):
     ostack.append(copy.copy(ctxt.d_stack[-1]))
 
 
-def ps_def(ctxt, ostack):
+def ps_def(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     key value **def** –
 
@@ -710,7 +712,7 @@ def ps_def(ctxt, ostack):
     ostack.pop()
 
 
-def ps_dict(ctxt, ostack):
+def ps_dict(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     int **dict** **dict**
 
@@ -756,7 +758,7 @@ def ps_dict(ctxt, ostack):
     )
 
 
-def dictstack(ctxt, ostack):
+def dictstack(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     array **dictstack** subarray
 
@@ -796,7 +798,7 @@ def dictstack(ctxt, ostack):
     ostack[-1] = sub_array
 
 
-def end(ctxt, ostack):
+def end(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **end** –
 
@@ -815,7 +817,7 @@ def end(ctxt, ostack):
     ctxt.d_stack.pop()
 
 
-def dictname(ctxt, ostack):
+def dictname(ctxt: ps.Context, ostack: ps.Stack) -> None:
     # 1. STACKUNDERFLOW - Check stack depth
     if len(ostack) < 1:
         return ps_error.e(ctxt, ps_error.STACKUNDERFLOW, dictname.__name__)
@@ -827,7 +829,7 @@ def dictname(ctxt, ostack):
     ostack[-1] = ps.Name(ostack[-1].name, is_global=ctxt.vm_alloc_mode)
 
 
-def known(ctxt, ostack):
+def known(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     dict key **known** bool
 
@@ -865,7 +867,7 @@ def known(ctxt, ostack):
         ostack[-1] = ps.Bool(False)
 
 
-def load(ctxt, ostack):
+def load(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     key **load** value
 
@@ -897,7 +899,7 @@ def load(ctxt, ostack):
     ctxt.o_stack[-1] = val
 
 
-def maxlength(ctxt, ostack):
+def maxlength(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     dict **maxlength** int
 
@@ -934,7 +936,7 @@ def maxlength(ctxt, ostack):
     ostack[-1] = ostack[-1].maxlength()
 
 
-def store(ctxt, ostack):
+def store(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     key value **store** –
 
@@ -987,7 +989,7 @@ def store(ctxt, ostack):
     ostack.pop()
 
 
-def undef(ctxt, ostack):
+def undef(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     dict key **undef** –
 
@@ -1026,7 +1028,7 @@ def undef(ctxt, ostack):
     ostack.pop()
 
 
-def systemundef(ctxt, ostack):
+def systemundef(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     dict key .**undef** –
 
@@ -1066,7 +1068,7 @@ def systemundef(ctxt, ostack):
     ostack.pop()
 
 
-def where(ctxt, ostack):
+def where(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     key **where** dict true     (if found)
                    false    (if not found)

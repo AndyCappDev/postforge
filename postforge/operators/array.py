@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostScript array functions
 """
@@ -10,7 +12,7 @@ from ..core import error as ps_error
 from ..core import types as ps
 
 
-def aload(ctxt, ostack):
+def aload(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
           array **aload** any(0) ... any(n-1) array
     **packedarray** **aload** any(0) ... any(n-1) **packedarray**
@@ -64,7 +66,7 @@ def aload(ctxt, ostack):
     return None
 
 
-def array(ctxt, ostack):
+def array(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     int **array** **array**
 
@@ -109,7 +111,7 @@ def array(ctxt, ostack):
     return None
 
 
-def array_from_mark(ctxt, ostack, mark=b"["):
+def array_from_mark(ctxt: ps.Context, ostack: ps.Stack, mark: bytes = b"[") -> None:
     """
     mark obj0 ... objn-1 **]** array
 
@@ -157,7 +159,7 @@ def array_from_mark(ctxt, ostack, mark=b"["):
     return None
 
 
-def astore(ctxt, ostack):
+def astore(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     any(0) ... any(n-1) array **astore** array
 
@@ -223,7 +225,7 @@ def astore(ctxt, ostack):
     return None
 
 
-def procedure_from_mark(ctxt, ostack):
+def procedure_from_mark(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     mark obj0 ... objn-1 **}** proc
 

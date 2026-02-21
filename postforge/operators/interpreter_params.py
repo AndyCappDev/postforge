@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 import collections
 from copy import copy
 
@@ -9,7 +11,7 @@ from ..core import error as ps_error
 from ..core import types as ps
 
 
-def setsystemparams(ctxt, ostack):
+def setsystemparams(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     dict **setsystemparams** -
     
@@ -75,7 +77,7 @@ def setsystemparams(ctxt, ostack):
     ostack.pop()
 
 
-def currentsystemparams(ctxt, ostack):
+def currentsystemparams(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentsystemparams** dict
 
@@ -121,7 +123,7 @@ def currentsystemparams(ctxt, ostack):
     ostack.append(sys_params_dict)
 
 
-def setuserparams(ctxt, ostack):
+def setuserparams(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     dict **setuserparams** -
 
@@ -215,7 +217,7 @@ def setuserparams(ctxt, ostack):
     ostack.pop()
 
 
-def currentuserparams(ctxt, ostack):
+def currentuserparams(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentuserparams** dict
 
@@ -242,7 +244,7 @@ def currentuserparams(ctxt, ostack):
     ostack.append(user_params)
 
 
-def vmreclaim(ctxt, ostack):
+def vmreclaim(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     int **vmreclaim** -
 
@@ -267,7 +269,7 @@ def vmreclaim(ctxt, ostack):
     ostack.pop()
 
 
-def setvmthreshold(ctxt, ostack):
+def setvmthreshold(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     int **setvmthreshold** -
 
@@ -292,7 +294,7 @@ def setvmthreshold(ctxt, ostack):
     ostack.pop()
 
 
-def cachestatus(ctxt, ostack):
+def cachestatus(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **cachestatus** bsize bmax msize mmax csize cmax blimit
 
@@ -348,7 +350,7 @@ def cachestatus(ctxt, ostack):
     ostack.append(ps.Int(blimit))
 
 
-def setcacheparams(ctxt, ostack):
+def setcacheparams(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     mark ... size lower upper **setcacheparams** -
 
@@ -400,7 +402,7 @@ def setcacheparams(ctxt, ostack):
             bitmap_cache._max_bytes = values[2]
 
 
-def currentcacheparams(ctxt, ostack):
+def currentcacheparams(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentcacheparams** mark size lower upper
 
@@ -427,7 +429,7 @@ def currentcacheparams(ctxt, ostack):
     ostack.append(ps.Int(upper))
 
 
-def setucacheparams(ctxt, ostack):
+def setucacheparams(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     mark ... blimit **setucacheparams** -
 
@@ -468,7 +470,7 @@ def setucacheparams(ctxt, ostack):
         user_params[b"MaxUPathItem"] = ps.Int(values[0])
 
 
-def ucachestatus(ctxt, ostack):
+def ucachestatus(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **ucachestatus** mark bsize bmax rsize rmax blimit
 
@@ -496,7 +498,7 @@ def ucachestatus(ctxt, ostack):
     ostack.append(ps.Int(blimit))
 
 
-def setdevparams(ctxt, ostack):
+def setdevparams(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     string dict **setdevparams** -
 
@@ -519,7 +521,7 @@ def setdevparams(ctxt, ostack):
     ostack.pop()
 
 
-def currentdevparams(ctxt, ostack):
+def currentdevparams(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     string **currentdevparams** dict
 
@@ -537,7 +539,7 @@ def currentdevparams(ctxt, ostack):
     ostack[-1] = ps.Dict(ctxt.id, is_global=ctxt.vm_alloc_mode)
 
 
-def setcachelimit(ctxt, ostack):
+def setcachelimit(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     int **setcachelimit** -
 

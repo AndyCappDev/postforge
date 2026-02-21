@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 import copy
 
 from ..core import error as ps_error
@@ -10,7 +12,7 @@ from ..core import tokenizer
 from . import array as ps_array
 
 
-def anchorsearch(ctxt, ostack):
+def anchorsearch(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     string seek **anchorsearch** post match true    (if found)
                              string false       (if not found)
@@ -67,7 +69,7 @@ def anchorsearch(ctxt, ostack):
         ostack[-1] = ps.Bool(False)
 
 
-def join(ctxt, ostack):
+def join(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     joinstring stringarray string **join** substring
 
@@ -110,7 +112,7 @@ def join(ctxt, ostack):
     ostack[-1] = ss
 
 
-def search(ctxt, ostack):
+def search(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     string seek **search** post match pre true  (if found)
                        string false         (if not found)
@@ -181,7 +183,7 @@ def search(ctxt, ostack):
         ostack[-1] = ps.Bool(False)
 
 
-def ps_string(ctxt, ostack):
+def ps_string(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     int **string** **string**
 
@@ -215,7 +217,7 @@ def ps_string(ctxt, ostack):
     ostack[-1] = ps.String(ctxt.id, offset, length, is_global=ctxt.vm_alloc_mode)
 
 
-def token(ctxt, ostack):
+def token(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
       file **token** any true       (if found)
                  false          (if not found)
@@ -278,7 +280,7 @@ def token(ctxt, ostack):
         return token_from_string(ctxt, ostack, source)
 
 
-def token_from_file(ctxt, ostack, source):
+def token_from_file(ctxt: ps.Context, ostack: ps.Stack, source: ps.File) -> None:
     """Parse complete token from file"""
     if source.access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, token.__name__)
@@ -328,7 +330,7 @@ def token_from_file(ctxt, ostack, source):
     ostack.append(boolean_result)  # Use the boolean from __token
 
 
-def token_from_string(ctxt, ostack, source):
+def token_from_string(ctxt: ps.Context, ostack: ps.Stack, source: ps.String) -> None:
     """Parse complete token from string with post calculation"""
     if source.access < ps.ACCESS_READ_ONLY:
         return ps_error.e(ctxt, ps_error.INVALIDACCESS, token.__name__)
@@ -393,7 +395,7 @@ def token_from_string(ctxt, ostack, source):
     ostack.append(boolean_result)  # Use the boolean from __token
 
 
-def parse_array_tokens(ctxt, source):
+def parse_array_tokens(ctxt: ps.Context, source: ps.File | StringTokenizer) -> None:
     """Parse tokens until matching ] is found"""
     bracket_count = 1
     
@@ -432,7 +434,7 @@ def parse_array_tokens(ctxt, source):
     return None  # Success
 
 
-def parse_procedure_tokens(ctxt, source):
+def parse_procedure_tokens(ctxt: ps.Context, source: ps.File | StringTokenizer) -> None:
     """Parse tokens until matching } is found"""  
     bracket_count = 1
     
@@ -474,13 +476,13 @@ def parse_procedure_tokens(ctxt, source):
 class StringTokenizer:
     """String wrapper that tracks read position for token operator"""
     
-    def __init__(self, string_obj):
+    def __init__(self, string_obj: ps.String) -> None:
         self.string_obj = string_obj
         self.position = 0
         self.original_position = 0
         self.line_num = 1  # Required by __token
         
-    def read(self, ctxt):
+    def read(self, ctxt: ps.Context) -> int | None:
         """Read next byte from string, advance position"""
         if self.position >= self.string_obj.length:
             return None  # EOF
@@ -495,21 +497,21 @@ class StringTokenizer:
         self.position += 1
         return byte_value
         
-    def unread(self):
+    def unread(self) -> None:
         """Move position back one byte"""
         if self.position > 0:
             self.position -= 1
             
-    def get_consumed_length(self):
+    def get_consumed_length(self) -> int:
         """Return how many bytes were consumed"""
         return self.position - self.original_position
         
-    def close(self):
+    def close(self) -> None:
         """No-op for string tokenizer"""
         pass
 
 
-def create_post_string(original_string, consumed_length):
+def create_post_string(original_string: ps.String, consumed_length: int) -> ps.String:
     """Create substring representing remaining portion after tokenization"""
     if consumed_length >= original_string.length:
         # All consumed, return empty string

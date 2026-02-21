@@ -2,11 +2,13 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 from ..core import error as ps_error
 from ..core import types as ps
 
 
-def currentpacking(ctxt, ostack):
+def currentpacking(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentpacking** bool
 
@@ -23,7 +25,7 @@ def currentpacking(ctxt, ostack):
     ostack.append(ps.Bool(ctxt.packing))
 
 
-def packedarray(ctxt, ostack):
+def packedarray(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     any(0) ... any(n-1) n **packedarray** **packedarray**
 
@@ -79,7 +81,7 @@ def packedarray(ctxt, ostack):
     ostack.append(parr)
 
 
-def setpacking(ctxt, ostack):
+def setpacking(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     bool **setpacking** -
 

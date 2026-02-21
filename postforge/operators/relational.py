@@ -2,11 +2,13 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 from ..core import error as ps_error
 from ..core import types as ps
 
 
-def ps_and(ctxt, ostack):
+def ps_and(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     bool₁ bool₂ **and** bool₃
       int₁ int₂ **and** int₃
@@ -48,7 +50,7 @@ def ps_and(ctxt, ostack):
     ostack.pop()
 
 
-def bitshift(ctxt, ostack):
+def bitshift(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     int₁ shift **bitshift** int₂
 
@@ -82,7 +84,7 @@ def bitshift(ctxt, ostack):
     ostack.pop()
 
 
-def eq(ctxt, ostack, op_name=None):
+def eq(ctxt: ps.Context, ostack: ps.Stack, op_name: str | None = None) -> None:
     """
     any₁ any₂ **eq** bool
 
@@ -133,7 +135,7 @@ def eq(ctxt, ostack, op_name=None):
     ostack[-1] = b
 
 
-def ge(ctxt, ostack):
+def ge(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
           num₁ num₂ **ge** bool
     string₁ string₂ **ge** bool
@@ -181,7 +183,7 @@ def ge(ctxt, ostack):
     ostack[-1] = b
 
 
-def gt(ctxt, ostack):
+def gt(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
           num₁ num₂ **gt** bool
     string₁ string₂ **gt** bool
@@ -227,7 +229,7 @@ def gt(ctxt, ostack):
     ostack[-1] = b
 
 
-def le(ctxt, ostack):
+def le(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
           num₁ num₂ **le** bool
     string₁ string₂ **le** bool
@@ -273,7 +275,7 @@ def le(ctxt, ostack):
     ostack[-1] = b
 
 
-def lt(ctxt, ostack):
+def lt(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
           num₁ num₂ **lt** bool
     string₁ string₂ **lt** bool
@@ -318,7 +320,7 @@ def lt(ctxt, ostack):
     ostack[-1] = b
 
 
-def ne(ctxt, ostack):
+def ne(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     any₁ any₂ **ne** bool
 
@@ -348,7 +350,7 @@ def ne(ctxt, ostack):
         pass
 
 
-def ps_not(ctxt, ostack):
+def ps_not(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     bool₁ **not** bool₂
      int₁ **not** int₂
@@ -381,7 +383,7 @@ def ps_not(ctxt, ostack):
         ostack[-1].val = ~ostack[-1].val
 
 
-def ps_or(ctxt, ostack):
+def ps_or(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     bool₁ bool₂ **or** bool₃
       int₁ int₂ **or** int₃
@@ -424,7 +426,7 @@ def ps_or(ctxt, ostack):
     ostack.pop()
 
 
-def xor(ctxt, ostack):
+def xor(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     bool₁ bool₂ **xor** bool₃
       int₁ int₂ **xor** int₃

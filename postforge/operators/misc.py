@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 import re
 import time
 
@@ -11,7 +13,7 @@ from ..core import types as ps
 from . import control as ps_control
 
 
-def _bind(ctxt, arr):
+def _bind(ctxt: ps.Context, arr: ps.Array) -> None:
     """recursive **bind**"""
     for i, obj in enumerate(arr.val):
         if obj.TYPE in ps.ARRAY_TYPES and obj.attrib == ps.ATTRIB_EXEC and obj.access > ps.ACCESS_READ_ONLY:
@@ -27,7 +29,7 @@ def _bind(ctxt, arr):
     arr.is_bound = True
 
 
-def bind(ctxt, ostack):
+def bind(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     proc **bind** proc
 
@@ -73,14 +75,14 @@ def bind(ctxt, ostack):
 _BOLD_RE = re.compile(r'\*\*(.+?)\*\*')
 
 
-def _print_help(op):
+def _print_help(op: object) -> None:
     doc = op.__doc__
     if doc:
         doc = _BOLD_RE.sub(r'\033[1m\1\033[0m', doc)
     print(doc)
 
 
-def ps_help(ctxt, ostack):
+def ps_help(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     name **help** -
 
@@ -110,7 +112,7 @@ def ps_help(ctxt, ostack):
     _print_help(obj.val)
 
 
-def echo(ctxt, ostack):
+def echo(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     bool **echo** –
 
@@ -132,7 +134,7 @@ def echo(ctxt, ostack):
     ctxt.echo = ostack.pop().val
 
 
-def _setinteractivepaint(ctxt, ostack):
+def _setinteractivepaint(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """Internal operator: enable/disable live paint callback for executive mode."""
     if len(ostack) < 1:
         return ps_error.e(ctxt, ps_error.STACKUNDERFLOW, ".setinteractivepaint")
@@ -144,7 +146,7 @@ def _setinteractivepaint(ctxt, ostack):
         ctxt.on_paint_callback(ctxt, None)
 
 
-def usertime(ctxt, ostack):
+def usertime(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **usertime** int
 
@@ -170,7 +172,7 @@ def usertime(ctxt, ostack):
     ostack.append(ps.Int((time.perf_counter_ns() - ctxt.start_time) // 1000000))
 
 
-def realtime(ctxt, ostack):
+def realtime(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **realtime** int
 
@@ -193,7 +195,7 @@ def realtime(ctxt, ostack):
     ostack.append(ps.Int(time.time_ns() // 1000000))
 
 
-def loopname(ctxt, ostack):
+def loopname(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     **loop** <**loopname**> name
     """
@@ -208,7 +210,7 @@ def loopname(ctxt, ostack):
     ostack[-1] = ps.Name(bytes(ostack[-1].__str__(), "ascii"))
 
 
-def eexec(ctxt, ostack):
+def eexec(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     file **eexec** - | string **eexec** -
     
@@ -287,7 +289,7 @@ def eexec(ctxt, ostack):
         return ps_error.e(ctxt, ps_error.IOERROR, eexec.__name__)
 
 
-def exechistorystack(ctxt, ostack):
+def exechistorystack(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     array **exechistorystack** subarray
     
@@ -361,7 +363,7 @@ def exechistorystack(ctxt, ostack):
     ostack.append(subarray)
 
 
-def _obj_to_string_detailed(obj):
+def _obj_to_string_detailed(obj: ps.PSObject | None) -> str:
     """Convert PostScript object to detailed string representation showing contents."""
     if obj is None:
         return "<null>"
@@ -435,7 +437,7 @@ def _obj_to_string_detailed(obj):
         return f"<{obj.TYPE}>"
 
 
-def _obj_to_string_simple(obj):
+def _obj_to_string_simple(obj: ps.PSObject | None) -> str:
     """Simple object-to-string for use inside arrays/procedures - no recursion."""
     if obj is None:
         return "<null>"
@@ -476,7 +478,7 @@ def _obj_to_string_simple(obj):
         return f"<{obj.TYPE}>"
 
 
-def _obj_to_string(obj):
+def _obj_to_string(obj: ps.PSObject | None) -> str:
     """Convert PostScript object to string representation for execution history."""
     if obj is None:
         return "<null>"
@@ -526,7 +528,7 @@ def _obj_to_string(obj):
         return f"<{obj.TYPE}>"
 
 
-def pauseexechistory(ctxt, ostack):
+def pauseexechistory(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **pauseexechistory** -
     
@@ -539,7 +541,7 @@ def pauseexechistory(ctxt, ostack):
     ctxt.execution_history_paused = True
 
 
-def resumeexechistory(ctxt, ostack):
+def resumeexechistory(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **resumeexechistory** -
 
@@ -554,7 +556,7 @@ def resumeexechistory(ctxt, ostack):
 INTERNALDICT_PASSWORD = 1183615869
 
 
-def internaldict(ctxt, ostack):
+def internaldict(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     int **internaldict** dict
 

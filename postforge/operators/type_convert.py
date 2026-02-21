@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 import copy
 import string
 
@@ -9,7 +11,7 @@ from ..core import error as ps_error
 from ..core import types as ps
 
 
-def cvi(ctxt, ostack):
+def cvi(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
        num **cvi** int
     string **cvi** int
@@ -58,7 +60,7 @@ def cvi(ctxt, ostack):
             return ps_error.e(ctxt, ps_error.SYNTAXERROR, cvi.__name__)
 
 
-def cvlit(ctxt, ostack):
+def cvlit(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     any **cvlit** any
 
@@ -77,7 +79,7 @@ def cvlit(ctxt, ostack):
     ostack[-1].attrib = ps.ATTRIB_LIT
 
 
-def cvn(ctxt, ostack):
+def cvn(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     string **cvn** name
 
@@ -108,7 +110,7 @@ def cvn(ctxt, ostack):
     )
 
 
-def cvr(ctxt, ostack):
+def cvr(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
        num **cvr** real
     string **cvr** real
@@ -149,7 +151,7 @@ def cvr(ctxt, ostack):
             return ps_error.e(ctxt, ps_error.SYNTAXERROR, cvr.__name__)
 
 
-def cvrs(ctxt, ostack):
+def cvrs(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num radix string **cvrs** substring
 
@@ -230,7 +232,7 @@ def cvrs(ctxt, ostack):
     ostack[-1] = st
 
 
-def cvs(ctxt, ostack):
+def cvs(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     any string **cvs** substring
 
@@ -333,7 +335,7 @@ def cvs(ctxt, ostack):
     ostack[-1] = sub_string
 
 
-def cvx(ctxt, ostack):
+def cvx(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     any **cvx** any
 
@@ -351,7 +353,7 @@ def cvx(ctxt, ostack):
     ostack[-1].attrib = ps.ATTRIB_EXEC
 
 
-def executeonly(ctxt, ostack):
+def executeonly(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
           array **executeonly** array
     **packedarray** **executeonly** **packedarray**
@@ -387,7 +389,7 @@ def executeonly(ctxt, ostack):
     pass
 
 
-def noaccess(ctxt, ostack):
+def noaccess(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
           array **noaccess** array
     **packedarray** **noaccess** **packedarray**
@@ -438,7 +440,7 @@ def noaccess(ctxt, ostack):
         ostack[-1] = obj_copy
 
 
-def readonly(ctxt, ostack):
+def readonly(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
           array **readonly** array
     **packedarray** **readonly** **packedarray**
@@ -483,7 +485,7 @@ def readonly(ctxt, ostack):
         # ostack[-1] = obj_copy
 
 
-def rcheck(ctxt, ostack):
+def rcheck(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
           array **rcheck** bool
     **packedarray** **rcheck** bool
@@ -509,7 +511,7 @@ def rcheck(ctxt, ostack):
     ostack[-1] = ps.Bool(ostack[-1].access >= ps.ACCESS_READ_ONLY)
 
 
-def ps_type(ctxt, ostack):
+def ps_type(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     any **type** name
 
@@ -552,7 +554,7 @@ def ps_type(ctxt, ostack):
     )
 
 
-def wcheck(ctxt, ostack):
+def wcheck(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
           array **wcheck** bool
     **packedarray** **wcheck** false
@@ -578,7 +580,7 @@ def wcheck(ctxt, ostack):
     ostack[-1] = ps.Bool(ostack[-1].access == ps.ACCESS_UNLIMITED)
 
 
-def xcheck(ctxt, ostack):
+def xcheck(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     any **xcheck** bool
 

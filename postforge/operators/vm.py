@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 import copy
 import gc
 import io
@@ -18,7 +20,7 @@ from . import dict as ps_dict
 _vm_snapshots = {}
 
 
-def _handle_fontdirectory_rebinding(ctxt, global_vm_mode):
+def _handle_fontdirectory_rebinding(ctxt: ps.Context, global_vm_mode: bool) -> None:
     """
     Handle **FontDirectory** rebinding per PLRM specification.
     
@@ -66,7 +68,7 @@ def _handle_fontdirectory_rebinding(ctxt, global_vm_mode):
         pass
 
 
-def currentglobal(ctxt, ostack):
+def currentglobal(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentglobal** bool
 
@@ -83,7 +85,7 @@ def currentglobal(ctxt, ostack):
     ostack.append(ps.Bool(ctxt.vm_alloc_mode))
 
 
-def gcheck(ctxt, ostack):
+def gcheck(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     any **gcheck** bool
 
@@ -117,7 +119,7 @@ def gcheck(ctxt, ostack):
         ostack.append(ps.Bool(True))
         
 
-def setglobal(ctxt, ostack):
+def setglobal(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     bool **setglobal** -
 
@@ -157,7 +159,7 @@ def setglobal(ctxt, ostack):
     ostack.pop()
 
 
-def save(ctxt, ostack):
+def save(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **save** **save**
 
@@ -272,7 +274,7 @@ def save(ctxt, ostack):
     ostack.append(sv)
 
 
-def restore(ctxt, ostack):
+def restore(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     **save** **restore** -
 
@@ -513,7 +515,7 @@ def restore(ctxt, ostack):
         ctxt.gstate_stack.pop()
 
 
-def fix_vm_global_composites(ctxt, obj, visited=None):
+def fix_vm_global_composites(ctxt: ps.Context, obj: ps.PSObject, visited: set | None = None) -> None:
     # go through ALL local composite objects in global vm and
     # replace the references to the restored values
     if visited is None:
@@ -572,7 +574,7 @@ def fix_vm_global_composites(ctxt, obj, visited=None):
                 fix_vm_global_composites(ctxt, value, visited)
 
 
-def fix_stack_references(ctxt, stack, visited=None):
+def fix_stack_references(ctxt: ps.Context, stack: list, visited: set | None = None) -> None:
     # re-establish references on the dictionary stack
     if visited is None:
         visited = set()
@@ -589,7 +591,7 @@ def fix_stack_references(ctxt, stack, visited=None):
         fix_vm_global_composites(ctxt, obj)
 
 
-def vmstatus(ctxt, ostack):
+def vmstatus(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **vmstatus** level used maximum
 
@@ -631,12 +633,12 @@ def vmstatus(ctxt, ostack):
     ostack.append(ps.Int(maximum))
 
 
-def _get_userdict(ctxt):
+def _get_userdict(ctxt: ps.Context) -> ps.Dict:
     """Get **userdict** from the dictionary stack (bottom 3: **systemdict**, **globaldict**, **userdict**)."""
     return ctxt.d_stack[2]
 
 
-def _get_or_create_userobjects(ctxt):
+def _get_or_create_userobjects(ctxt: ps.Context) -> ps.Array | None:
     """Get or create the UserObjects array in **userdict**.
 
     Returns the existing UserObjects array, or None if it doesn't exist
@@ -649,7 +651,7 @@ def _get_or_create_userobjects(ctxt):
     return None
 
 
-def defineuserobject(ctxt, ostack):
+def defineuserobject(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     index any **defineuserobject** –
 
@@ -698,7 +700,7 @@ def defineuserobject(ctxt, ostack):
     user_objects.val[index] = any_obj
 
 
-def execuserobject(ctxt, ostack):
+def execuserobject(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     index **execuserobject** –
 
@@ -735,7 +737,7 @@ def execuserobject(ctxt, ostack):
     ctxt.e_stack.append(obj)
 
 
-def undefineuserobject(ctxt, ostack):
+def undefineuserobject(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     index **undefineuserobject** –
 

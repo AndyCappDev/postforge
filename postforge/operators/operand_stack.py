@@ -2,13 +2,15 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 from copy import copy
 
 from ..core import error as ps_error
 from ..core import types as ps
 
 
-def clear(ctxt, ostack):
+def clear(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     |- any(1) ... any(n) **clear** |-
 
@@ -23,7 +25,7 @@ def clear(ctxt, ostack):
         ostack.pop()
 
 
-def cleartomark(ctxt, ostack):
+def cleartomark(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     mark obj(1) ... obj(n) **cleartomark** -
 
@@ -49,7 +51,7 @@ def cleartomark(ctxt, ostack):
         ostack.pop()
 
 
-def count(ctxt, ostack):
+def count(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     |- any(1) ... any(n) **count** |- any(1) ... any(n) n
 
@@ -71,7 +73,7 @@ def count(ctxt, ostack):
     ostack.append(ps.Int(len(ostack)))
 
 
-def counttomark(ctxt, ostack, internal: bool = False):
+def counttomark(ctxt: ps.Context, ostack: ps.Stack, internal: bool = False) -> None | int:
     """
     mark obj(1) ... obj(n) **counttomark** - mark obj(1) ... obj(n) n
 
@@ -106,7 +108,7 @@ def counttomark(ctxt, ostack, internal: bool = False):
     ostack.append(ps.Int(count - 1))
 
 
-def dup(ctxt, ostack):
+def dup(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     any **dup** any any
 
@@ -129,7 +131,7 @@ def dup(ctxt, ostack):
     ostack.append(copy(ostack[-1]))
 
 
-def exch(ctxt, ostack):
+def exch(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     any₁ any₂ **exch** any₂ any₁
 
@@ -150,7 +152,7 @@ def exch(ctxt, ostack):
     ostack[-1], ostack[-2] = ostack[-2], ostack[-1]
 
 
-def index(ctxt, ostack):
+def index(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     any(n) ... any(0) n **index** any(n) ... any(0) any(n)
 
@@ -180,7 +182,7 @@ def index(ctxt, ostack):
     ostack[-1] = copy(ostack[-2 - ostack[-1].val])
 
 
-def ps_mark(ctxt, ostack):
+def ps_mark(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **mark** **mark**
 
@@ -207,7 +209,7 @@ def ps_mark(ctxt, ostack):
     ostack.append(ps.Mark(b"["))
 
 
-def pop(ctxt, ostack):
+def pop(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     any **pop** -
 
@@ -229,7 +231,7 @@ def pop(ctxt, ostack):
     ostack.pop()
 
 
-def roll(ctxt, ostack):
+def roll(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     any(n-1) ... any(0) n j **roll** any((j-1) mod(n)) ... any(0) any(n-1) ... any((j)mod(n))
 
@@ -281,7 +283,7 @@ def roll(ctxt, ostack):
             ostack.insert(-(n - 1), ostack.pop())
 
 
-def printostck(ctxt, ostack):
+def printostck(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **printostck** –
 

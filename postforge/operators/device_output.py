@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostScript Device Output Management
 
@@ -35,7 +37,7 @@ from ..core.types.constants import (
     ENDPAGE_SHOWPAGE, ENDPAGE_COPYPAGE
 )
 
-def currentpagedevice(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
+def currentpagedevice(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **currentpagedevice** dict
 
@@ -60,7 +62,7 @@ def currentpagedevice(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
     ostack.append(dst)
 
 
-def setpagedevice(ctxt, ostack) -> None:
+def setpagedevice(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     dict **setpagedevice** -
 
@@ -204,7 +206,7 @@ def setpagedevice(ctxt, ostack) -> None:
     ps_control.exec_exec(ctxt, ostack, ctxt.e_stack)
 
 
-def showpage(ctxt: "ps.Context", ostack: "ps.Stack", is_copy: bool=False) -> None:
+def showpage(ctxt: ps.Context, ostack: ps.Stack, is_copy: bool = False) -> None:
     """
     – **showpage** –
 
@@ -409,7 +411,7 @@ def showpage(ctxt: "ps.Context", ostack: "ps.Stack", is_copy: bool=False) -> Non
     ps_control.exec_exec(ctxt, ostack, ctxt.e_stack)
 
 
-def copypage(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
+def copypage(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **copypage** –
 
@@ -424,7 +426,7 @@ def copypage(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
     showpage(ctxt, ostack, is_copy=True)
 
 
-def flushpage(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
+def flushpage(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     **flushpage** -
 
@@ -471,7 +473,7 @@ def flushpage(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
             del device
 
 
-def nulldevice(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
+def nulldevice(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **nulldevice** –
 

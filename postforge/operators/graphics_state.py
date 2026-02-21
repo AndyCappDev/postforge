@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 import copy
 
 from ..core import error as ps_error
@@ -10,7 +12,7 @@ from .matrix import initmatrix
 from .clipping import initclip
 
 
-def currentflat(ctxt, ostack) -> None:
+def currentflat(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentflat** num
 
@@ -27,7 +29,7 @@ def currentflat(ctxt, ostack) -> None:
     ostack.append(ps.Real(ctxt.gstate.flatness))
 
 
-def currentlinecap(ctxt, ostack) -> None:
+def currentlinecap(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **currentlinecap** int
 
@@ -44,7 +46,7 @@ def currentlinecap(ctxt, ostack) -> None:
     ostack.append(ps.Int(ctxt.gstate.line_cap))
 
 
-def currentlinejoin(ctxt, ostack) -> None:
+def currentlinejoin(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **currentlinejoin** int
 
@@ -61,7 +63,7 @@ def currentlinejoin(ctxt, ostack) -> None:
     ostack.append(ps.Int(ctxt.gstate.line_join))
 
 
-def currentlinewidth(ctxt, ostack) -> None:
+def currentlinewidth(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentlinewidth** num
 
@@ -79,7 +81,7 @@ def currentlinewidth(ctxt, ostack) -> None:
     ostack.append(ps.Real(ctxt.gstate.line_width))
 
 
-def grestore(ctxt, ostack) -> None:
+def grestore(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **grestore** -
 
@@ -149,7 +151,7 @@ def grestore(ctxt, ostack) -> None:
             ctxt.display_list_builder.current_clip_version = ctxt.gstate.clip_path_version
 
 
-def grestoreall(ctxt, ostack) -> None:
+def grestoreall(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **grestoreall** -
 
@@ -226,7 +228,7 @@ def grestoreall(ctxt, ostack) -> None:
         ctxt.display_list_builder.current_clip_version = ctxt.gstate.clip_path_version
 
 
-def gsave(ctxt, ostack) -> None:
+def gsave(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **gsave** -
 
@@ -261,7 +263,7 @@ def gsave(ctxt, ostack) -> None:
     ctxt.gstate.clip_path_stack = ps.Stack(10)
 
 
-def initgraphics(ctxt, ostack) -> None:
+def initgraphics(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **initgraphics** -
 
@@ -333,7 +335,7 @@ def initgraphics(ctxt, ostack) -> None:
     ctxt.gstate.dash_pattern = [[], 0]
 
 
-def setdash(ctxt, ostack) -> None:
+def setdash(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     array offset **setdash** -
 
@@ -413,7 +415,7 @@ def setdash(ctxt, ostack) -> None:
     ostack.pop()
 
 
-def currentdash(ctxt, ostack) -> None:
+def currentdash(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentdash** array offset
 
@@ -437,7 +439,7 @@ def currentdash(ctxt, ostack) -> None:
     ostack.append(ps.Real(offset_user))
 
 
-def setflat(ctxt, ostack) -> None:
+def setflat(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num **setflat** -
 
@@ -479,7 +481,7 @@ def setflat(ctxt, ostack) -> None:
 
     ostack.pop()
 
-def setlinecap(ctxt, ostack) -> None:
+def setlinecap(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     int **setlinecap** -
 
@@ -516,7 +518,7 @@ def setlinecap(ctxt, ostack) -> None:
     ostack.pop()
 
 
-def setlinejoin(ctxt, ostack) -> None:
+def setlinejoin(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     int **setlinejoin** -
 
@@ -566,7 +568,7 @@ def setlinejoin(ctxt, ostack) -> None:
     ostack.pop()
 
 
-def setlinewidth(ctxt, ostack) -> None:
+def setlinewidth(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num **setlinewidth** -
 
@@ -610,7 +612,7 @@ def setlinewidth(ctxt, ostack) -> None:
     ostack.pop()
 
 
-def setmiterlimit(ctxt, ostack) -> None:
+def setmiterlimit(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num **setmiterlimit** -
 
@@ -656,7 +658,7 @@ def setmiterlimit(ctxt, ostack) -> None:
     ostack.pop()
 
 
-def currentmiterlimit(ctxt, ostack) -> None:
+def currentmiterlimit(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentmiterlimit** num
 
@@ -671,7 +673,7 @@ def currentmiterlimit(ctxt, ostack) -> None:
     ostack.append(ps.Real(ctxt.gstate.miter_limit))
 
 
-def setstrokeadjust(ctxt, ostack) -> None:
+def setstrokeadjust(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     bool **setstrokeadjust** -
 
@@ -705,7 +707,7 @@ def setstrokeadjust(ctxt, ostack) -> None:
     ostack.pop()
 
 
-def currentstrokeadjust(ctxt, ostack) -> None:
+def currentstrokeadjust(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **currentstrokeadjust** bool
 
@@ -723,7 +725,7 @@ def currentstrokeadjust(ctxt, ostack) -> None:
     ostack.append(ps.Bool(ctxt.gstate.stroke_adjust))
 
 
-def setoverprint(ctxt, ostack) -> None:
+def setoverprint(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     bool **setoverprint** –
 
@@ -754,7 +756,7 @@ def setoverprint(ctxt, ostack) -> None:
     ostack.pop()
 
 
-def currentoverprint(ctxt, ostack) -> None:
+def currentoverprint(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     – **currentoverprint** bool
 
@@ -776,7 +778,7 @@ def currentoverprint(ctxt, ostack) -> None:
 # GSTATE OPERATORS (PostScript Level 2)
 # =============================================================================
 
-def gstate(ctxt, ostack) -> None:
+def gstate(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **gstate** **gstate**
 
@@ -824,7 +826,7 @@ def gstate(ctxt, ostack) -> None:
         return ps_error.e(ctxt, ps_error.VMERROR, gstate.__name__)
 
 
-def currentgstate(ctxt, ostack) -> None:
+def currentgstate(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     gstate **currentgstate** gstate
 
@@ -875,7 +877,7 @@ def currentgstate(ctxt, ostack) -> None:
         return ps_error.e(ctxt, ps_error.VMERROR, currentgstate.__name__)
 
 
-def setgstate(ctxt, ostack) -> None:
+def setgstate(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     gstate **setgstate** -
 
