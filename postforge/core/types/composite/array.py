@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostForge Types Composite Array Module
 
@@ -17,7 +19,6 @@ Extracted from composite.py during composite sub-package refactoring.
 
 import time
 import copy
-from typing import Union, Tuple
 
 # Import error handling
 from ... import error as ps_error
@@ -65,7 +66,7 @@ class Array(PSObject):
     _ALL_ATTRS = ('val', 'access', 'attrib', 'is_composite', 'is_global',
                   'ctxt_id', 'start', 'length', 'bound', 'created')
 
-    def __copy__(self):
+    def __copy__(self) -> Array:
         """Optimized copy for Array - shallow copy of array contents."""
         new_array = Array.__new__(Array)
         new_array.val = self.val
@@ -80,7 +81,7 @@ class Array(PSObject):
         new_array.created = self.created
         return new_array
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: dict[int, object]) -> Array:
         """Deep copy for Array - creates new timestamp for copy."""
         import copy
         import time
@@ -109,7 +110,7 @@ class Array(PSObject):
 
         return new_array
 
-    def __getstate__(self) -> dict:
+    def __getstate__(self) -> dict[str, object]:
         state = {attr: getattr(self, attr) for attr in Array._ALL_ATTRS}
 
         # dont save any global arrays we are referencing from local vm
@@ -119,7 +120,7 @@ class Array(PSObject):
 
         return state
 
-    def __setstate__(self, state: dict) -> None:
+    def __setstate__(self, state: dict[str, object]) -> None:
         for key, value in state.items():
             setattr(self, key, value)
 
@@ -138,7 +139,7 @@ class Array(PSObject):
     def len(self) -> Int:
         return Int(self.length)
 
-    def setval(self, value: list) -> None:
+    def setval(self, value: list[PSObject]) -> None:
         # No _cow_check needed: setval replaces the entire backing store,
         # which naturally preserves the snapshot's reference to the old list.
         self.val = value
@@ -151,14 +152,14 @@ class Array(PSObject):
             else:
                 contexts[self.ctxt_id].local_refs[self.created] = self.val
 
-    def get(self, index: Int) -> Tuple[bool, Union[int, 'PSObject']]:
+    def get(self, index: Int) -> tuple[bool, int | PSObject]:
         if index.val < 0 or index.val > self.length - 1:
             return (False, ps_error.RANGECHECK)
         if self.access < ACCESS_READ_ONLY:
             return (False, ps_error.INVALIDACCESS)
         return (True, copy.copy(self.val[self.start + index.val]))
 
-    def getinterval(self, index: Int, count: Int) -> Tuple[bool, Union[int, 'PSObject']]:
+    def getinterval(self, index: Int, count: Int) -> tuple[bool, int | PSObject]:
         if index.val < 0 or count.val < 0:
             return (False, ps_error.RANGECHECK)
         if index.val + count.val > self.length:
@@ -170,7 +171,7 @@ class Array(PSObject):
         sub_array.length = count.val
         return (True, sub_array)
 
-    def _cow_check(self):
+    def _cow_check(self) -> None:
         """Copy-on-write barrier: save current state into snapshots, keep live ref intact."""
         if self.ctxt_id is not None:
             ctxt = contexts[self.ctxt_id]
@@ -184,7 +185,7 @@ class Array(PSObject):
                 ctxt.cow_protected.discard(self.created)
                 # self.val stays the same — all live references continue working
 
-    def put(self, index: Int, obj: 'PSObject') -> Tuple[bool, Union[int, None]]:
+    def put(self, index: Int, obj: PSObject) -> tuple[bool, int | None]:
         # Check bounds against underlying storage, not just subarray length.
         # This matches GhostScript behavior where subarrays from getinterval
         # can write past their nominal length if within the original array's bounds.
@@ -200,7 +201,7 @@ class Array(PSObject):
         self.val[actual_index] = copy.copy(obj)
         return (True, None)
 
-    def putinterval(self, other: 'PSObject', index: Int) -> Tuple[bool, Union[int, None]]:
+    def putinterval(self, other: PSObject, index: Int) -> tuple[bool, int | None]:
         if index.val < 0 or other.length + index.val > self.length:
             return (False, ps_error.RANGECHECK)
         if self.access < ACCESS_UNLIMITED or other.access < ACCESS_READ_ONLY:
@@ -232,10 +233,10 @@ class Array(PSObject):
         self._cow_check()
         self.val.reverse()
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self.created
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Array):
             return id(self.val) == id(other.val)
         return False
@@ -283,7 +284,7 @@ class PackedArray(Array):
             is_global=is_global,
         )
 
-    def __copy__(self):
+    def __copy__(self) -> PackedArray:
         """Optimized copy for PackedArray - inherits from Array but read-only."""
         new_obj = PackedArray.__new__(PackedArray)
         new_obj.val = self.val
@@ -298,7 +299,7 @@ class PackedArray(Array):
         new_obj.created = self.created
         return new_obj
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, PackedArray):
             return self.val == other.val
         return False

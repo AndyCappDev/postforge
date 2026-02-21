@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostForge Types Utility Classes Module
 
@@ -30,7 +32,7 @@ class Operator(PSObject):
     def __init__(self, op: Callable, attrib: int = ATTRIB_EXEC) -> None:
         super().__init__(op, attrib=attrib)
 
-    def __copy__(self):
+    def __copy__(self) -> Operator:
         """Optimized copy for Operator - function wrapper."""
         return Operator(self.val, self.attrib)
     
@@ -55,7 +57,7 @@ class Save(PSObject):
         self.created = time.monotonic_ns()  # creation time for this composite object
         self.valid = True  # save objects become invalid after restore
 
-    def __copy__(self):
+    def __copy__(self) -> Save:
         """Optimized copy for Save - VM save level object."""
         new_obj = Save.__new__(Save)
         new_obj.val = self.val
@@ -83,7 +85,7 @@ class Font(PSObject):
 
         self.created = time.monotonic_ns()  # creation time for this composite object
 
-    def __copy__(self):
+    def __copy__(self) -> Font:
         """Optimized copy for Font - font object with timestamp."""
         new_obj = Font.__new__(Font)
         new_obj.val = self.val

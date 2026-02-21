@@ -2,11 +2,13 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostForge Types Graphics Classes Module
 
 This module contains graphics and display list PostScript types that manage
-rendering operations, path construction, and graphics state. These types 
+rendering operations, path construction, and graphics state. These types
 handle PostScript's graphics model including paths, fills, strokes, and
 image rendering elements.
 """
@@ -14,7 +16,6 @@ image rendering elements.
 import copy
 import math
 import time
-from typing import Union
 
 from .. import color_space
 
@@ -78,7 +79,7 @@ class GraphicsState(PSObject):
         self.saved = False  # True means this gstate was saved using the save
                             # as opposed to the gsave operator
 
-    def update_clipping_path(self, new_clip_path, winding_rule: int):
+    def update_clipping_path(self, new_clip_path: Path, winding_rule: int) -> None:
         """
         Update clipping path and increment version for display list tracking.
         
@@ -110,7 +111,7 @@ class GraphicsState(PSObject):
         '_current_pattern', 'saved'
     )
 
-    def copy(self):  # -> GraphicsState
+    def copy(self) -> GraphicsState:
         """
         Optimized copy for gsave/save - shallow copy most attrs, deep copy only mutables.
 
@@ -241,7 +242,7 @@ class ClipElement:
 
 # SubPath Elements
 class Point(object):
-    def __init__(self, x: Union[int, float], y: Union[int, float]) -> None:
+    def __init__(self, x: int | float, y: int | float) -> None:
         self.x = x
         self.y = y
 
@@ -335,7 +336,7 @@ class ImageElement:
         self.color_space_name = None      # string
         self.multi_data_sources = False   # boolean
     
-    def get_device_image_matrix(self):
+    def get_device_image_matrix(self) -> list[float]:
         """
         Calculate final image matrix for device space rendering.
         
@@ -347,7 +348,7 @@ class ImageElement:
         inverse_ctm = self._calculate_inverse_matrix(self.CTM)
         return self._matrix_multiply(self.image_matrix, inverse_ctm)
     
-    def _calculate_inverse_matrix(self, matrix):
+    def _calculate_inverse_matrix(self, matrix: list[float]) -> list[float]:
         """Calculate inverse of 6-element matrix [a b c d tx ty] - primitive values"""
         a, b, c, d, tx, ty = matrix  # Already primitive values
         determinant = a * d - b * c
@@ -365,7 +366,7 @@ class ImageElement:
             (b * tx - a * ty) * inv_det     # ty'
         ]
     
-    def _matrix_multiply(self, m1, m2):
+    def _matrix_multiply(self, m1: list[float], m2: list[float]) -> list[float]:
         """Multiply two PostScript 6-element matrices: m1 ∘ m2"""
         a1, b1, c1, d1, tx1, ty1 = m1
         a2, b2, c2, d2, tx2, ty2 = m2

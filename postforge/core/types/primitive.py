@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostForge Types Primitive Classes Module
 
@@ -10,7 +12,6 @@ data values. These types are typically immutable and have straightforward
 value semantics.
 """
 
-from typing import Union
 
 # Import base classes and constants
 from .base import PSObject
@@ -33,7 +34,7 @@ class Bool(PSObject):
         self.is_composite = False
         self.is_global = False
 
-    def __copy__(self):
+    def __copy__(self) -> Bool:
         """Optimized copy for Bool - immutable-like type."""
         new_obj = object.__new__(Bool)
         new_obj.val = self.val
@@ -61,7 +62,7 @@ class Null(PSObject):
         self.is_composite = False
         self.is_global = False
 
-    def __copy__(self) -> 'Null':
+    def __copy__(self) -> Null:
         new_obj = object.__new__(Null)
         new_obj.val = self.val
         new_obj.access = self.access
@@ -93,7 +94,7 @@ class Int(PSObject):
         self.is_composite = False
         self.is_global = False
 
-    def __copy__(self):
+    def __copy__(self) -> Int:
         """Optimized copy for Int - direct attribute assignment."""
         new_obj = object.__new__(Int)
         new_obj.val = self.val
@@ -127,7 +128,7 @@ class Real(PSObject):
         self.is_composite = False
         self.is_global = False
 
-    def __copy__(self):
+    def __copy__(self) -> Real:
         """Optimized copy for Real - direct attribute assignment."""
         new_obj = object.__new__(Real)
         new_obj.val = self.val
@@ -176,12 +177,12 @@ class Mark(PSObject):
     def python_string(self) -> str:
         return "".join(chr(c) for c in self.code)
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Mark):
             return True
         return False
 
-    def __copy__(self):
+    def __copy__(self) -> Mark:
         """Optimized copy for Mark - simple mark object."""
         return Mark(bytearray(self.val), self.attrib)
     

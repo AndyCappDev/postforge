@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostForge Types Composite GState Module
 
@@ -64,7 +66,7 @@ class GState(PSObject):
     _ALL_ATTRS = ('val', 'access', 'attrib', 'is_composite', 'is_global',
                   'ctxt_id', 'created')
 
-    def __copy__(self):
+    def __copy__(self) -> GState:
         """Optimized copy for GState - shallow copy of gstate contents."""
         new_gstate = GState.__new__(GState)
         new_gstate.val = self.val
@@ -76,7 +78,7 @@ class GState(PSObject):
         new_gstate.created = self.created
         return new_gstate
 
-    def __getstate__(self) -> dict:
+    def __getstate__(self) -> dict[str, object]:
         state = {attr: getattr(self, attr) for attr in GState._ALL_ATTRS}
 
         # dont save any global gstates we are referencing from local vm
@@ -86,7 +88,7 @@ class GState(PSObject):
 
         return state
 
-    def __setstate__(self, state: dict) -> None:
+    def __setstate__(self, state: dict[str, object]) -> None:
         for key, value in state.items():
             setattr(self, key, value)
 
@@ -95,7 +97,7 @@ class GState(PSObject):
             if self.created in contexts[self.ctxt_id].global_refs:
                 self.val = contexts[self.ctxt_id].global_refs[self.created]
 
-    def validate_global_vm_constraints(self, ctxt):
+    def validate_global_vm_constraints(self, ctxt: object) -> bool:
         """
         Validate that this GState can be stored in global VM.
 
@@ -136,7 +138,7 @@ class GState(PSObject):
         # All checks passed
         return True
 
-    def copy_graphics_state(self):
+    def copy_graphics_state(self) -> object | None:
         """
         Create a deep copy of the contained GraphicsState.
 
@@ -145,7 +147,7 @@ class GState(PSObject):
         """
         return self.val.copy() if self.val else None
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         """
         GState object equality comparison.
 

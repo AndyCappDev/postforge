@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostForge Types Composite Dict Module
 
@@ -16,7 +18,6 @@ Extracted from composite.py during composite sub-package refactoring.
 """
 
 import time
-from typing import Union, Tuple
 
 # Import base classes and constants
 from ..base import PSObject
@@ -34,7 +35,7 @@ Name = None
 String = None
 
 
-def _copy_string_key(key):
+def _copy_string_key(key: PSObject) -> PSObject:
     """Create an independent copy of a String for use as a dict key.
 
     Per PLRM: 'If key is a string, put first makes a copy of key
@@ -93,13 +94,13 @@ class Dict(PSObject):
             else:
                 contexts[ctxt_id].local_refs[self.created] = self.val
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: object) -> PSObject:
         return self.val[item]
 
     _ALL_ATTRS = ('val', 'access', 'attrib', 'is_composite', 'is_global',
                   'ctxt_id', 'name', 'max_length', 'created')
 
-    def __copy__(self):
+    def __copy__(self) -> Dict:
         """Optimized copy for Dict - preserves shared dictionary reference."""
         new_dict = Dict.__new__(Dict)
         new_dict.val = self.val
@@ -113,7 +114,7 @@ class Dict(PSObject):
         new_dict.created = self.created
         return new_dict
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: dict[int, object]) -> Dict:
         """Deep copy for Dict - creates new timestamp for copy."""
         import copy
         import time
@@ -143,7 +144,7 @@ class Dict(PSObject):
 
         return new_dict
 
-    def __getstate__(self) -> dict:
+    def __getstate__(self) -> dict[str, object]:
         state = {attr: getattr(self, attr) for attr in Dict._ALL_ATTRS}
 
         # dont save any global dictionaries we are referencing from local vm
@@ -152,7 +153,7 @@ class Dict(PSObject):
 
         return state
 
-    def __setstate__(self, state: dict) -> None:
+    def __setstate__(self, state: dict[str, object]) -> None:
         for key, value in state.items():
             setattr(self, key, value)
 
@@ -171,7 +172,7 @@ class Dict(PSObject):
     def maxlength(self) -> Int:
         return Int(len(self.val))
 
-    def create_key(self, obj: 'PSObject') -> Union[bytes, int, float, bool]:
+    def create_key(self, obj: PSObject) -> bytes | int | float | bool:
         # get the actual key to use based on the type of object
         # assumes obj is ONLY one of the following hashable types:
         #   ps.String, ps.Name, ps.Int, ps.Real, ps.Bool
@@ -180,7 +181,7 @@ class Dict(PSObject):
             return obj.val
         return obj
 
-    def _cow_check(self):
+    def _cow_check(self) -> None:
         """Copy-on-write barrier: save current state into snapshots, keep live ref intact."""
         if self.ctxt_id is not None:
             ctxt = contexts[self.ctxt_id]
@@ -194,7 +195,7 @@ class Dict(PSObject):
                 ctxt.cow_protected.discard(self.created)
                 # self.val stays the same — all live references continue working
 
-    def put(self, key: 'PSObject', value: 'PSObject') -> Tuple[bool, None]:
+    def put(self, key: PSObject, value: PSObject) -> tuple[bool, None]:
         self._cow_check()
         # PLRM: "If key is a string, put first makes a copy of key
         # and uses the copy as the key in dict."
@@ -209,10 +210,10 @@ class Dict(PSObject):
     def len(self) -> Int:
         return Int(len(self.val))
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self.created
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Dict):
             return self.created == other.created
         return False

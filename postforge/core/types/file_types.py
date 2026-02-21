@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostForge Types File Classes Module
 
@@ -16,7 +18,7 @@ import errno
 import threading
 import time
 import copy
-from typing import Any, Union, Tuple
+from typing import Any
 
 # Import error handling
 from .. import error as ps_error
@@ -30,12 +32,7 @@ from .constants import (
 
 # Import primitive types and context infrastructure (for file operations)
 from .primitive import Bool, Int
-from .context import contexts, global_resources
-
-# Forward reference for type annotations
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from .context import Context
+from .context import Context, contexts, global_resources
 
 
 # Forward reference to String class (will be in composite.py)
@@ -79,7 +76,7 @@ class File(Stream):
             else:
                 contexts[ctxt_id].local_refs[self.created] = self.name
 
-    def open(self) -> Union[None, int]:
+    def open(self) -> int | None:
         if self.name == "%statementedit":
             # Flush Qt events before blocking on terminal input so the
             # display window actually paints (e.g. PSChess board display).
@@ -211,16 +208,16 @@ class File(Stream):
                 self.val.close()
                 self.val = None  # Clear the file handle reference after closing
 
-    def filename(self):
+    def filename(self) -> str:
         """Return the filename for this file object."""
         return self.name
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, File):
             return self.val == other.val
         return False
 
-    def read(self, ctxt: "Context") -> int:
+    def read(self, ctxt: Context) -> int | None:
         # Check putback buffer first
         if self._putback_pos < len(self._putback_buf):
             b = self._putback_buf[self._putback_pos]
@@ -247,7 +244,7 @@ class File(Stream):
         else:
             return self.val.read(contexts[self.ctxt_id])
 
-    def read_bulk(self, ctxt: "Context", count: int) -> bytes:
+    def read_bulk(self, ctxt: Context, count: int) -> bytes:
         """Read up to *count* bytes in one call.  Returns bytes (may be shorter at EOF)."""
         result = bytearray()
         # Drain putback buffer first
@@ -286,7 +283,7 @@ class File(Stream):
                 result.append(b)
             return bytes(result)
 
-    def write(self, ctxt: "Context", data) -> None:
+    def write(self, ctxt: Context, data: Any) -> None:
         # writes data to the file
         if self.is_real_file:
             try:
@@ -315,7 +312,7 @@ class File(Stream):
         elif hasattr(self.val, 'flush'):
             self.val.flush()
             
-    def putback(self, data):
+    def putback(self, data: bytes | bytearray) -> None:
         """Push bytes back to be read again on next read call.
 
         Used by filter chains (e.g. ASCII85Decode) that read past their
@@ -351,7 +348,7 @@ class File(Stream):
                   'ps_section_end', '_putback_buf', '_putback_pos',
                   '_last_read_from_putback')
 
-    def __copy__(self):
+    def __copy__(self) -> File:
         # Custom copy method for regular copying (dup, etc.)
         # This preserves the shared file handle without triggering pickle logic
         new_file = self.__class__.__new__(self.__class__)
@@ -372,7 +369,7 @@ class File(Stream):
         new_file._last_read_from_putback = None
         return new_file
 
-    def __getstate__(self) -> dict:
+    def __getstate__(self) -> dict[str, object]:
         state = {attr: getattr(self, attr, None) for attr in File._ALL_ATTRS}
         # Don't pickle the actual file handle - check for any file handle in val
         if hasattr(self, 'val') and self.val is not None:
@@ -389,7 +386,7 @@ class File(Stream):
         # Do not attempt to handle them in the base class
         return state
 
-    def __setstate__(self, state: dict) -> None:
+    def __setstate__(self, state: dict[str, object]) -> None:
         for key, value in state.items():
             setattr(self, key, value)
         # Restore file handle after unpickling
@@ -434,7 +431,7 @@ class StandardFileManager:
     _next_id = 1
     
     @classmethod
-    def get_instance(cls):
+    def get_instance(cls) -> StandardFileManager:
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
@@ -446,15 +443,15 @@ class StandardFileManager:
         self._registry[file_id] = standard_file
         return file_id
     
-    def get(self, file_id: int):
+    def get(self, file_id: int) -> StandardFile | None:
         """Retrieve a StandardFile object by ID."""
         return self._registry.get(file_id)
     
-    def remove(self, file_id: int):
+    def remove(self, file_id: int) -> None:
         """Remove a StandardFile object from registry."""
         self._registry.pop(file_id, None)
     
-    def clear(self):
+    def clear(self) -> None:
         """Clear all registered files (for testing/cleanup)."""
         self._registry.clear()
         self._next_id = 1
@@ -476,11 +473,11 @@ class StandardFileProxy(PSObject):
         self.file_id = file_id
         self.name = name  # For debugging and identification
         
-    def get_standard_file(self):
+    def get_standard_file(self) -> StandardFile | None:
         """Get the actual StandardFile object from the registry."""
         return StandardFileManager.get_instance().get(self.file_id)
     
-    def __copy__(self):
+    def __copy__(self) -> StandardFileProxy:
         """Optimized copy for StandardFileProxy - lightweight proxy object."""
         return StandardFileProxy(self.file_id, self.name, self.attrib, self.is_global) # type: ignore
     
@@ -491,47 +488,47 @@ class StandardFileProxy(PSObject):
         return self.__str__()
     
     # Delegate all file operations to the actual StandardFile
-    def read(self, ctxt=None):
+    def read(self, ctxt: Context | None = None) -> int | None:
         actual_file = self.get_standard_file()
         return actual_file.read(ctxt) if actual_file else None
     
-    def write(self, data, ctxt=None):
+    def write(self, data: Any, ctxt: Context | None = None) -> None:
         actual_file = self.get_standard_file()
         return actual_file.write(data) if actual_file else None
     
-    def close(self):
+    def close(self) -> None:
         actual_file = self.get_standard_file()
         if actual_file:
             actual_file.close()
     
-    def flush(self):
+    def flush(self) -> None:
         actual_file = self.get_standard_file()
         if actual_file:
             actual_file.flush()
     
-    def filename(self):
+    def filename(self) -> str:
         """Return the filename for this file object."""
         # For standard files, just return the name directly
         return self.name
     
-    def status(self):
+    def status(self) -> bool:
         """Return the status of this file object."""
         actual_file = self.get_standard_file()
         return actual_file.status() if actual_file else False
     
-    def readline(self, ctxt=None):
+    def readline(self, ctxt: Context | None = None) -> Any:
         actual_file = self.get_standard_file()
         return actual_file.readline(ctxt) if actual_file else None
     
-    def readstring(self, string_obj, ctxt=None):
+    def readstring(self, string_obj: Any, ctxt: Context | None = None) -> Any:
         actual_file = self.get_standard_file()
         return actual_file.readstring(string_obj, ctxt) if actual_file else None
     
-    def writestring(self, string_obj, ctxt=None):
+    def writestring(self, string_obj: Any, ctxt: Context | None = None) -> Any:
         actual_file = self.get_standard_file()
         return actual_file.writestring(string_obj, ctxt) if actual_file else None
     
-    def open(self):
+    def open(self) -> int | None:
         actual_file = self.get_standard_file()
         return actual_file.open() if actual_file else None
     
@@ -582,7 +579,7 @@ class StandardFile(File):
         self.is_real_file = False  # Standard files are not real disk files
         self.val = stream  # Set val to the stream for compatibility with File interface
         
-    def open(self) -> Union[None, int]:
+    def open(self) -> int | None:
         # Standard files are always "open" - no actual opening needed
         return None
         
@@ -591,7 +588,7 @@ class StandardFile(File):
         # This is a no-op to comply with PLRM requirements
         pass
         
-    def read(self, ctxt=None) -> Union[int, None]:
+    def read(self, ctxt: Context | None = None) -> int | None:
         """Read a single byte from the standard input stream."""
         if self.mode.startswith('w'):
             return ps_error.INVALIDACCESS
@@ -610,7 +607,7 @@ class StandardFile(File):
         except (EOFError, KeyboardInterrupt):
             return None
             
-    def write(self, ctxt_or_data, data=None) -> None:
+    def write(self, ctxt_or_data: Any, data: Any = None) -> None:
         """Write data to the standard output/error stream."""
         # Support both File.write(ctxt, data) and direct write(data) signatures
         if data is None:
@@ -637,7 +634,7 @@ class StandardFile(File):
                   'line_num', 'name', 'mode', 'created', 'ctxt_id',
                   'is_real_file', 'stream', 'closable')
 
-    def __copy__(self):
+    def __copy__(self) -> StandardFile:
         # Custom copy method for regular copying (dup, etc.)
         # This preserves the shared stream reference without triggering pickle logic
         new_file = self.__class__.__new__(self.__class__)
@@ -660,7 +657,7 @@ class StandardFile(File):
         new_file._last_read_from_putback = None
         return new_file
 
-    def __getstate__(self) -> dict:
+    def __getstate__(self) -> dict[str, object]:
         """Handle pickle serialization - don't serialize the stream object."""
         state = {attr: getattr(self, attr) for attr in StandardFile._ALL_ATTRS}
         # Don't pickle the stream object (sys.stdin/stdout/stderr)
@@ -680,7 +677,7 @@ class StandardFile(File):
 
         return state
         
-    def __setstate__(self, state: dict) -> None:
+    def __setstate__(self, state: dict[str, object]) -> None:
         """Handle pickle deserialization - restore the stream object."""
         for key, value in state.items():
             setattr(self, key, value)
@@ -750,7 +747,7 @@ class EexecDecryptionFilter(File):
         self.has_unread_byte = False
         
     
-    def _determine_format_from_first_bytes(self):
+    def _determine_format_from_first_bytes(self) -> None:
         """
         Determine format by reading first few bytes and buffering them.
         
@@ -791,7 +788,7 @@ class EexecDecryptionFilter(File):
         self.format_determined = True
         self.buffer_index = 0  # Track position in buffered bytes
     
-    def _read_raw_byte(self):
+    def _read_raw_byte(self) -> int | None:
         """Read one raw byte, using buffer first if available."""
         # Use buffered bytes first
         if hasattr(self, 'first_bytes_buffer') and self.buffer_index < len(self.first_bytes_buffer):
@@ -802,7 +799,7 @@ class EexecDecryptionFilter(File):
         # Read from source file
         return self.source_file.read(self.ctxt)
     
-    def _read_hex_byte(self):
+    def _read_hex_byte(self) -> int | None:
         """Read a single byte from ASCII hexadecimal format."""
         while len(self.hex_buffer) < 2:
             char_byte = self._read_raw_byte()
@@ -831,13 +828,13 @@ class EexecDecryptionFilter(File):
         except ValueError:
             return None
     
-    def _decrypt_byte(self, cipher_byte):
+    def _decrypt_byte(self, cipher_byte: int) -> int:
         """Decrypt a single byte using Adobe algorithm."""
         plain_byte = cipher_byte ^ (self.R >> 8)
         self.R = ((cipher_byte + self.R) * self.c1 + self.c2) & 0xFFFF
         return plain_byte
     
-    def read(self, ctxt: "Context") -> Union[int, None]:
+    def read(self, ctxt: Context) -> int | None:
         """Read and decrypt one byte from the source."""
         if self.is_closed:
             return None
@@ -898,7 +895,7 @@ class EexecDecryptionFilter(File):
                   'systemdict_pushed', 'format_determined',
                   'last_decrypted_byte', 'has_unread_byte')
 
-    def __copy__(self):
+    def __copy__(self) -> EexecDecryptionFilter:
         """Optimized copy for EexecDecryptionFilter - complex file filter."""
         new_obj = EexecDecryptionFilter.__new__(EexecDecryptionFilter)
         for attr in EexecDecryptionFilter._ALL_ATTRS:
@@ -936,7 +933,7 @@ class Run(File):
 
         super().__init__(ctxt_id, name, mode, access, attrib, is_composite, is_global)
 
-    def __copy__(self):
+    def __copy__(self) -> Run:
         """Optimized copy for Run - file-based run object."""
         new_obj = Run.__new__(Run)
         new_obj.val = self.val

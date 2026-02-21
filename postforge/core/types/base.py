@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostForge Types Base Classes Module
 
@@ -44,7 +46,7 @@ class PSObject(object):
         self.is_composite = is_composite
         self.is_global = is_global
     
-    def __copy__(self):
+    def __copy__(self) -> PSObject:
         """Optimized copy method for base PSObject.
         Creates new instance with same data, avoiding expensive pickle protocol."""
         new_obj = self.__class__.__new__(self.__class__)
@@ -81,7 +83,7 @@ class Stream(PSObject):
 
         self.line_num = 1
     
-    def __copy__(self):
+    def __copy__(self) -> Stream:
         """Optimized copy for Stream base class."""
         new_obj = self.__class__.__new__(self.__class__)
         new_obj.val = self.val

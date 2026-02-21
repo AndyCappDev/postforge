@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostForge Types Context and Execution Infrastructure Module
 
@@ -13,6 +15,7 @@ stack operations, and global resource coordination.
 import collections
 import sys
 import threading
+from typing import Any
 
 # Import constants
 from .constants import G_STACK_MAX
@@ -28,15 +31,15 @@ class GlobalResources:
     _instance = None
     _lock = threading.Lock()
     
-    def __new__(cls):
+    def __new__(cls) -> GlobalResources:
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
                     cls._instance = super().__new__(cls)
                     cls._instance._initialized = False
         return cls._instance
-    
-    def __init__(self):
+
+    def __init__(self) -> None:
         if getattr(self, '_initialized', False):
             return
         self.global_strings = bytearray()           # Shared global string storage
@@ -49,21 +52,21 @@ class GlobalResources:
         self._system_params = None                  # Reference to system params dict (set by create_context)
         self._initialized = True
     
-    def get_gvm(self):
+    def get_gvm(self) -> Any:
         """Thread-safe access to global VM"""
         with self.resource_lock:
             return self.gvm
-    
-    def set_gvm(self, gvm_dict):
+
+    def set_gvm(self, gvm_dict: Any) -> None:
         """Thread-safe assignment of global VM"""
         with self.resource_lock:
             self.gvm = gvm_dict
 
-    def set_system_params(self, system_params):
+    def set_system_params(self, system_params: dict[str, Any]) -> None:
         """Store reference to the system params dict for cache limit lookups."""
         self._system_params = system_params
             
-    def get_stderr_file(self):
+    def get_stderr_file(self) -> Any:
         """Get the shared stderr file object, creating it if necessary."""
         with self.resource_lock:
             if self.stderr_file is None:
@@ -84,7 +87,7 @@ class GlobalResources:
                 self.stderr_file = StandardFileProxy(stderr_id, "%stderr", is_global=True) # type: ignore
             return self.stderr_file
 
-    def get_glyph_cache(self):
+    def get_glyph_cache(self) -> Any:
         """Get or create the global glyph cache for Type 3 font rendering.
 
         Lazy initialization avoids creating the cache until first Type 3 font
@@ -99,7 +102,7 @@ class GlobalResources:
             self._glyph_cache = GlyphCache()
         return self._glyph_cache
 
-    def get_glyph_bitmap_cache(self):
+    def get_glyph_bitmap_cache(self) -> Any:
         """Get or create the global glyph bitmap cache for device-level rendering.
 
         Lazy initialization avoids creating the cache until first glyph rendering.
@@ -261,23 +264,23 @@ class Context(object):
             b"configurationerror",
         ]
 
-    def enable_execution_history(self):
+    def enable_execution_history(self) -> None:
         """Enable execution history tracking - switches to real recording function."""
         self.execution_history_enabled = True
         self.record_execution = self._record_execution_real
         self.execution_history.clear()  # Clear any stale data
 
-    def disable_execution_history(self):
+    def disable_execution_history(self) -> None:
         """Disable execution history tracking - switches to no-op function for zero overhead."""
         self.execution_history_enabled = False
         self.record_execution = self._record_execution_noop
         self.execution_history.clear()  # Free memory
 
-    def _record_execution_noop(self, input_obj, resolved_obj=None):
+    def _record_execution_noop(self, input_obj: Any, resolved_obj: Any = None) -> None:
         """No-op function for when execution history is disabled - zero overhead."""
         pass
 
-    def _record_execution_real(self, input_obj, resolved_obj=None):
+    def _record_execution_real(self, input_obj: Any, resolved_obj: Any = None) -> None:
         """Real execution history recording function."""
         # Skip recording if paused (e.g., during error handling)
         if self.execution_history_paused:

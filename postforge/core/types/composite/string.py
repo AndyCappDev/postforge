@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostForge Types Composite String Module
 
@@ -17,7 +19,6 @@ Extracted from composite.py during composite sub-package refactoring.
 
 import time
 import copy
-from typing import Union, Tuple
 
 # Import error handling
 from ... import error as ps_error
@@ -31,7 +32,7 @@ from ..constants import (
 
 # Import primitive types and context infrastructure
 from ..primitive import Bool, Int
-from ..context import contexts, global_resources
+from ..context import Context, contexts, global_resources
 
 # Forward reference - will be set by composite package __init__.py
 Name = None  # For String ↔ Name comparison operations
@@ -103,7 +104,7 @@ class String(Stream):
     def len(self) -> Int:
         return Int(self.length)
 
-    def get(self, index: Int) -> Tuple[bool, Union[int, 'PSObject']]:
+    def get(self, index: Int) -> tuple[bool, int | PSObject]:
         if index.val < 0 or index.val > self.length - 1:
             return (False, ps_error.RANGECHECK)
         if self.access < ACCESS_READ_ONLY:
@@ -115,7 +116,7 @@ class String(Stream):
         )
         return (True, Int(strings[self.offset + self.start + index.val]))
 
-    def getinterval(self, index: Int, count: Int) -> Union[None, 'PSObject']:
+    def getinterval(self, index: Int, count: Int) -> tuple[bool, int | String]:
         # TODO -- This must account for self and other NOT being in the same vm_alloc_mode
         if self.access < ACCESS_READ_ONLY:
             return (False, ps_error.INVALIDACCESS)
@@ -128,7 +129,7 @@ class String(Stream):
         sub_str.length = count.val
         return (True, sub_str)
 
-    def put(self, index: Int, integer: Int) -> Tuple[bool, None]:
+    def put(self, index: Int, integer: Int) -> tuple[bool, None]:
         if (
             index.val < 0
             or index.val > self.length - 1
@@ -144,7 +145,7 @@ class String(Stream):
         strings[self.offset + self.start + index.val] = integer.val
         return (True, None)
 
-    def putinterval(self, other: 'PSObject', index: Int) -> Union[None, 'PSObject']:
+    def putinterval(self, other: PSObject, index: Int) -> tuple[bool, None]:
         if index.val < 0 or other.length + index.val > self.length:
             return (False, ps_error.RANGECHECK)
         # Destination buffer (self)
@@ -165,10 +166,10 @@ class String(Stream):
             ]
         return (True, None)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.byte_string())
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, String):
             return self.byte_string() == other.byte_string()
         if Name is not None and isinstance(other, Name):
@@ -214,7 +215,7 @@ class String(Stream):
                 self.offset + self.start : self.offset + self.start + self.length
             ].decode(errors='ignore')
 
-    def read(self, ctxt: "Context") -> Union[int, None]:
+    def read(self, ctxt: Context) -> int | None:
         """
         reads 1 byte from the string.
         this actually "consumes" one byte from the string
@@ -243,7 +244,7 @@ class String(Stream):
                   'line_num', 'ctxt_id', 'offset', 'length', 'start',
                   'created', 'is_defined', 'is_substring')
 
-    def __copy__(self):
+    def __copy__(self) -> String:
         """Optimized copy for String - preserves string data and metadata."""
         new_obj = String.__new__(String)
         new_obj.val = self.val
@@ -261,7 +262,7 @@ class String(Stream):
         new_obj.is_substring = self.is_substring
         return new_obj
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: dict[int, object]) -> String:
         """Deep copy for String - creates new timestamp for copy."""
         import copy
         import time

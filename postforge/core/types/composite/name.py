@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostForge Types Composite Name Module
 
@@ -16,7 +18,6 @@ Extracted from composite.py during composite sub-package refactoring.
 """
 
 import time
-from typing import Union
 
 # Import base classes and constants
 from ..base import PSObject
@@ -37,7 +38,7 @@ class Name(PSObject):
 
     def __init__(
         self,
-        name: Union[bytes, bytearray],
+        name: bytes | bytearray,
         access: int = ACCESS_UNLIMITED,
         attrib: int = ATTRIB_LIT,
         is_composite=False,
@@ -55,7 +56,7 @@ class Name(PSObject):
         self._hash = hash(val)
         self.created = time.monotonic_ns()  # creation time for this composite object
 
-    def __copy__(self):
+    def __copy__(self) -> Name:
         """Optimized copy for Name - immutable-like type."""
         new = Name.__new__(Name)
         new.val = self.val
@@ -67,10 +68,10 @@ class Name(PSObject):
         new.created = self.created
         return new
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self._hash
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         # Fast path: check TYPE attribute first (avoids isinstance for PS objects)
         other_type = getattr(other, 'TYPE', None)
         if other_type == T_NAME:

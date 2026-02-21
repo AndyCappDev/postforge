@@ -2,6 +2,8 @@
 # Copyright (c) 2025-2026 Scott Bowman
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from __future__ import annotations
+
 """
 PostForge Types Control Flow Classes Module
 
@@ -29,7 +31,7 @@ class Stopped(PSObject):
     def __init__(self, attrib=ATTRIB_EXEC) -> None:
         super().__init__(None, attrib=attrib)
 
-    def __copy__(self):
+    def __copy__(self) -> Stopped:
         """Optimized copy for Stopped - simple stopped object."""
         return Stopped(self.attrib)
     
@@ -66,7 +68,7 @@ class Loop(PSObject):
         self.curveto_proc = None
         self.closepath_proc = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.val == LT_FOR:
             return "for loop"
         elif self.val == LT_FORALL:
@@ -93,6 +95,6 @@ class HardReturn(PSObject):
     def __init__(self) -> None:
         super().__init__(None, attrib=ATTRIB_EXEC)
 
-    def __copy__(self):
+    def __copy__(self) -> HardReturn:
         """Optimized copy for HardReturn - simple control flow object."""
         return HardReturn()
