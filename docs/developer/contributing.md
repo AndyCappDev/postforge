@@ -64,6 +64,44 @@ def operator_with_estack(ctxt, e_stack, ostack):
     ...
 ```
 
+### Type Annotations
+
+All Python files use `from __future__ import annotations` and follow Python 3.13
+style. Since future annotations are lazy strings, they have zero runtime cost and
+no forward-reference issues.
+
+**Rules:**
+
+| Rule | Example |
+|------|---------|
+| `from __future__ import annotations` first code line | After copyright header |
+| Lowercase builtins | `list[str]`, `dict[str, Any]`, `tuple[int, ...]` |
+| Union syntax | `X \| None` not `Optional[X]` |
+| Minimal `typing` imports | Only `Any`, `Callable`, `ClassVar`, `TYPE_CHECKING` |
+| `__copy__` return type | `def __copy__(self) -> MyClass:` |
+| Operator signature | `def op_name(ctxt: ps.Context, ostack: ps.Stack) -> None:` |
+| All functions annotated | Public and private, parameters and return types |
+
+**Before:**
+```python
+from typing import Dict, List, Optional, Union
+
+def process(items: List[str], config: Optional[Dict[str, int]] = None) -> Union[str, None]:
+    ...
+```
+
+**After:**
+```python
+from __future__ import annotations
+
+from typing import Any
+
+def process(items: list[str], config: dict[str, int] | None = None) -> str | None:
+    ...
+```
+
+Cython `.pyx` files are excluded (different typing semantics).
+
 ### Level 2 Compatibility
 
 PostForge maintains strict Level 2 compatibility. Level 3 features are welcome
