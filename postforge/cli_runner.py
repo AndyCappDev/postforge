@@ -9,8 +9,12 @@ Handles device setup, job execution (batch and interactive modes), and the
 main run loop that ties context initialization to PostScript execution.
 """
 
+from __future__ import annotations
+
+import argparse
 import os
 import shutil
+import tempfile
 import traceback
 
 from .cli_args import get_output_base_name
@@ -23,7 +27,7 @@ from .utils import memory as ps_memory
 from .utils import profiler as ps_profiler
 
 
-def _auto_set_qt_resolution(ctxt):
+def _auto_set_qt_resolution(ctxt: ps.Context) -> None:
     """Auto-calculate HWResolution for the Qt device so the rendered image
     fits in approximately 85% of the screen without needing to be scaled up.
 
@@ -66,7 +70,7 @@ def _auto_set_qt_resolution(ctxt):
     initgraphics(ctxt, ctxt.o_stack)
 
 
-def _setup_device(ctxt, args, system_params, available_devices):
+def _setup_device(ctxt: ps.Context, args: argparse.Namespace, system_params: dict[str, str], available_devices: list[str]) -> tuple[str | None, int | None]:
     """Select, validate and initialize the output device.
 
     Auto-selects a device if none was specified on the command line, validates
@@ -189,7 +193,7 @@ def _setup_device(ctxt, args, system_params, available_devices):
     return device, None
 
 
-def _configure_page_device(ctxt, args, inputfiles, user_cwd, device):
+def _configure_page_device(ctxt: ps.Context, args: argparse.Namespace, inputfiles: list[str], user_cwd: str, device: str | None) -> None:
     """Configure page device parameters (output naming, resolution, antialias).
 
     Args:
@@ -288,9 +292,9 @@ def _configure_page_device(ctxt, args, inputfiles, user_cwd, device):
             )
 
 
-def _run_batch_jobs(ctxt, args, inputfiles, stdin_temp,
-                    memory_profile, gc_analysis, performance_profile,
-                    perf_profiler, leak_analysis):
+def _run_batch_jobs(ctxt: ps.Context, args: argparse.Namespace, inputfiles: list[str], stdin_temp: tempfile.NamedTemporaryFile | None,
+                    memory_profile: bool, gc_analysis: bool, performance_profile: bool,
+                    perf_profiler: ps_profiler.PostForgeProfiler, leak_analysis: bool) -> None:
     """Execute input files as batch jobs.
 
     Args:
@@ -441,7 +445,7 @@ def _run_batch_jobs(ctxt, args, inputfiles, stdin_temp,
     print(ctxt.e_stack)
 
 
-def _run_interactive(ctxt, memory_profile, performance_profile, perf_profiler):
+def _run_interactive(ctxt: ps.Context, memory_profile: bool, performance_profile: bool, perf_profiler: ps_profiler.PostForgeProfiler) -> None:
     """Run the PostScript interactive interpreter (executive).
 
     Args:
@@ -477,10 +481,10 @@ def _run_interactive(ctxt, memory_profile, performance_profile, perf_profiler):
         print("\n" + ps_memory.generate_memory_report())
 
 
-def run(args, inputfiles, stdin_temp, user_cwd, package_dir,
-        available_devices, device, memory_profile, gc_analysis,
-        leak_analysis, performance_profile, profile_type,
-        profile_output, page_filter):
+def run(args: argparse.Namespace, inputfiles: list[str], stdin_temp: tempfile.NamedTemporaryFile | None, user_cwd: str, package_dir: str,
+        available_devices: list[str], device: str | None, memory_profile: bool, gc_analysis: bool,
+        leak_analysis: bool, performance_profile: bool, profile_type: str,
+        profile_output: str | None, page_filter: set[int] | None) -> int:
     """Core PostForge execution logic.
 
     Initializes the PostScript context, sets up the output device, and runs

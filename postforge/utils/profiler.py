@@ -19,42 +19,45 @@ Usage:
         pass
 """
 
+from __future__ import annotations
+
+import cProfile
+import io
 import os
+import pstats
 import sys
 import time
-import cProfile
-import pstats
-import io
 from abc import ABC, abstractmethod
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Optional, Dict, Any, List
 from pathlib import Path
+from typing import Any, Callable
 
 
 class ProfilerBackend(ABC):
     """Abstract base class for profiler backends"""
     
-    def __init__(self, output_path: Optional[str] = None):
+    def __init__(self, output_path: str | None = None) -> None:
         self.output_path = output_path
         self.enabled = True
-        
+
     @abstractmethod
-    def start_profiling(self):
+    def start_profiling(self) -> None:
         """Start profiling session"""
         pass
-        
+
     @abstractmethod
-    def stop_profiling(self):
+    def stop_profiling(self) -> None:
         """Stop profiling session"""
         pass
-        
+
     @abstractmethod
     def generate_report(self) -> str:
         """Generate human-readable report"""
         pass
-        
-    @abstractmethod 
-    def save_results(self):
+
+    @abstractmethod
+    def save_results(self) -> None:
         """Save profiling results to file"""
         pass
 
@@ -62,17 +65,17 @@ class ProfilerBackend(ABC):
 class CProfileBackend(ProfilerBackend):
     """cProfile-based profiling backend"""
     
-    def __init__(self, output_path: Optional[str] = None):
+    def __init__(self, output_path: str | None = None) -> None:
         super().__init__(output_path)
         self.profiler = cProfile.Profile()
-        self.stats = None
-        
-    def start_profiling(self):
+        self.stats: pstats.Stats | None = None
+
+    def start_profiling(self) -> None:
         """Start cProfile profiling"""
         if self.enabled:
             self.profiler.enable()
             
-    def stop_profiling(self):
+    def stop_profiling(self) -> None:
         """Stop cProfile profiling"""
         if self.enabled:
             self.profiler.disable()
@@ -88,7 +91,7 @@ class CProfileBackend(ProfilerBackend):
         self.stats.print_stats(30)  # Top 30 functions
         return s.getvalue()
         
-    def get_hotspots(self, limit: int = 10) -> List[tuple]:
+    def get_hotspots(self, limit: int = 10) -> list[tuple[Any, ...]]:
         """Get top hotspot functions"""
         if not self.stats:
             return []
@@ -97,7 +100,7 @@ class CProfileBackend(ProfilerBackend):
         self.stats.sort_stats('cumulative')
         return self.stats.get_stats_profile().func_profiles.items()[:limit]
         
-    def save_results(self):
+    def save_results(self) -> None:
         """Save cProfile results to file"""
         if not self.stats or not self.output_path:
             return
@@ -133,15 +136,15 @@ class CProfileBackend(ProfilerBackend):
 class NoOpBackend(ProfilerBackend):
     """No-operation profiler for when profiling is disabled"""
     
-    def __init__(self, output_path: Optional[str] = None):
+    def __init__(self, output_path: str | None = None) -> None:
         super().__init__(output_path)
         self.enabled = False
-        
-    def start_profiling(self):
+
+    def start_profiling(self) -> None:
         """No-op: profiling is disabled."""
         pass
 
-    def stop_profiling(self):
+    def stop_profiling(self) -> None:
         """No-op: profiling is disabled."""
         pass
 
@@ -149,7 +152,7 @@ class NoOpBackend(ProfilerBackend):
         """Return a message indicating profiling is disabled."""
         return "Profiling disabled"
 
-    def save_results(self):
+    def save_results(self) -> None:
         """No-op: profiling is disabled."""
         pass
 
@@ -166,15 +169,15 @@ class PostForgeProfiler:
         # 'py-spy': PySpyBackend,
     }
     
-    def __init__(self, 
+    def __init__(self,
                  backend_type: str = 'none',
-                 output_path: Optional[str] = None,
-                 enabled: bool = False):
+                 output_path: str | None = None,
+                 enabled: bool = False) -> None:
         self.backend_type = backend_type
         self.output_path = output_path
         self.enabled = enabled
         self.backend = self._create_backend()
-        self.session_stats = {}
+        self.session_stats: dict[str, Any] = {}
         
     def _create_backend(self) -> ProfilerBackend:
         """Create appropriate profiler backend"""
@@ -185,7 +188,7 @@ class PostForgeProfiler:
         return backend_class(self.output_path)
         
     @contextmanager
-    def profile_context(self):
+    def profile_context(self) -> Generator[PostForgeProfiler, None, None]:
         """Context manager for profiling a code block"""
         try:
             self.start()
@@ -193,13 +196,13 @@ class PostForgeProfiler:
         finally:
             self.stop()
             
-    def start(self):
+    def start(self) -> None:
         """Start profiling session"""
         if self.enabled:
             print(f"Starting {self.backend_type} profiling...")
             self.backend.start_profiling()
             
-    def stop(self):
+    def stop(self) -> None:
         """Stop profiling session"""
         if self.enabled:
             self.backend.stop_profiling()
@@ -209,14 +212,14 @@ class PostForgeProfiler:
         """Generate profiling report"""
         return self.backend.generate_report()
         
-    def save_results(self):
+    def save_results(self) -> None:
         """Save profiling results"""
         if self.enabled:
             self.backend.save_results()
             if self.output_path:
                 print(f"Profiling results saved to: {self.output_path}")
                 
-    def print_summary(self):
+    def print_summary(self) -> None:
         """Print a quick summary of profiling results"""
         if not self.enabled:
             print("Profiling was disabled")
@@ -245,11 +248,11 @@ class PostForgeProfiler:
 
 
 # Global profiler instance - can be controlled via command line
-_global_profiler: Optional[PostForgeProfiler] = None
+_global_profiler: PostForgeProfiler | None = None
 
 
-def initialize_profiler(backend_type: str = 'none', 
-                       output_path: Optional[str] = None,
+def initialize_profiler(backend_type: str = 'none',
+                       output_path: str | None = None,
                        enabled: bool = False) -> PostForgeProfiler:
     """Initialize global profiler instance"""
     global _global_profiler
@@ -270,7 +273,7 @@ def get_profiler() -> PostForgeProfiler:
 
 
 @contextmanager
-def profile_section(section_name: str = ""):
+def profile_section(section_name: str = "") -> Generator[None, None, None]:
     """Convenience function for profiling code sections"""
     profiler = get_profiler()
     if profiler.enabled:
@@ -295,9 +298,9 @@ def generate_default_output_path(backend_type: str) -> str:
 
 
 # Decorator for easy profiling of functions
-def profile_function(func):
+def profile_function(func: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator to profile a specific function"""
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         profiler = get_profiler()
         if profiler.enabled:
             with profiler.profile_context():

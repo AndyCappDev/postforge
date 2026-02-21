@@ -21,15 +21,18 @@ Key Features:
 - Reference leak detection and analysis
 """
 
+from __future__ import annotations
+
 import gc
 import os
-import psutil
 import sys
 import time
 import tracemalloc
-from typing import Dict, List, Tuple, Any, Optional, Set
 import weakref
-from collections import defaultdict, Counter
+from collections import Counter, defaultdict
+from typing import Any
+
+import psutil
 
 from ..core import types as ps
 
@@ -46,14 +49,14 @@ class MemoryProfiler:
         """Initialize memory profiler with optional tracemalloc."""
         self.process = psutil.Process(os.getpid())
         self.enable_tracemalloc = enable_tracemalloc
-        self.snapshots: List[Dict[str, Any]] = []
-        self.gc_stats: List[Dict[str, Any]] = []
+        self.snapshots: list[dict[str, Any]] = []
+        self.gc_stats: list[dict[str, Any]] = []
         self.start_time = time.perf_counter()
         
         # Reference tracking for leak detection
-        self.object_registry: Dict[int, weakref.ref] = {}
-        self.reference_counts: Dict[str, List[int]] = defaultdict(list)
-        self.ps_object_lifecycle: Dict[int, Dict[str, Any]] = {}
+        self.object_registry: dict[int, weakref.ref] = {}
+        self.reference_counts: dict[str, list[int]] = defaultdict(list)
+        self.ps_object_lifecycle: dict[int, dict[str, Any]] = {}
         
         # Enable Python memory tracing
         if enable_tracemalloc:
@@ -65,7 +68,7 @@ class MemoryProfiler:
         # Initial snapshot
         self.take_snapshot("startup")
     
-    def _setup_gc_monitoring(self):
+    def _setup_gc_monitoring(self) -> None:
         """Set up garbage collection monitoring."""
         # Store original GC settings
         self.original_gc_thresholds = gc.get_threshold()
@@ -73,7 +76,7 @@ class MemoryProfiler:
         # Enable GC debugging (optional - can be memory intensive)
         # gc.set_debug(gc.DEBUG_STATS)
         
-    def take_snapshot(self, label: str, context: Optional["ps.Context"] = None) -> Dict[str, Any]:
+    def take_snapshot(self, label: str, context: ps.Context | None = None) -> dict[str, Any]:
         """
         Take a comprehensive memory snapshot.
         
@@ -125,7 +128,7 @@ class MemoryProfiler:
         self.snapshots.append(snapshot)
         return snapshot
     
-    def _get_object_counts(self) -> Dict[str, int]:
+    def _get_object_counts(self) -> dict[str, int]:
         """Get counts of different object types."""
         # Count all objects by type
         type_counts = {}
@@ -153,7 +156,7 @@ class MemoryProfiler:
             'reference_analysis': self._analyze_references()
         }
     
-    def _track_ps_object_lifecycle(self):
+    def _track_ps_object_lifecycle(self) -> None:
         """Track PostScript object creation and references."""
         current_ps_objects = []
         
@@ -188,7 +191,7 @@ class MemoryProfiler:
         for obj_id in to_remove:
             del self.ps_object_lifecycle[obj_id]
     
-    def _analyze_references(self) -> Dict[str, Any]:
+    def _analyze_references(self) -> dict[str, Any]:
         """Analyze object references to identify potential leaks."""
         try:
             # Get all objects
@@ -227,18 +230,18 @@ class MemoryProfiler:
         except Exception as e:
             return {'error': f'Reference analysis failed: {e}'}
     
-    def _analyze_ps_vm(self, context: "ps.Context") -> Dict[str, Any]:
+    def _analyze_ps_vm(self, context: ps.Context) -> dict[str, Any]:
         """Analyze PostScript VM memory usage."""
         if not context:
             return {}
             
-        def get_dict_size(d):
+        def get_dict_size(d: Any) -> int:
             """Estimate size of a PostScript dictionary."""
             if not hasattr(d, 'val') or not d.val:
                 return 0
             return len(d.val)
         
-        def get_vm_memory_estimate(vm_dict):
+        def get_vm_memory_estimate(vm_dict: Any) -> dict[str, int]:
             """Estimate memory usage of VM dictionary."""
             if not vm_dict or not hasattr(vm_dict, 'val'):
                 return {'objects': 0, 'estimated_bytes': 0}
@@ -274,7 +277,7 @@ class MemoryProfiler:
             }
         }
     
-    def _get_tracemalloc_stats(self) -> Dict[str, Any]:
+    def _get_tracemalloc_stats(self) -> dict[str, Any]:
         """Get tracemalloc memory tracing statistics."""
         if not self.enable_tracemalloc:
             return {}
@@ -288,7 +291,7 @@ class MemoryProfiler:
         except:
             return {}
     
-    def force_gc_and_measure(self, label: str, context: Optional["ps.Context"] = None) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def force_gc_and_measure(self, label: str, context: ps.Context | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
         """
         Force garbage collection and measure before/after.
         
@@ -328,7 +331,7 @@ class MemoryProfiler:
         
         return before, after
     
-    def analyze_memory_trends(self) -> Dict[str, Any]:
+    def analyze_memory_trends(self) -> dict[str, Any]:
         """Analyze memory usage trends across snapshots."""
         if len(self.snapshots) < 2:
             return {'error': 'Need at least 2 snapshots for trend analysis'}
@@ -499,7 +502,7 @@ class MemoryProfiler:
         report.append("=" * 80)
         return "\n".join(report)
     
-    def get_reference_chains(self, obj_type: str = None) -> Dict[str, Any]:
+    def get_reference_chains(self, obj_type: str | None = None) -> dict[str, Any]:
         """Get detailed reference chains for objects."""
         chains = defaultdict(list)
         
@@ -536,7 +539,7 @@ class MemoryProfiler:
 
 
 # Global profiler instance (can be enabled/disabled)
-_memory_profiler: Optional[MemoryProfiler] = None
+_memory_profiler: MemoryProfiler | None = None
 
 def enable_memory_profiling(enable_tracemalloc: bool = True) -> MemoryProfiler:
     """Enable global memory profiling."""
@@ -544,17 +547,17 @@ def enable_memory_profiling(enable_tracemalloc: bool = True) -> MemoryProfiler:
     _memory_profiler = MemoryProfiler(enable_tracemalloc)
     return _memory_profiler
 
-def get_memory_profiler() -> Optional[MemoryProfiler]:
+def get_memory_profiler() -> MemoryProfiler | None:
     """Get the global memory profiler instance."""
     return _memory_profiler
 
-def take_memory_snapshot(label: str, context: Optional["ps.Context"] = None) -> Optional[Dict[str, Any]]:
+def take_memory_snapshot(label: str, context: ps.Context | None = None) -> dict[str, Any] | None:
     """Take a memory snapshot if profiling is enabled."""
     if _memory_profiler:
         return _memory_profiler.take_snapshot(label, context)
     return None
 
-def force_gc_and_measure(label: str, context: Optional["ps.Context"] = None) -> Optional[Tuple[Dict[str, Any], Dict[str, Any]]]:
+def force_gc_and_measure(label: str, context: ps.Context | None = None) -> tuple[dict[str, Any], dict[str, Any]] | None:
     """Force GC and measure if profiling is enabled."""
     if _memory_profiler:
         return _memory_profiler.force_gc_and_measure(label, context)
@@ -572,7 +575,7 @@ def analyze_memory_leaks() -> str:
         return _memory_profiler.analyze_leaks()
     return "Memory profiling not enabled"
 
-def get_reference_chains(obj_type: str = None) -> Dict[str, Any]:
+def get_reference_chains(obj_type: str | None = None) -> dict[str, Any]:
     """Get reference chains for specific object types."""
     if _memory_profiler:
         return _memory_profiler.get_reference_chains(obj_type)

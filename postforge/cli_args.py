@@ -9,12 +9,14 @@ Handles command-line argument definition, parsing, page range specifications,
 and output file naming.
 """
 
+from __future__ import annotations
+
 import argparse
 import os
 import re
 
 
-def _parse_page_ranges(spec: str) -> set:
+def _parse_page_ranges(spec: str) -> set[int]:
     """Parse a page range specification into a set of page numbers.
 
     Supports single pages (``3``), ranges (``1-5``), and comma-separated
@@ -29,7 +31,7 @@ def _parse_page_ranges(spec: str) -> set:
     Raises:
         ValueError: If the specification is malformed.
     """
-    pages: set = set()
+    pages: set[int] = set()
     for part in spec.split(","):
         part = part.strip()
         if not part:
@@ -61,7 +63,7 @@ def _parse_page_ranges(spec: str) -> set:
     return pages
 
 
-def get_output_base_name(outputfile: str, inputfiles: list) -> str:
+def get_output_base_name(outputfile: str, inputfiles: list[str]) -> str:
     """
     Derive output base name from command-line arguments.
 
@@ -100,7 +102,7 @@ def _get_version() -> str:
     return "unknown"
 
 
-def build_argument_parser(available_devices: list) -> argparse.ArgumentParser:
+def build_argument_parser(available_devices: list[str]) -> argparse.ArgumentParser:
     """
     Create and configure the PostForge argument parser.
 

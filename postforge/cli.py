@@ -49,6 +49,8 @@ License: AGPL-3.0-or-later
 """
 
 
+from __future__ import annotations
+
 import os
 import sys
 import tempfile
@@ -161,7 +163,7 @@ def main() -> int:
         _cleanup_stdin_temp(stdin_temp)
 
 
-def _cleanup_stdin_temp(stdin_temp):
+def _cleanup_stdin_temp(stdin_temp: tempfile.NamedTemporaryFile | None) -> None:
     """Remove the temporary file created for stdin input."""
     if stdin_temp is not None:
         try:
