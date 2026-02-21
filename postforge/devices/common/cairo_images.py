@@ -18,6 +18,8 @@ Performance:
 import math
 from collections import OrderedDict
 
+from .cairo_utils import _safe_rgb
+
 import cairo
 
 from ...core import icc_default
@@ -235,13 +237,7 @@ def _render_imagemask_element(mask_element: ps.ImageMaskElement, cairo_ctx, page
         polarity = mask_element.polarity
 
         # Normalize color to RGB triple (grayscale may be single-element)
-        color = mask_element.color if mask_element.color else [0, 0, 0]
-        if len(color) >= 3:
-            r_f, g_f, b_f = color[0], color[1], color[2]
-        elif len(color) == 1:
-            r_f, g_f, b_f = color[0], color[0], color[0]
-        else:
-            r_f, g_f, b_f = 0, 0, 0
+        r_f, g_f, b_f = _safe_rgb(mask_element.color)
 
         # Quantize color for cache key (same as glyph cache)
         color_key = (round(r_f, 3), round(g_f, 3), round(b_f, 3))

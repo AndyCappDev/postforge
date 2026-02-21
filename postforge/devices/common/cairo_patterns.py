@@ -13,6 +13,7 @@ import cairo
 
 from ...core import types as ps
 from .cairo_shading import _add_gradient_stops
+from .cairo_utils import _safe_rgb
 
 
 def _render_pattern_fill(item, cairo_ctx, ctxt):
@@ -144,27 +145,11 @@ def _render_pattern_fill(item, cairo_ctx, ctxt):
                     elif isinstance(pc_item, ps.ClosePath):
                         pattern_ctx.close_path()
         elif isinstance(dl_item, ps.Fill):
-            # Safely extract RGB color with defaults
-            color = dl_item.color if dl_item.color else [0, 0, 0]
-            if len(color) >= 3:
-                pattern_ctx.set_source_rgb(color[0], color[1], color[2])
-            elif len(color) == 1:
-                # Grayscale
-                pattern_ctx.set_source_rgb(color[0], color[0], color[0])
-            else:
-                pattern_ctx.set_source_rgb(0, 0, 0)
+            pattern_ctx.set_source_rgb(*_safe_rgb(dl_item.color))
             pattern_ctx.set_fill_rule(dl_item.winding_rule)
             pattern_ctx.fill()
         elif isinstance(dl_item, ps.Stroke):
-            # Safely extract RGB color with defaults
-            color = dl_item.color if dl_item.color else [0, 0, 0]
-            if len(color) >= 3:
-                pattern_ctx.set_source_rgb(color[0], color[1], color[2])
-            elif len(color) == 1:
-                # Grayscale
-                pattern_ctx.set_source_rgb(color[0], color[0], color[0])
-            else:
-                pattern_ctx.set_source_rgb(0, 0, 0)
+            pattern_ctx.set_source_rgb(*_safe_rgb(dl_item.color))
             # Line width is already in pattern space from cached display list
             pattern_ctx.set_line_width(dl_item.line_width)
             pattern_ctx.set_line_cap(dl_item.line_cap)

@@ -35,6 +35,9 @@ unit_tests/.test_stats.tmp
 # Environment files
 .env
 
+# Reference manuals (large PDFs, not distributed)
+docs/reference/
+
 # Claude Code
 CLAUDE.md
 .claude/

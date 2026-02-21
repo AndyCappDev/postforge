@@ -37,6 +37,7 @@ from .cairo_shading import (
     _render_patch_shading, _render_function_shading,
 )
 from .cairo_patterns import _render_pattern_fill
+from .cairo_utils import _safe_rgb
 
 
 def render_display_list(ctxt: ps.Context, cairo_ctx, page_height: int, min_line_width: float = 1,
@@ -227,14 +228,7 @@ def render_display_list(ctxt: ps.Context, cairo_ctx, page_height: int, min_line_
                         continue
 
         if isinstance(item, ps.Fill):
-            # Safely handle color - ensure we have at least 3 components
-            color = item.color if item.color else [0, 0, 0]
-            if len(color) >= 3:
-                cairo_ctx.set_source_rgb(color[0], color[1], color[2])
-            elif len(color) == 1:
-                cairo_ctx.set_source_rgb(color[0], color[0], color[0])
-            else:
-                cairo_ctx.set_source_rgb(0, 0, 0)
+            cairo_ctx.set_source_rgb(*_safe_rgb(item.color))
             cairo_ctx.set_fill_rule(item.winding_rule)
             # PLRM 7.5.1: "A shape is scan-converted by painting any pixel
             # whose square region intersects the shape, no matter how small
@@ -312,14 +306,7 @@ def render_display_list(ctxt: ps.Context, cairo_ctx, page_height: int, min_line_
             ctm = item.ctm
             a, b, c, d, tx, ty = ctm
 
-            # Safely handle color - ensure we have at least 3 components
-            color = item.color if item.color else [0, 0, 0]
-            if len(color) >= 3:
-                cairo_ctx.set_source_rgb(color[0], color[1], color[2])
-            elif len(color) == 1:
-                cairo_ctx.set_source_rgb(color[0], color[0], color[0])
-            else:
-                cairo_ctx.set_source_rgb(0, 0, 0)
+            cairo_ctx.set_source_rgb(*_safe_rgb(item.color))
             cairo_ctx.set_line_join(item.line_join)
             cairo_ctx.set_line_cap(item.line_cap)
             cairo_ctx.set_miter_limit(item.miter_limit)
@@ -604,13 +591,7 @@ def _render_standard_text_obj(text_obj, cairo_ctx, page_height):
         weight = cairo.FONT_WEIGHT_NORMAL
 
     # Set color
-    color = text_obj.color
-    if len(color) >= 3:
-        cairo_ctx.set_source_rgb(color[0], color[1], color[2])
-    elif len(color) == 1:
-        cairo_ctx.set_source_rgb(color[0], color[0], color[0])
-    else:
-        cairo_ctx.set_source_rgb(0, 0, 0)
+    cairo_ctx.set_source_rgb(*_safe_rgb(text_obj.color))
 
     # Decode text bytes to string for Cairo
     try:
@@ -715,13 +696,7 @@ def _render_glyph_ref_vector(glyph_ref, cairo_ctx):
                     elif isinstance(pc_item, ps.ClosePath):
                         cairo_ctx.close_path()
         elif isinstance(element, ps.Fill):
-            color = element.color if element.color else [0, 0, 0]
-            if len(color) >= 3:
-                cairo_ctx.set_source_rgb(color[0], color[1], color[2])
-            elif len(color) == 1:
-                cairo_ctx.set_source_rgb(color[0], color[0], color[0])
-            else:
-                cairo_ctx.set_source_rgb(0, 0, 0)
+            cairo_ctx.set_source_rgb(*_safe_rgb(element.color))
             cairo_ctx.set_fill_rule(element.winding_rule)
             cairo_ctx.fill()
         elif isinstance(element, ps.ImageMaskElement):
@@ -933,13 +908,7 @@ def _replay_glyph_elements(ctx, elements):
                     elif isinstance(pc_item, ps.ClosePath):
                         ctx.close_path()
         elif isinstance(elem, ps.Fill):
-            color = elem.color if elem.color else [0, 0, 0]
-            if len(color) >= 3:
-                ctx.set_source_rgb(color[0], color[1], color[2])
-            elif len(color) == 1:
-                ctx.set_source_rgb(color[0], color[0], color[0])
-            else:
-                ctx.set_source_rgb(0, 0, 0)
+            ctx.set_source_rgb(*_safe_rgb(elem.color))
             ctx.set_fill_rule(elem.winding_rule)
             ctx.fill()
         elif isinstance(elem, ps.Stroke):
@@ -948,13 +917,7 @@ def _replay_glyph_elements(ctx, elements):
             device_line_width = elem.line_width * scale_factor
             device_dashes = [d * scale_factor for d in elem.dash_pattern[0]]
             device_offset = elem.dash_pattern[1] * scale_factor
-            color = elem.color if elem.color else [0, 0, 0]
-            if len(color) >= 3:
-                ctx.set_source_rgb(color[0], color[1], color[2])
-            elif len(color) == 1:
-                ctx.set_source_rgb(color[0], color[0], color[0])
-            else:
-                ctx.set_source_rgb(0, 0, 0)
+            ctx.set_source_rgb(*_safe_rgb(elem.color))
             ctx.set_line_width(max(1, device_line_width))
             ctx.set_line_join(elem.line_join)
             ctx.set_line_cap(elem.line_cap)
