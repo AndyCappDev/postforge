@@ -1513,8 +1513,7 @@ def currentobjectformat(ctxt, ostack):
     **Errors**: **stackoverflow**
     """
     if ctxt.MaxOpStack and len(ostack) + 1 > ctxt.MaxOpStack:
-        ps_error.e(ctxt, ps_error.STACKOVERFLOW, currentobjectformat.__name__)
-        return
+        return ps_error.e(ctxt, ps_error.STACKOVERFLOW, currentobjectformat.__name__)
 
     ostack.append(ps.Int(ctxt.object_format))
 

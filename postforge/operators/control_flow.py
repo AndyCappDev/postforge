@@ -74,12 +74,10 @@ def ps_copy(ctxt, ostack):
     op = "copy"
 
     if len(ostack) < 1:
-        ps_error.e(ctxt, ps_error.STACKUNDERFLOW, op)
-        return
-    
+        return ps_error.e(ctxt, ps_error.STACKUNDERFLOW, op)
+
     if ostack[-1].TYPE not in {ps.T_INT, ps.T_STRING, ps.T_ARRAY, ps.T_DICT, ps.T_GSTATE}:
-        ps_error.e(ctxt, ps_error.TYPECHECK, op)
-        return
+        return ps_error.e(ctxt, ps_error.TYPECHECK, op)
 
     if ostack[-1].TYPE == ps.T_INT:
         # 1. STACKUNDERFLOW - Already checked above
@@ -91,8 +89,7 @@ def ps_copy(ctxt, ostack):
 
         # 5. STACKOVERFLOW - Check result stack space
         if ostack[-1].val + 1 > len(ostack):
-            ps_error.e(ctxt, ps_error.STACKOVERFLOW, op)
-            return
+            return ps_error.e(ctxt, ps_error.STACKOVERFLOW, op)
 
         copies = ostack[-1].val
         ostack.pop()

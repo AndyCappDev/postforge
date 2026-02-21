@@ -211,8 +211,7 @@ def exitserver(ctxt: "ps.Context", ostack: "ps.Stack") -> None:
         password = ostack[-1].python_string()
 
     if password != ctxt.system_params.get("StartJobPassword", ""):
-        ps_error.e(ctxt, ps_error.INVALIDACCESS, "setsystemparams")
-        return
+        return ps_error.e(ctxt, ps_error.INVALIDACCESS, "exitserver")
     
     # STEP 2: Implement exitserver as equivalent to startjob sequence
     # Push true and password for startjob call

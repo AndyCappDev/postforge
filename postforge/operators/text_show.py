@@ -259,8 +259,7 @@ def stringwidth(ctxt, ostack):
 
     # 5. STACKOVERFLOW - Check result stack space
     if ctxt.MaxOpStack and len(ostack) + 1 > ctxt.MaxOpStack:
-        ps_error.e(ctxt, ps_error.STACKOVERFLOW, stringwidth.__name__)
-        return
+        return ps_error.e(ctxt, ps_error.STACKOVERFLOW, stringwidth.__name__)
 
     text_string = ostack[-1]
     current_font = ctxt.gstate.font

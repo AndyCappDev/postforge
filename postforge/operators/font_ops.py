@@ -167,8 +167,7 @@ def currentfont(ctxt, ostack):
     """
     # 5. STACKOVERFLOW - Check result stack space
     if ctxt.MaxOpStack and len(ostack) + 1 > ctxt.MaxOpStack:
-        ps_error.e(ctxt, ps_error.STACKOVERFLOW, currentfont.__name__)
-        return
+        return ps_error.e(ctxt, ps_error.STACKOVERFLOW, currentfont.__name__)
 
     # Get current font from graphics state
     current_font = ctxt.gstate.font
@@ -195,8 +194,7 @@ def rootfont(ctxt, ostack):
     **Errors**: **stackoverflow**
     """
     if ctxt.MaxOpStack and len(ostack) + 1 > ctxt.MaxOpStack:
-        ps_error.e(ctxt, ps_error.STACKOVERFLOW, rootfont.__name__)
-        return
+        return ps_error.e(ctxt, ps_error.STACKOVERFLOW, rootfont.__name__)
 
     current_font = ctxt.gstate.font
 

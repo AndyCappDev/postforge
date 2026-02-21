@@ -405,8 +405,7 @@ def _imagemask_five_operand_form(ctxt, ostack):
 
     # STEP 8: Read ALL mask data immediately - no VM references in display list
     if not ImageDataProcessor.read_all_image_data(data_source, mask_element, ctxt):
-        ps_error.e(ctxt, ps_error.IOERROR, "imagemask")
-        return
+        return ps_error.e(ctxt, ps_error.IOERROR, "imagemask")
 
     # Add to display list (VM-independent)
     ctxt.display_list.append(mask_element)

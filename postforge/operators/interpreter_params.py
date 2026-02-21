@@ -40,14 +40,12 @@ def setsystemparams(ctxt, ostack):
     # Validate password matches SystemParamsPassword system parameter  
     password_value = ostack[-1].val[b"Password"]
     if password_value.TYPE != ps.T_STRING:
-        ps_error.e(ctxt, ps_error.TYPECHECK, setsystemparams.__name__)
-        return
+        return ps_error.e(ctxt, ps_error.TYPECHECK, setsystemparams.__name__)
     provided_password = password_value.python_string()
-    
+
     # Check if password matches SystemPassword
     if provided_password != ctxt.system_params["SystemParamsPassword"]:
-        ps_error.e(ctxt, ps_error.INVALIDACCESS, setsystemparams.__name__)
-        return
+        return ps_error.e(ctxt, ps_error.INVALIDACCESS, setsystemparams.__name__)
     
     # check the types first (skip Password key)
     for key, value in ostack[-1].val.items():
