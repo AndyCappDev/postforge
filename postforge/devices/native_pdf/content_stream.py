@@ -978,26 +978,45 @@ def _compute_invisible_text_params(
     ctm = actual_text.ctm
     ca, cb, cc, cd = ctm[0], ctm[1], ctm[2], ctm[3]
 
-    font_size = actual_text.font_size
-    bbox = actual_text.font_bbox
-    if bbox:
-        bbox_height = abs(bbox[3] - bbox[1])
-        if bbox_height > 0:
-            font_size = font_size * bbox_height / 1000.0
+    # Use visual Y bounds to size and position the invisible overlay only
+    # when the font bbox is unreliable.  Fonts whose bbox came from the
+    # glyph cache (_font_max_bbox, populated by setcachedevice) have
+    # accurate font-wide metrics; per-character visual bounds would give
+    # inconsistent heights (e.g., lowercase shorter than uppercase).
+    vis_min_y = actual_text.visual_min_y
+    vis_max_y = actual_text.visual_max_y
+    use_visual_y = (vis_min_y is not None and vis_max_y is not None
+                    and abs(vis_max_y - vis_min_y) > 0.5 and abs(cd) > 1e-6
+                    and not actual_text.bbox_from_cache)
+
+    if use_visual_y:
+        visual_height = abs(vis_max_y - vis_min_y)
+        point_size = visual_height / abs(cd)
+        tm_d = vis_min_y - vis_max_y  # negative when min_y < max_y (standard)
+        # Position baseline so Courier ascent (0.8 em) covers the visual top
+        # and descent (0.2 em) covers the visual bottom.
+        y = 0.2 * vis_min_y + 0.8 * vis_max_y
+    else:
+        font_size = actual_text.font_size
+        bbox = actual_text.font_bbox
+        if bbox:
+            bbox_height = abs(bbox[3] - bbox[1])
+            if bbox_height > 0:
+                font_size = font_size * bbox_height / 1000.0
+            else:
+                font_size = font_size / 1000.0
         else:
             font_size = font_size / 1000.0
-    else:
-        font_size = font_size / 1000.0
 
-    sx = math.sqrt(ca * ca + cb * cb)
-    sy = math.sqrt(cc * cc + cd * cd)
-    ctm_scale = math.sqrt(sx * sy)
-    point_size = font_size / ctm_scale if ctm_scale > 0 else font_size
+        sx = math.sqrt(ca * ca + cb * cb)
+        sy = math.sqrt(cc * cc + cd * cd)
+        ctm_scale = math.sqrt(sx * sy)
+        point_size = font_size / ctm_scale if ctm_scale > 0 else font_size
+        tm_d = point_size * cd
 
     # Text matrix components (device space — cm handles PDF conversion)
     tm_b = point_size * cb
     tm_c = point_size * cc
-    tm_d = point_size * cd
 
     # tm_a computed from advance width to match visible text span
     # Courier: each character advance = 0.6 em
@@ -1007,8 +1026,13 @@ def _compute_invisible_text_params(
     else:
         tm_a = abs(tm_d) if abs(tm_d) > 0.01 else point_size * ca
 
-    if actual_text.visual_start_x is not None:
-        x = actual_text.visual_start_x
+    # Use visual_start_x only when the rendering extends to the LEFT of
+    # the character origin (e.g., bitfont.ps where the flipped image matrix
+    # places the bitmap before the origin).  For fonts with a normal left
+    # side bearing (visual_start_x > start_x), keep the character origin.
+    vsx = actual_text.visual_start_x
+    if vsx is not None and vsx < x:
+        x = vsx
 
     return (x, y, tm_a, tm_b, tm_c, tm_d, text_bytes, adv_x,
             advance_width)

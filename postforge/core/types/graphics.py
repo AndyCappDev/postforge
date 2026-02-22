@@ -553,12 +553,15 @@ class ActualTextStart:
     """
     __slots__ = ('unicode_text', 'start_x', 'start_y', 'font_size', 'ctm',
                  'font_matrix', 'font_bbox', 'visual_start_x', 'visual_width',
-                 'advance_width')
+                 'advance_width', 'visual_min_y', 'visual_max_y',
+                 'bbox_from_cache')
 
     def __init__(self, unicode_text: str, start_x: float, start_y: float,
                  font_size: float, ctm: list, font_matrix: list = None,
                  font_bbox: list = None, visual_start_x: float = None,
-                 visual_width: float = 0.0, advance_width: float = 0.0):
+                 visual_width: float = 0.0, advance_width: float = 0.0,
+                 visual_min_y: float = None, visual_max_y: float = None,
+                 bbox_from_cache: bool = False):
         self.unicode_text = unicode_text
         self.start_x = start_x
         self.start_y = start_y
@@ -569,6 +572,9 @@ class ActualTextStart:
         self.visual_start_x = visual_start_x
         self.visual_width = visual_width
         self.advance_width = advance_width
+        self.visual_min_y = visual_min_y
+        self.visual_max_y = visual_max_y
+        self.bbox_from_cache = bbox_from_cache
 
 
 class ActualTextEnd:

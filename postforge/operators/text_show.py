@@ -2492,16 +2492,18 @@ _TEX_LIGATURE_MAP = {
 }
 
 
-def _compute_visual_x_bounds(display_list: ps.DisplayList, dl_start: int) -> tuple[float, float] | None:
-    """Compute device-space x bounds from rendered display list elements.
+def _compute_visual_bounds(display_list: ps.DisplayList, dl_start: int) -> tuple[float, float, float, float] | None:
+    """Compute device-space bounds from rendered display list elements.
 
     Scans ImageElement entries (from Type 3 BuildChar cache misses) and path
     elements to find the actual visual extent of rendered text.
 
-    Returns (min_x, max_x) or None if no renderable elements found.
+    Returns (min_x, max_x, min_y, max_y) or None if no renderable elements found.
     """
     min_x = float('inf')
     max_x = float('-inf')
+    min_y = float('inf')
+    max_y = float('-inf')
     found = False
 
     for i in range(dl_start, len(display_list)):
@@ -2518,30 +2520,43 @@ def _compute_visual_x_bounds(display_list: ps.DisplayList, dl_start: int) -> tup
             if abs(det_im) < 1e-10:
                 continue
             inv_a = im[3] / det_im
+            inv_b = -im[1] / det_im
             inv_c = -im[2] / det_im
+            inv_d = im[0] / det_im
             inv_tx = (im[2] * im[5] - im[3] * im[4]) / det_im
+            inv_ty = (im[1] * im[4] - im[0] * im[5]) / det_im
             # Transform image corners -> char space -> device space
             for ix, iy in ((0, 0), (w, 0), (0, h), (w, h)):
                 cx = ix * inv_a + iy * inv_c + inv_tx
-                dx = cx * ctm[0] + ctm[4]  # simplified for cb=0 (horizontal text)
+                cy = ix * inv_b + iy * inv_d + inv_ty
+                dx = cx * ctm[0] + cy * ctm[2] + ctm[4]
+                dy = cx * ctm[1] + cy * ctm[3] + ctm[5]
                 min_x = min(min_x, dx)
                 max_x = max(max_x, dx)
+                min_y = min(min_y, dy)
+                max_y = max(max_y, dy)
             found = True
 
         elif isinstance(elem, ps.MoveTo):
             min_x = min(min_x, elem.p.x)
             max_x = max(max_x, elem.p.x)
+            min_y = min(min_y, elem.p.y)
+            max_y = max(max_y, elem.p.y)
             found = True
         elif isinstance(elem, ps.LineTo):
             min_x = min(min_x, elem.p.x)
             max_x = max(max_x, elem.p.x)
+            min_y = min(min_y, elem.p.y)
+            max_y = max(max_y, elem.p.y)
             found = True
         elif isinstance(elem, ps.CurveTo):
             min_x = min(min_x, elem.p1.x, elem.p2.x, elem.p3.x)
             max_x = max(max_x, elem.p1.x, elem.p2.x, elem.p3.x)
+            min_y = min(min_y, elem.p1.y, elem.p2.y, elem.p3.y)
+            max_y = max(max_y, elem.p1.y, elem.p2.y, elem.p3.y)
             found = True
 
-    return (min_x, max_x) if found else None
+    return (min_x, max_x, min_y, max_y) if found else None
 
 
 def _emit_actual_text_start(ctxt: ps.Context, text_bytes: bytes, font_dict: ps.Dict, start_pos: tuple[float, float] | None = None) -> None:
@@ -2568,10 +2583,23 @@ def _emit_actual_text_start(ctxt: ps.Context, text_bytes: bytes, font_dict: ps.D
     else:
         fb = None
 
+    # Type 0 composite fonts often lack FontBBox — check descendant
+    if fb is None:
+        font_type_val = font_dict.val.get(b'FontType')
+        if font_type_val and font_type_val.val == 0:
+            fdep = font_dict.val.get(b'FDepVector')
+            if fdep and fdep.TYPE in ps.ARRAY_TYPES and fdep.val:
+                desc_bbox = fdep.val[0].val.get(b'FontBBox')
+                if (desc_bbox and desc_bbox.TYPE in ps.ARRAY_TYPES
+                        and len(desc_bbox.val) >= 4):
+                    fb = [desc_bbox.val[i].val for i in range(4)]
+
+    bbox_from_cache = False
     if fb is None or (fb[0] == 0 and fb[1] == 0 and fb[2] == 0 and fb[3] == 0):
         bbox_entry = font_rendering._font_max_bbox.get(id(font_dict.val))
         if bbox_entry:
             fb = list(bbox_entry[0])
+            bbox_from_cache = True
 
     if start_pos:
         sx, sy = cp[0], cp[1]
@@ -2581,12 +2609,16 @@ def _emit_actual_text_start(ctxt: ps.Context, text_bytes: bytes, font_dict: ps.D
     # Compute visual bounds from rendered display list elements
     visual_start_x = None
     visual_width = 0.0
+    visual_min_y = None
+    visual_max_y = None
     dl_start = getattr(ctxt, '_type3_dl_start', None)
     if dl_start is not None and ctxt.display_list:
-        bounds = _compute_visual_x_bounds(ctxt.display_list, dl_start)
+        bounds = _compute_visual_bounds(ctxt.display_list, dl_start)
         if bounds:
             visual_start_x = bounds[0]
             visual_width = bounds[1] - bounds[0]
+            visual_min_y = bounds[2]
+            visual_max_y = bounds[3]
 
     # Fallback: use advance width if visual bounds unavailable
     if visual_start_x is None and start_pos and ctxt.gstate.currentpoint:
@@ -2599,7 +2631,8 @@ def _emit_actual_text_start(ctxt: ps.Context, text_bytes: bytes, font_dict: ps.D
 
     ctxt.display_list.append(ps.ActualTextStart(
         unicode_text, sx, sy, font_size, ctm, fm, fb, visual_start_x,
-        visual_width, advance_width
+        visual_width, advance_width, visual_min_y, visual_max_y,
+        bbox_from_cache
     ))
 
 
