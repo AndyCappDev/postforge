@@ -863,7 +863,6 @@ class PDFBuilder:
 
         if (not self._lossless_images
                 and not img_desc['is_mask']
-                and color_key_mask is None
                 and img_desc.get('bpc', 1) == 8):
             ncomp = _get_ncomp(img_desc)
             if ncomp in (1, 3, 4):
