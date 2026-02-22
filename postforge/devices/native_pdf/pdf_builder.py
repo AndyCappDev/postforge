@@ -815,7 +815,14 @@ class PDFBuilder:
             return None
 
         try:
-            img = Image.frombytes(mode, (width, height), sample_data)
+            if mode == 'CMYK':
+                # Pillow's CMYK JPEG encoder inverts channel values (for
+                # YCCK colorspace convention).  Pre-invert so the double
+                # inversion produces correct values in the JPEG stream.
+                inv = bytes(255 - b for b in sample_data)
+                img = Image.frombytes(mode, (width, height), inv)
+            else:
+                img = Image.frombytes(mode, (width, height), sample_data)
             buf = io.BytesIO()
             img.save(buf, format='JPEG', quality=85)
             return buf.getvalue()
@@ -851,10 +858,7 @@ class PDFBuilder:
                 and not img_desc['is_mask']
                 and img_desc.get('bpc', 1) == 8):
             ncomp = _get_ncomp(img_desc)
-            # Skip DCT for CMYK (4-component) images: Pillow's CMYK JPEG
-            # encoder inverts channel values, producing incorrect colors
-            # when embedded in PDF with /DeviceCMYK.
-            if ncomp in (1, 3):
+            if ncomp in (1, 3, 4):
                 dct_data = self._try_dct_encode(
                     sample_data, img_desc['width'], img_desc['height'],
                     ncomp, 8)
