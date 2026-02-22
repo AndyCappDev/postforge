@@ -332,6 +332,17 @@ def _finalize_output_devices(ctxt: ps.Context) -> None:
         # Log but don't fail job cleanup
         print(f"Warning: Error finalizing PDF output: {e}")
 
+    # Check if this is a native_pdf device with pending state
+    try:
+        from ..devices.native_pdf.native_pdf import _STATE_KEY as NATIVE_PDF_STATE_KEY
+        from ..devices.native_pdf.native_pdf import finalize as native_pdf_finalize
+        if NATIVE_PDF_STATE_KEY in pd:
+            native_pdf_finalize(pd)
+    except ImportError:
+        pass
+    except Exception as e:
+        print(f"Warning: Error finalizing native_pdf output: {e}")
+
 
 def ps_exec(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """

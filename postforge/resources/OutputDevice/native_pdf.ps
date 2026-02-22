@@ -1,0 +1,50 @@
+%% pagedevice dictionary for native_pdf output device
+%% Generates PDF content streams directly (bypasses Cairo) to preserve
+%% original color space information (CMYK, Gray, RGB).
+
+<<
+    /OutputDeviceName (native_pdf)
+    /OutputDevice /native_pdf
+    /PageSize [612 792]
+    /HWResolution [600 600]
+    /Margins [0.0 0.0]
+    /PageOffset [0 0]
+    /BitsPerPixel 24
+    /NumCopies null
+    /Install {
+        %% Now override some settings
+        % only set device-dependant settings here
+        .5 setflat
+        % Identity function for debugging - should leave stack unchanged
+        {} settransfer
+        % set other things here like...
+        %   halftone screen
+        %   color rendering dictionary
+
+        % Do NOT force a color space — the native PDF device preserves
+        % whatever color space the document uses (CMYK, Gray, RGB).
+        % Default initial color space is DeviceGray per PostScript spec.
+    }
+    /BeginPage {//pop}
+    /EndPage {//pop //pop true}
+    /InputAttributes <<>>  % from command line?
+    /OutputAttributes <<>> % from command line?
+    % No /ColorModel — device colors pass through unconverted.
+    % The native PDF device preserves original color spaces (CMYK, Gray, RGB).
+    /Policies <<>>
+    /PageCount 0
+    /.IsPageDevice true
+    /Separations false
+    /Supported {}
+    /RedValues 256
+    /GreenValues 256
+    /BlueValues 256
+    /GraphicBlackPt 8
+    /ImageBlackPt 8
+    /TextBlackPt 8
+    /SimulateOverprint false
+    /Colors 3
+    /LineWidthMin .001
+    /TextRenderingMode /TextObjs  % Searchable PDF text (or /GlyphPaths for path rendering)
+    /StrokeMethod /NativeStroke  % native stroke on PDF vector surface
+>>

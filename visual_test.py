@@ -170,7 +170,7 @@ def _render_one(ps_file, output_dir, timeout, extra_flags, device):
         elapsed = time.monotonic() - start
         stderr_errors = check_stderr_for_errors(result.stderr)
 
-        if device == "pdf":
+        if device in ("pdf", "native_pdf"):
             pdfs = sorted(sample_out.glob("*.pdf"))
             pngs = []
             for pdf_path in pdfs:
@@ -766,7 +766,7 @@ def cmd_compare(args, device, dirs):
 def check_device_deps(devices):
     """Check that required dependencies are installed for the requested devices."""
     missing = []
-    if "pdf" in devices and pymupdf is None:
+    if ("pdf" in devices or "native_pdf" in devices) and pymupdf is None:
         missing.append("PyMuPDF (pip install pymupdf) — required for PDF testing")
     if "svg" in devices and pymupdf is None:
         missing.append("PyMuPDF (pip install pymupdf) — required for SVG testing")
@@ -794,9 +794,9 @@ def main():
     parser.add_argument("-j", "--jobs", type=int, default=4,
                         help="Number of parallel render/compare workers (default: 4)")
     parser.add_argument("-d", "--device", nargs="+",
-                        choices=["png", "pdf", "svg", "all"],
+                        choices=["png", "pdf", "svg", "native_pdf", "all"],
                         default=["png", "pdf", "svg"],
-                        help="Device(s) to test (default: all three)")
+                        help="Device(s) to test (default: png, pdf, svg)")
     parser.add_argument("--flags", nargs=argparse.REMAINDER, default=None,
                         help="Extra flags to pass to postforge (e.g. --flags --glyph-cache). Must be last argument.")
     args = parser.parse_args()

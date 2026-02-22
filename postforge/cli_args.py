@@ -207,6 +207,11 @@ def build_argument_parser(available_devices: list[str]) -> argparse.ArgumentPars
         help="Disable ICC color management (use PLRM formulas)"
     )
     parser.add_argument(
+        "--lossless-images", action="store_true",
+        help="Use lossless compression for all images in PDF output (default uses "
+             "JPEG for photographic images when smaller)"
+    )
+    parser.add_argument(
         "--cmyk-profile",
         help="Path to CMYK ICC profile for color management"
     )

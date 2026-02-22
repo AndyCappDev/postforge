@@ -27,7 +27,9 @@ import cairo
 from ...core import icc_default
 from ...core import icc_profile
 from ...core import types as ps
-from ...core.color_space import ColorSpaceEngine, _get_cie_float_array, _apply_decode_array
+from ...core.color_space import (ColorSpaceEngine, _get_cie_float_array,
+                                 _apply_decode_array, is_identity_cie,
+                                 preconvert_cie_def_table)
 
 try:
     from ._image_conv_cy import (
@@ -959,47 +961,6 @@ def _convert_indexed_image(sample_data: bytes | bytearray, bits_per_component: i
         return None
 
 
-def _is_identity_cie(cie_dict: dict, space_name: str) -> bool:
-    """Check if a CIE color space is effectively identity sRGB (no transforms).
-
-    For CIEBasedABC: identity MatrixABC, identity MatrixLMN, no decode procedures,
-    standard RangeABC [0,1,0,1,0,1]. This covers the common case of documents
-    wrapping sRGB as CIEBasedABC for "device independent" labeling.
-
-    For CIEBasedA: identity MatrixA=[1,1,1], identity MatrixLMN, no decode procedures.
-    """
-    if space_name == "CIEBasedABC":
-        # Check for non-identity MatrixABC
-        mat_abc = _get_cie_float_array(cie_dict, b"MatrixABC", None)
-        if mat_abc is not None and mat_abc != [1, 0, 0, 0, 1, 0, 0, 0, 1]:
-            return False
-        # Check for non-identity MatrixLMN
-        mat_lmn = _get_cie_float_array(cie_dict, b"MatrixLMN", None)
-        if mat_lmn is not None and mat_lmn != [1, 0, 0, 0, 1, 0, 0, 0, 1]:
-            return False
-        # Check for decode procedures (can't shortcut if present)
-        if b"DecodeABC" in cie_dict or b"DecodeLMN" in cie_dict:
-            return False
-        # Check RangeABC
-        range_abc = _get_cie_float_array(cie_dict, b"RangeABC", [0, 1, 0, 1, 0, 1])
-        if range_abc != [0, 1, 0, 1, 0, 1]:
-            return False
-        return True
-    elif space_name == "CIEBasedA":
-        # Check for non-identity MatrixA
-        mat_a = _get_cie_float_array(cie_dict, b"MatrixA", None)
-        if mat_a is not None and mat_a != [1, 1, 1]:
-            return False
-        # Check for non-identity MatrixLMN
-        mat_lmn = _get_cie_float_array(cie_dict, b"MatrixLMN", None)
-        if mat_lmn is not None and mat_lmn != [1, 0, 0, 0, 1, 0, 0, 0, 1]:
-            return False
-        if b"DecodeA" in cie_dict or b"DecodeLMN" in cie_dict:
-            return False
-        return True
-    return False
-
-
 def _convert_cie_image(sample_data: bytes | bytearray, bits_per_component: int, width: int, height: int,
                        decode_array: list, color_space: list, components: int,
                        mask_color: list | None) -> bytearray | None:
@@ -1014,7 +975,7 @@ def _convert_cie_image(sample_data: bytes | bytearray, bits_per_component: int, 
         cie_dict = dict_obj.val if hasattr(dict_obj, 'val') and isinstance(dict_obj.val, dict) else {}
 
         # Fast path: identity CIE → use standard RGB/grayscale conversion
-        if _is_identity_cie(cie_dict, space_name):
+        if is_identity_cie(cie_dict, space_name):
             if space_name == "CIEBasedABC":
                 pixel_data = _convert_rgb_samples(sample_data, bits_per_component,
                                                   width, height, decode_array)
@@ -1146,72 +1107,6 @@ def _convert_cie_image(sample_data: bytes | bytearray, bits_per_component: int, 
         return None
 
 
-def _preconvert_cie_def_table(cie_dict: dict) -> tuple | None:
-    """Pre-convert all CIEBasedDEF Table entries through the full CIE→sRGB pipeline.
-
-    Evaluates DecodeABC, MatrixABC, DecodeLMN, MatrixLMN, XYZ→sRGB once per table
-    entry (~36K entries for 33×33×33) instead of per pixel. Returns flat arrays of
-    pre-converted R, G, B float values for trilinear interpolation.
-
-    Returns (r_table, g_table, b_table, m1, m2, m3) or None if no Table.
-    """
-    table_obj = cie_dict.get(b"Table")
-    if not table_obj or not hasattr(table_obj, 'val') or len(table_obj.val) < 4:
-        return None
-
-    tv = table_obj.val
-    m1 = int(tv[0].val) if hasattr(tv[0], 'val') else int(tv[0])
-    m2 = int(tv[1].val) if hasattr(tv[1], 'val') else int(tv[1])
-    m3 = int(tv[2].val) if hasattr(tv[2], 'val') else int(tv[2])
-    strings_obj = tv[3]
-
-    if hasattr(strings_obj, 'val'):
-        strings = strings_obj.val
-        s_start = getattr(strings_obj, 'start', 0)
-    else:
-        strings = strings_obj
-        s_start = 0
-
-    range_abc = _get_cie_float_array(cie_dict, b"RangeABC", [0, 1, 0, 1, 0, 1])
-    abc_min = [range_abc[0], range_abc[2], range_abc[4]]
-    abc_scale = [(range_abc[1] - range_abc[0]) / 255.0,
-                 (range_abc[3] - range_abc[2]) / 255.0,
-                 (range_abc[5] - range_abc[4]) / 255.0]
-
-    total = m1 * m2 * m3
-    r_table = [0.0] * total
-    g_table = [0.0] * total
-    b_table = [0.0] * total
-
-    idx = 0
-    for di in range(m1):
-        string_obj = strings[s_start + di]
-        if hasattr(string_obj, 'byte_string'):
-            data = string_obj.byte_string()
-        elif hasattr(string_obj, 'val') and isinstance(string_obj.val, (bytes, bytearray)):
-            data = string_obj.val
-        else:
-            data = bytes(string_obj) if not isinstance(string_obj, (bytes, bytearray)) else string_obj
-
-        for ei in range(m2):
-            for fi in range(m3):
-                offset = (ei * m3 + fi) * 3
-                if offset + 2 < len(data):
-                    a = abc_min[0] + data[offset] * abc_scale[0]
-                    b = abc_min[1] + data[offset + 1] * abc_scale[1]
-                    c = abc_min[2] + data[offset + 2] * abc_scale[2]
-                else:
-                    a, b, c = abc_min[0], abc_min[1], abc_min[2]
-
-                r, g, b_ = ColorSpaceEngine.cie_abc_to_rgb([a, b, c], cie_dict)
-                r_table[idx] = r
-                g_table[idx] = g
-                b_table[idx] = b_
-                idx += 1
-
-    return (r_table, g_table, b_table, m1, m2, m3)
-
-
 def _convert_cie_def_image(sample_data: bytes | bytearray, bits_per_component: int, width: int, height: int,
                            decode_array: list, color_space: list, components: int,
                            mask_color: list | None) -> bytearray | None:
@@ -1227,7 +1122,7 @@ def _convert_cie_def_image(sample_data: bytes | bytearray, bits_per_component: i
         cie_dict = dict_obj.val if hasattr(dict_obj, 'val') and isinstance(dict_obj.val, dict) else {}
 
         if space_name == "CIEBasedDEF" and bits_per_component == 8:
-            preconv = _preconvert_cie_def_table(cie_dict)
+            preconv = preconvert_cie_def_table(cie_dict)
             if preconv is None:
                 # No Table — fallback to treating as RGB
                 return _convert_rgb_samples(sample_data, bits_per_component,

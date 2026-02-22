@@ -156,16 +156,24 @@ class SubPath(list):
 
 
 class Fill:
-    def __init__(self, device_color: list, winding_rule: int) -> None:
+    def __init__(self, device_color: list, winding_rule: int,
+                 color_space: str | None = None,
+                 source_color: list | None = None) -> None:
         # Store device-ready color values as primitive Python floats
         self.color = device_color
         self.winding_rule = winding_rule
+        # Original color space name (e.g., "DeviceCMYK", "DeviceGray", "DeviceRGB")
+        self.color_space = color_space
+        # Original color values before device conversion
+        self.source_color = source_color
 
 
 class PatternFill:
     """Display list element for pattern-filled areas."""
     def __init__(self, pattern_dict, winding_rule: int, gs: "GraphicsState",
-                 underlying_color: list = None) -> None:
+                 underlying_color: list = None,
+                 underlying_color_space: str | None = None,
+                 underlying_source_color: list | None = None) -> None:
         """
         Create a pattern fill element.
 
@@ -175,10 +183,14 @@ class PatternFill:
             gs: Current graphics state (for CTM)
             underlying_color: For uncolored patterns (PaintType 2), the underlying
                              color components in device color space
+            underlying_color_space: Original color space of underlying color
+            underlying_source_color: Original color values of underlying color
         """
         self.pattern_dict = pattern_dict
         self.winding_rule = winding_rule
         self.underlying_color = underlying_color or []
+        self.underlying_color_space = underlying_color_space
+        self.underlying_source_color = underlying_source_color
 
         # Store CTM at time of fill for proper pattern placement
         ctm = gs.CTM.val
@@ -186,9 +198,15 @@ class PatternFill:
 
 
 class Stroke:
-    def __init__(self, device_color: list, gs: "GraphicsState") -> None:
+    def __init__(self, device_color: list, gs: "GraphicsState",
+                 color_space: str | None = None,
+                 source_color: list | None = None) -> None:
         # Store device-ready color values as primitive Python floats
         self.color = device_color
+        # Original color space name (e.g., "DeviceCMYK", "DeviceGray", "DeviceRGB")
+        self.color_space = color_space
+        # Original color values before device conversion
+        self.source_color = source_color
 
         # Store line width and dash pattern in USER SPACE
         # The CTM is also stored so the renderer can apply the transformation

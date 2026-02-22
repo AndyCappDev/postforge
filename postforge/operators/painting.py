@@ -20,6 +20,66 @@ from ..core.display_list_builder import DisplayListBuilder
 
 
 
+def _close_open_subpaths(path: ps.Path) -> None:
+    """Close any open subpaths by appending ClosePath.
+
+    Per PLRM, fill and eofill implicitly close open subpaths before
+    painting.  This must happen before the path is added to the display
+    list so that all downstream consumers see closed subpaths.
+
+    If the last point already coincides with the first point (within
+    a small tolerance), the redundant final segment is replaced with
+    ClosePath rather than appending an additional one.
+    """
+    _TOL = 0.01  # device-space tolerance for coincident points
+    for subpath in path:
+        if not subpath or isinstance(subpath[-1], ps.ClosePath):
+            continue
+        # Find the start point (first MoveTo)
+        first = subpath[0]
+        if not isinstance(first, ps.MoveTo):
+            subpath.append(ps.ClosePath())
+            continue
+        sx, sy = first.p.x, first.p.y
+        # Get the endpoint of the last element
+        last = subpath[-1]
+        if isinstance(last, ps.LineTo):
+            if abs(last.p.x - sx) < _TOL and abs(last.p.y - sy) < _TOL:
+                # Redundant lineto back to start — replace with closepath
+                subpath[-1] = ps.ClosePath()
+            else:
+                subpath.append(ps.ClosePath())
+        else:
+            # CurveTo or other — cannot replace, just append
+            subpath.append(ps.ClosePath())
+
+
+def _resolve_source_color_info(ctxt: ps.Context) -> tuple[str | None, list[float] | None]:
+    """Extract resolved color space name and source color from graphics state.
+
+    Returns the effective device color space name and source color values.
+    CIE-based spaces are resolved to DeviceRGB (already converted by setcolor).
+    Separation/DeviceN/Indexed are resolved to their alternative/base space.
+
+    Args:
+        ctxt: PostScript execution context.
+
+    Returns:
+        Tuple of (color_space_name, source_color_values).
+    """
+    gs_color_space = ctxt.gstate.color_space
+    source_space = gs_color_space[0] if isinstance(gs_color_space, list) else gs_color_space
+    # Resolve CIE-based → DeviceRGB (already converted by setcolor)
+    if source_space in ("CIEBasedABC", "CIEBasedA", "CIEBasedDEF", "CIEBasedDEFG", "ICCBased"):
+        source_space = "DeviceRGB"
+    # Resolve Separation/DeviceN/Indexed → their alternative/base space
+    if source_space in ("Separation", "DeviceN", "Indexed"):
+        source_space = "DeviceRGB"
+    source_color = [float(c.val) if hasattr(c, 'val') else float(c)
+                    for c in ctxt.gstate.color]
+    return source_space, source_color
+
+
 def erasepage(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     - **erasepage** -
@@ -78,6 +138,9 @@ def fill(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
 
     if ctxt.gstate.path:
+        # Implicitly close any open subpaths (PLRM requirement)
+        _close_open_subpaths(ctxt.gstate.path)
+
         # Create DisplayListBuilder if it doesn't exist
         if not hasattr(ctxt, 'display_list_builder'):
             ctxt.display_list_builder = DisplayListBuilder(ctxt.display_list)
@@ -104,12 +167,15 @@ def fill(ctxt: ps.Context, ostack: ps.Stack) -> None:
             if current_space == "Pattern":
                 # Pattern color space but no pattern - use black as fallback
                 device_color = [0.0, 0.0, 0.0]
+                src_space, src_color = None, None
             else:
                 device_color = color_space.convert_to_device_color(ctxt, ctxt.gstate.color, ctxt.gstate.color_space)
                 # Ensure we have a valid color
                 if not device_color:
                     device_color = [0.0, 0.0, 0.0]
-            ctxt.display_list_builder.add_graphics_operation(ctxt, ps.Fill(device_color, ps.WINDING_NON_ZERO))
+                src_space, src_color = _resolve_source_color_info(ctxt)
+            ctxt.display_list_builder.add_graphics_operation(
+                ctxt, ps.Fill(device_color, ps.WINDING_NON_ZERO, src_space, src_color))
 
         # Clear current path
         ctxt.gstate.path = ps.Path()
@@ -130,6 +196,9 @@ def eofill(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
 
     if ctxt.gstate.path:
+        # Implicitly close any open subpaths (PLRM requirement)
+        _close_open_subpaths(ctxt.gstate.path)
+
         # Create DisplayListBuilder if it doesn't exist
         if not hasattr(ctxt, 'display_list_builder'):
             ctxt.display_list_builder = DisplayListBuilder(ctxt.display_list)
@@ -156,12 +225,15 @@ def eofill(ctxt: ps.Context, ostack: ps.Stack) -> None:
             if current_space == "Pattern":
                 # Pattern color space but no pattern - use black as fallback
                 device_color = [0.0, 0.0, 0.0]
+                src_space, src_color = None, None
             else:
                 device_color = color_space.convert_to_device_color(ctxt, ctxt.gstate.color, ctxt.gstate.color_space)
                 # Ensure we have a valid color
                 if not device_color:
                     device_color = [0.0, 0.0, 0.0]
-            ctxt.display_list_builder.add_graphics_operation(ctxt, ps.Fill(device_color, ps.WINDING_EVEN_ODD))
+                src_space, src_color = _resolve_source_color_info(ctxt)
+            ctxt.display_list_builder.add_graphics_operation(
+                ctxt, ps.Fill(device_color, ps.WINDING_EVEN_ODD, src_space, src_color))
 
         # Clear current path
         ctxt.gstate.path = ps.Path()
@@ -255,11 +327,14 @@ def rectfill(ctxt: ps.Context, ostack: ps.Stack) -> None:
         else:
             if current_space == "Pattern":
                 device_color = [0.0, 0.0, 0.0]
+                src_space, src_color = None, None
             else:
                 device_color = color_space.convert_to_device_color(ctxt, ctxt.gstate.color, ctxt.gstate.color_space)
                 if not device_color:
                     device_color = [0.0, 0.0, 0.0]
-            ctxt.display_list_builder.add_graphics_operation(ctxt, ps.Fill(device_color, ps.WINDING_NON_ZERO))
+                src_space, src_color = _resolve_source_color_info(ctxt)
+            ctxt.display_list_builder.add_graphics_operation(
+                ctxt, ps.Fill(device_color, ps.WINDING_NON_ZERO, src_space, src_color))
 
         ostack.pop()
         ostack.pop()
@@ -345,7 +420,9 @@ def rectfill(ctxt: ps.Context, ostack: ps.Stack) -> None:
             device_color = color_space.convert_to_device_color(ctxt, ctxt.gstate.color, ctxt.gstate.color_space)
             if device_color is None or len(device_color) == 0:
                 device_color = [0.0, 0.0, 0.0]
-            ctxt.display_list_builder.add_graphics_operation(ctxt, ps.Fill(device_color, ps.WINDING_NON_ZERO))
+            src_space, src_color = _resolve_source_color_info(ctxt)
+            ctxt.display_list_builder.add_graphics_operation(
+                ctxt, ps.Fill(device_color, ps.WINDING_NON_ZERO, src_space, src_color))
 
         ostack.pop()
         return
@@ -482,6 +559,7 @@ def _stroke_rect_path(ctxt: ps.Context, path: ps.Path, matrix_operand: ps.Array 
         ctxt.display_list_builder.add_graphics_operation(ctxt, path)
         device_color = color_space.convert_to_device_color(
             ctxt, ctxt.gstate.color, ctxt.gstate.color_space)
+        src_space, src_color = _resolve_source_color_info(ctxt)
 
         if matrix_operand is not None:
             temp_gstate = copy(ctxt.gstate)
@@ -498,10 +576,10 @@ def _stroke_rect_path(ctxt: ps.Context, path: ps.Path, matrix_operand: ps.Array 
             new_ctm.length = 6
             temp_gstate.CTM = new_ctm
             ctxt.display_list_builder.add_graphics_operation(
-                ctxt, ps.Stroke(device_color, temp_gstate))
+                ctxt, ps.Stroke(device_color, temp_gstate, src_space, src_color))
         else:
             ctxt.display_list_builder.add_graphics_operation(
-                ctxt, ps.Stroke(device_color, ctxt.gstate))
+                ctxt, ps.Stroke(device_color, ctxt.gstate, src_space, src_color))
     else:
         # StrokePathFill — convert stroke to filled outline (bitmap devices)
         saved_path = ctxt.gstate.path
@@ -585,7 +663,9 @@ def stroke(ctxt: ps.Context, ostack: ps.Stack) -> None:
                 ctxt.display_list_builder = DisplayListBuilder(ctxt.display_list)
             ctxt.display_list_builder.add_graphics_operation(ctxt, ctxt.gstate.path)
             device_color = color_space.convert_to_device_color(ctxt, ctxt.gstate.color, ctxt.gstate.color_space)
-            ctxt.display_list_builder.add_graphics_operation(ctxt, ps.Stroke(device_color, ctxt.gstate))
+            src_space, src_color = _resolve_source_color_info(ctxt)
+            ctxt.display_list_builder.add_graphics_operation(
+                ctxt, ps.Stroke(device_color, ctxt.gstate, src_space, src_color))
             ctxt.gstate.path = ps.Path()
             ctxt.gstate.currentpoint = None
         else:

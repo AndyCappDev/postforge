@@ -21,6 +21,7 @@ import traceback
 from .cli_args import get_output_base_name
 from .core import types as ps
 from .core.context_init import create_context, init_system_params
+from .core.dsc_parser import parse_dsc_header
 from .operators import control as ps_control
 from .operators.control import execjob, start
 from .operators.graphics_state import initgraphics
@@ -291,6 +292,8 @@ def _configure_page_device(ctxt: ps.Context, args: argparse.Namespace, inputfile
             ctxt.gstate.page_device[b"MultiPageTiff"] = ps.Bool(True)
         if getattr(args, 'cmyk', False):
             ctxt.gstate.page_device[b"CMYKOutput"] = ps.Bool(True)
+        if getattr(args, 'lossless_images', False):
+            ctxt.gstate.page_device[b"LosslessImages"] = ps.Bool(True)
 
         # Store anti-aliasing mode if --antialias flag was provided
         if args.antialias:
@@ -368,6 +371,14 @@ def _run_batch_jobs(ctxt: ps.Context, args: argparse.Namespace, inputfiles: list
                 length=len(job_base_bytes),
                 is_global=True,
             )
+
+        # Parse DSC header for structured comments (%%Orientation, etc.)
+        # and store relevant info in page_device for device use.
+        if ctxt.gstate.page_device:
+            dsc = parse_dsc_header(inputfile)
+            if dsc.orientation:
+                ctxt.gstate.page_device[b'DSCOrientation'] = \
+                    ps.Name(dsc.orientation.encode('ascii'))
 
         # Reset PageCount — redundant safety net since restore in _cleanup_job
         # reverts page_device to pre-save state (which has PageCount=0),

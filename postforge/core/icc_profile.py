@@ -31,13 +31,16 @@ except ImportError:
     _IMAGECMS_AVAILABLE = False
 
 # Profile cache: sha256(icc_bytes) → CmsProfile
-_profile_cache = {}
+_profile_cache: dict[bytes, Any] = {}
+
+# Raw ICC bytes cache: sha256(icc_bytes) → raw ICC profile bytes (for PDF embedding)
+_icc_bytes_cache: dict[bytes, bytes] = {}
 
 # Transform cache: (profile_hash, in_mode, out_mode) → CmsTransform
-_transform_cache = {}
+_transform_cache: dict[tuple, Any] = {}
 
 # Stream identity → profile hash: id(stream_obj) → profile_hash bytes
-_stream_to_hash = {}
+_stream_to_hash: dict[int, bytes] = {}
 
 # Single-color conversion cache: (profile_hash, quantized_components) → (r, g, b)
 _color_cache = {}
@@ -139,6 +142,9 @@ def register_stream(ctxt: Any, stream_obj: Any) -> bytes | None:
 
     profile_hash = hashlib.sha256(icc_bytes).digest()
 
+    if profile_hash not in _icc_bytes_cache:
+        _icc_bytes_cache[profile_hash] = icc_bytes
+
     if profile_hash not in _profile_cache:
         try:
             profile = ImageCms.getOpenProfile(io.BytesIO(icc_bytes))
@@ -162,6 +168,18 @@ def get_profile_hash(stream_obj: Any) -> bytes | None:
     if stream_obj is None:
         return None
     return _stream_to_hash.get(id(stream_obj))
+
+
+def get_icc_bytes(profile_hash: bytes) -> bytes | None:
+    """Retrieve cached raw ICC profile bytes for PDF embedding.
+
+    Args:
+        profile_hash: SHA-256 hash of the ICC profile bytes.
+
+    Returns:
+        Raw ICC profile bytes, or None if not cached.
+    """
+    return _icc_bytes_cache.get(profile_hash)
 
 
 def get_transform(profile_hash: bytes, n_components: int) -> Any:
@@ -368,6 +386,7 @@ def _apply_decode_luts(raw_data: bytes, luts: list[bytearray], n_components: int
 def clear_caches() -> None:
     """Clear all ICC profile caches."""
     _profile_cache.clear()
+    _icc_bytes_cache.clear()
     _transform_cache.clear()
     _stream_to_hash.clear()
     _color_cache.clear()
