@@ -7,7 +7,7 @@
 <<
   /ShadingType 2
   /ColorSpace /DeviceRGB
-  /Coords [72 700 300 700]
+  /Coords [72 750 300 750]
   /Domain [0 1]
   /Function <<
     /FunctionType 2
@@ -17,18 +17,19 @@
     /N 1
   >>
   /Extend [true true]
+  /BBox [0 740 310 770]
 >> shfill
 
 % Label
 0 setgray
 /Helvetica findfont 10 scalefont setfont
-72 680 moveto (Test 1: Axial red-to-blue, Extend both) show
+72 730 moveto (Test 1: Axial red-to-blue, Extend both + BBox) show
 
 % === Test 2: Axial gradient (black to white), vertical ===
 <<
   /ShadingType 2
   /ColorSpace /DeviceGray
-  /Coords [350 720 350 640]
+  /Coords [350 770 350 690]
   /Domain [0 1]
   /Function <<
     /FunctionType 2
@@ -38,11 +39,11 @@
     /N 1
   >>
   /Extend [false false]
-  /BBox [320 640 540 720]
+  /BBox [320 690 540 770]
 >> shfill
 
 0 setgray
-320 625 moveto (Test 2: Axial gray, BBox clipped) show
+320 675 moveto (Test 2: Axial gray, BBox clipped) show
 
 % === Test 3: Radial gradient (yellow center to green edge) ===
 <<
@@ -58,10 +59,11 @@
     /N 1
   >>
   /Extend [true true]
+  /BBox [66 440 306 660]
 >> shfill
 
 0 setgray
-100 430 moveto (Test 3: Radial yellow-to-green) show
+100 430 moveto (Test 3: Radial yellow-to-green, Extend + BBox) show
 
 % === Test 4: Radial with inner radius (ring gradient) ===
 <<
@@ -80,7 +82,7 @@
 >> shfill
 
 0 setgray
-350 430 moveto (Test 4: Radial ring, no extend) show
+350 415 moveto (Test 4: Radial ring, no extend) show
 
 % === Test 5: Stitching function (3-color gradient: red-green-blue) ===
 <<
