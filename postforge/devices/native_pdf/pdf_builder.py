@@ -765,12 +765,10 @@ class PDFBuilder:
     def _compute_image_signature(self, img_desc: dict) -> bytes:
         """Compute a SHA-256 signature for image XObject deduplication.
 
-        Hashes all fields that define the XObject identity. Excludes
-        mask_color since that is emitted in the content stream, not the
-        XObject itself.
+        Hashes all fields that define the XObject identity including
+        color key mask (which becomes a /Mask entry on the XObject).
         """
         h = hashlib.sha256()
-        # Hash sample data separately (may be large)
         h.update(hashlib.sha256(img_desc['sample_data']).digest())
         h.update(str(img_desc['width']).encode())
         h.update(str(img_desc['height']).encode())
@@ -789,6 +787,16 @@ class PDFBuilder:
         decode_array = img_desc.get('decode_array')
         h.update(str(tuple(decode_array) if decode_array else None).encode())
         h.update(str(img_desc.get('interpolate', False)).encode())
+        color_key_mask = img_desc.get('color_key_mask')
+        h.update(str(tuple(color_key_mask) if color_key_mask else None).encode())
+        stencil_mask = img_desc.get('stencil_mask')
+        if stencil_mask is not None:
+            h.update(hashlib.sha256(stencil_mask).digest())
+            h.update(str(img_desc.get('stencil_mask_width', 0)).encode())
+            h.update(str(img_desc.get('stencil_mask_height', 0)).encode())
+            h.update(str(img_desc.get('stencil_mask_polarity', True)).encode())
+        else:
+            h.update(b'no_stencil')
         return h.digest()
 
     def _try_dct_encode(self, sample_data: bytes, width: int,
@@ -833,8 +841,6 @@ class PDFBuilder:
                               img_desc: dict) -> object | None:
         """Build a PDF Image XObject from an image description dict.
 
-        Deduplicates identical images across pages via signature caching.
-
         Args:
             writer: PdfWriter to add the XObject to.
             img_desc: Image description dict from content_stream.
@@ -853,9 +859,11 @@ class PDFBuilder:
 
         compressed_flate = zlib.compress(sample_data)
         dct_data = None
+        color_key_mask = img_desc.get('color_key_mask')
 
         if (not self._lossless_images
                 and not img_desc['is_mask']
+                and color_key_mask is None
                 and img_desc.get('bpc', 1) == 8):
             ncomp = _get_ncomp(img_desc)
             if ncomp in (1, 3, 4):
@@ -907,12 +915,70 @@ class PDFBuilder:
                 img_stream[NameObject('/Decode')] = ArrayObject(
                     [_pdf_number(v) for v in decode_array])
 
+            # Type 4 color key mask → PDF /Mask array
+            if color_key_mask is not None:
+                img_stream[NameObject('/Mask')] = ArrayObject(
+                    [NumberObject(v) for v in color_key_mask])
+
+            # Type 3 stencil mask → PDF /Mask with Image XObject ref
+            stencil_mask = img_desc.get('stencil_mask')
+            if stencil_mask is not None:
+                mask_ref = self._build_stencil_mask_xobject(
+                    writer, img_desc)
+                if mask_ref is not None:
+                    img_stream[NameObject('/Mask')] = mask_ref
+
         if img_desc.get('interpolate'):
             img_stream[NameObject('/Interpolate')] = BooleanObject(True)
 
         ref = writer._add_object(img_stream)
         self._image_xobj_refs[sig] = ref
         return ref
+
+    @staticmethod
+    def _build_stencil_mask_xobject(writer: PdfWriter,
+                                     img_desc: dict) -> object | None:
+        """Build a 1-bit mask Image XObject for Type 3 stencil masking.
+
+        The mask XObject is referenced by the base image's /Mask entry.
+        PDF stencil mask semantics: value 0 = paint base, value 1 = mask out.
+
+        Args:
+            writer: PdfWriter to add the XObject to.
+            img_desc: Image description dict containing stencil_mask fields.
+
+        Returns:
+            Indirect reference to the mask XObject, or None.
+        """
+        mask_data = img_desc.get('stencil_mask')
+        if mask_data is None:
+            return None
+
+        mask_width = img_desc.get('stencil_mask_width', img_desc['width'])
+        mask_height = img_desc.get('stencil_mask_height', img_desc['height'])
+        polarity = img_desc.get('stencil_mask_polarity', True)
+
+        compressed = zlib.compress(mask_data)
+        mask_stream = StreamObject()
+        mask_stream._data = compressed
+        mask_stream[NameObject('/Length')] = NumberObject(len(compressed))
+        mask_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
+        mask_stream[NameObject('/Type')] = NameObject('/XObject')
+        mask_stream[NameObject('/Subtype')] = NameObject('/Image')
+        mask_stream[NameObject('/Width')] = NumberObject(mask_width)
+        mask_stream[NameObject('/Height')] = NumberObject(mask_height)
+        mask_stream[NameObject('/BitsPerComponent')] = NumberObject(1)
+        mask_stream[NameObject('/ImageMask')] = BooleanObject(True)
+
+        # polarity=True (PS Decode [0 1]): bit=0 → paint base image
+        #   Matches PDF default (value 0 = paint) — no Decode needed
+        # polarity=False (PS Decode [1 0]): bit=1 → paint base image
+        #   Need Decode [1 0] to invert
+        if not polarity:
+            mask_stream[NameObject('/Decode')] = ArrayObject([
+                NumberObject(1), NumberObject(0)])
+
+        return writer._add_object(mask_stream)
 
     @staticmethod
     def _is_cff_font(font_dict: ps.Dict) -> bool:

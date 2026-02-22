@@ -1741,6 +1741,7 @@ def _emit_image_xobject(lines: list[bytes], image: ps.ImageElement,
     # Convert 12-bit to 8-bit (PDF doesn't support 12-bit BPC)
     sample_data = image.sample_data
     ncomp = image.components
+    original_bpc = bpc
     if bpc == 12 and not is_mask:
         sample_data = _convert_12bit_to_8bit(sample_data, width, height, ncomp)
         bpc = 8
@@ -1782,6 +1783,37 @@ def _emit_image_xobject(lines: list[bytes], image: ps.ImageElement,
         'mask_polarity': getattr(image, 'polarity', None) if is_mask else None,
         'mask_color': tuple(image.color) if is_mask else None,
     }
+
+    # Type 3 stencil mask data
+    stencil_mask = getattr(image, 'stencil_mask', None)
+    if stencil_mask is not None and not is_mask:
+        desc['stencil_mask'] = stencil_mask
+        desc['stencil_mask_width'] = getattr(
+            image, 'stencil_mask_width', width)
+        desc['stencil_mask_height'] = getattr(
+            image, 'stencil_mask_height', height)
+        desc['stencil_mask_polarity'] = getattr(
+            image, 'stencil_mask_polarity', True)
+    else:
+        desc['stencil_mask'] = None
+
+    # Type 4 color key mask (MaskColor) → PDF /Mask array
+    raw_mask = getattr(image, 'mask_color', None)
+    if raw_mask is not None and not is_mask:
+        mask_vals = [int(v) for v in raw_mask]
+        # Scale mask values if 12-bit was converted to 8-bit
+        if original_bpc == 12 and bpc == 8:
+            mask_vals = [(v * 255 + 2047) // 4095 for v in mask_vals]
+        # PDF /Mask is always 2n values (ranges).  Convert exact match
+        # (n values) to min=max range pairs.
+        if len(mask_vals) == ncomp:
+            pdf_mask = []
+            for v in mask_vals:
+                pdf_mask.extend([v, v])
+            mask_vals = pdf_mask
+        desc['color_key_mask'] = mask_vals
+    else:
+        desc['color_key_mask'] = None
 
     # Decode array — skip if ICC-converted (decode already applied)
     if is_mask:
