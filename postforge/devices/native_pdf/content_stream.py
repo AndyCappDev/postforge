@@ -113,7 +113,7 @@ def generate_content_stream(display_list: ps.DisplayList,
     image_defs: list[tuple[str, dict]] = []
     image_counter = 0
     gs = _GState()
-    has_active_clip = False
+    clip_depth = 0  # Number of nested q/W n groups for clipping
     current_path: ps.Path | None = None
     current_path_lines: list[bytes] = []
     # Text batch: consecutive same-font TextObjs merged into one BT/ET
@@ -169,25 +169,26 @@ def generate_content_stream(display_list: ps.DisplayList,
             _flush_text_batch()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
-            # ClipElements represent ABSOLUTE clip state, not incremental.
-            # Close previous clip group before starting a new one.
-            if has_active_clip:
-                lines.append(b'Q')
-                gs.invalidate()
-                has_active_clip = False
 
             if item.is_initclip:
-                # initclip resets to page bounds — just Q was enough
-                pass
+                # initclip resets to page bounds — pop ALL nested clip groups
+                while clip_depth > 0:
+                    lines.append(b'Q')
+                    clip_depth -= 1
+                gs.invalidate()
             elif item.path:
+                # Nest within existing clip group(s) — PDF W operator
+                # intersects with the current clipping path, so nesting
+                # q/W n inside an outer q/W n produces the correct
+                # intersection, matching PostScript's clip semantics.
                 lines.append(b'q')
-                path_lines = _emit_path(item.path)
+                clip_depth += 1
+                path_lines = _emit_path(item.path, close_subpaths=True)
                 lines.extend(path_lines)
                 if item.winding_rule == ps.WINDING_EVEN_ODD:
                     lines.append(b'W* n')
                 else:
                     lines.append(b'W n')
-                has_active_clip = True
                 gs.invalidate()
 
         elif isinstance(item, ps.TextObj):
@@ -301,9 +302,10 @@ def generate_content_stream(display_list: ps.DisplayList,
     # Close any open anisotropic stroke batch
     _close_aniso_batch(lines, gs)
 
-    # Close any remaining clip group
-    if has_active_clip:
+    # Close any remaining clip groups
+    while clip_depth > 0:
         lines.append(b'Q')
+        clip_depth -= 1
 
     return b'\n'.join(lines), shading_defs, image_defs
 
@@ -316,11 +318,17 @@ def _close_aniso_batch(lines: list[bytes], gs: _GState) -> None:
         gs.invalidate()
 
 
-def _emit_path(path: ps.Path) -> list[bytes]:
+def _emit_path(path: ps.Path, close_subpaths: bool = False) -> list[bytes]:
     """Convert a Path to PDF path operators.
 
     Returns list of operator lines (not yet joined — they get prepended
     to fill/stroke operators).
+
+    Args:
+        path: PostScript Path to convert.
+        close_subpaths: If True, ensure every subpath ends with ``h``
+            (closepath).  Used for clip paths, where the PLRM requires
+            implicit closing of all open subpaths.
 
     Optimizations:
     - Detects axis-aligned rectangles (moveto + 3 lineto + closepath) and
@@ -396,6 +404,9 @@ def _emit_path(path: ps.Path) -> list[bytes]:
                 cur_x, cur_y = x3, y3
             elif isinstance(elem, ps.ClosePath):
                 ops.append(b'h')
+        # Ensure subpath is closed when requested (clip paths per PLRM)
+        if close_subpaths and elems and not isinstance(elems[-1], ps.ClosePath):
+            ops.append(b'h')
     return ops
 
 
