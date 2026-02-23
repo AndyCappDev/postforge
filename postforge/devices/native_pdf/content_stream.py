@@ -1032,12 +1032,15 @@ def _emit_type3_text_run(lines: list[bytes],
 
     _emit_text_color(lines, color, gs)
 
+    # Single BT/Tf block for the entire batch — all entries share the
+    # same Type 3 font.  Each baseline group gets its own Tm.
+    lines.append(b'BT')
+    lines.append(f'{t3_font.resource_name} 1 Tf'.encode())
+
     i = 0
     while i < len(batch):
         char_code, x, y, width_x = batch[i]
 
-        lines.append(b'BT')
-        lines.append(f'{t3_font.resource_name} 1 Tf'.encode())
         lines.append(
             f'1 0 0 1 {_cfmt(x)} {_cfmt(y)} Tm'.encode())
 
@@ -1067,8 +1070,9 @@ def _emit_type3_text_run(lines: list[bytes],
         else:
             lines.append(f'[{" ".join(tj_parts)}] TJ'.encode())
 
-        lines.append(b'ET')
         i = j
+
+    lines.append(b'ET')
 
 
 def _emit_stroke(lines: list[bytes], path_lines: list[bytes],
@@ -1259,12 +1263,13 @@ def _resolve_text_font(text_obj: ps.TextObj, font_tracker: FontTracker,
 def _emit_text_batch(lines: list[bytes], batch: list[ps.TextObj],
                      font_tracker: FontTracker, embedded_fonts: dict,
                      gs: _GState) -> None:
-    """Emit a batch of same-font TextObjs as separate BT/ET blocks per line.
+    """Emit a batch of same-font TextObjs as a single BT/ET block.
 
-    Each logical text line (run of same-baseline entries) gets its own BT/ET
-    block so that PDF viewers can determine reading direction from the Tm
-    matrix.  Within a run, consecutive characters are merged into TJ arrays
-    with kern values.
+    All entries in the batch share the same font, so one Tf suffices.
+    Each logical text line (run of same-baseline entries) gets its own Tm.
+    Within a run, consecutive characters are merged into TJ arrays with
+    kern values.  Color operators are emitted inside BT/ET (valid per PDF
+    spec) and only when the color changes.
     """
     if not batch:
         return
@@ -1287,11 +1292,18 @@ def _emit_text_batch(lines: list[bytes], batch: list[ps.TextObj],
     # The perpendicular direction to the advance vector (tm_a, tm_b)
     # is (-tm_b, tm_a), so the perpendicular component of a position
     # difference (dx, dy) is (-tm_b*dx + tm_a*dy) / |advance|.
+
+    # Single BT/Tf block for the entire batch — Tf is the same for all
+    # entries since they share the same font.  Color operators (rg, g, k)
+    # are valid inside BT/ET per PDF spec, emitted per baseline group.
+    lines.append(b'BT')
+    lines.append(f'{pdf_name} 1 Tf'.encode())
+
     i = 0
     while i < len(batch):
         text_obj = batch[i]
 
-        # Set text color (before BT for maximum viewer compatibility)
+        # Set text color inside BT (valid per PDF spec)
         _emit_text_color(lines, text_obj.color, gs)
 
         tm_a, tm_b, tm_c, tm_d = _compute_text_matrix(text_obj)
@@ -1345,14 +1357,10 @@ def _emit_text_batch(lines: list[bytes], batch: list[ps.TextObj],
             run.append((next_obj, next_obj.start_x, next_obj.start_y))
             j += 1
 
-        # Emit this run as its own BT/ET block so the PDF viewer can
-        # determine text direction from the Tm matrix independently
-        # for each logical text line.
-        lines.append(b'BT')
-        lines.append(f'{pdf_name} 1 Tf'.encode())
+        # Emit Tm + text for this baseline group
         lines.append(
             f'{tm_key[0]} {tm_key[1]} {tm_key[2]} {tm_key[3]} '
-            f'{_fmt(x)} {_fmt(y)} Tm'.encode())
+            f'{_cfmt(x)} {_cfmt(y)} Tm'.encode())
 
         if len(run) == 1:
             # Single entry — simple Tj
@@ -1391,16 +1399,16 @@ def _emit_text_batch(lines: list[bytes], batch: list[ps.TextObj],
                             tj_parts = []
                         lines.append(
                             f'{tm_key[0]} {tm_key[1]} {tm_key[2]} {tm_key[3]} '
-                            f'{_fmt(obj_x)} {_fmt(obj_y)} Tm'.encode())
+                            f'{_cfmt(obj_x)} {_cfmt(obj_y)} Tm'.encode())
 
                 text_hex = tobj.text.hex().upper()
                 tj_parts.append(f'<{text_hex}>')
             if tj_parts:
                 lines.append(f'[{" ".join(tj_parts)}] TJ'.encode())
 
-        lines.append(b'ET')
-
         i = j
+
+    lines.append(b'ET')
 
 
 def _compute_invisible_text_params(
@@ -1538,7 +1546,7 @@ def _flush_invisible_batch(lines: list[bytes],
     lines.append(b'/PFCour 1 Tf')
     lines.append(
         f'{_fmt(combined_tm_a)} {_fmt(tm_b)} {_fmt(tm_c)} {_fmt(tm_d)} '
-        f'{_fmt(first_x)} {_fmt(y)} Tm'.encode())
+        f'{_cfmt(first_x)} {_cfmt(y)} Tm'.encode())
     text_hex = bytes(combined_text).hex().upper()
     lines.append(f'<{text_hex}> Tj'.encode())
     lines.append(b'0 Tr')

@@ -423,9 +423,13 @@ class PDFBuilder:
             best_subrs: dict) -> dict[int, object]:
         """Build shared FontFile + FontDescriptor for re-encoded Type 1 fonts.
 
-        Groups Type 1 fonts by cs_id (CharStrings identity). For groups with
-        2+ members (same font, different Encoding), builds ONE FontFile stream
-        and ONE FontDescriptor shared by all instances.
+        Groups Type 1 fonts by CharStrings content fingerprint (sorted glyph
+        names). DVIPS re-encodings create new CharStrings dict objects per
+        instance, so Python id() differs even though the content is identical.
+        Content-based grouping correctly identifies same-font instances.
+
+        For groups with 2+ members, builds ONE FontFile stream and ONE
+        FontDescriptor shared by all instances.
 
         Args:
             writer: PdfWriter to add objects to.
@@ -435,8 +439,8 @@ class PDFBuilder:
         Returns:
             Dict mapping cs_id -> FontDescriptor indirect reference.
         """
-        # Group Type 1 font keys by cs_id
-        cs_groups: dict[int, list[tuple[tuple, FontUsage]]] = {}
+        # Group Type 1 font keys by content fingerprint
+        fp_groups: dict[tuple, list[tuple[tuple, FontUsage]]] = {}
         for font_key, usage in font_tracker.get_fonts_in_order():
             if FontTracker.is_cid_font(font_key):
                 continue
@@ -444,14 +448,14 @@ class PDFBuilder:
                 continue
             if self._is_type42_font(usage.font_dict):
                 continue
-            cs_id = font_key[0]
-            if cs_id not in cs_groups:
-                cs_groups[cs_id] = []
-            cs_groups[cs_id].append((font_key, usage))
+            fp = _charstrings_fingerprint(usage.font_dict)
+            if fp not in fp_groups:
+                fp_groups[fp] = []
+            fp_groups[fp].append((font_key, usage))
 
         shared_descriptors: dict[int, object] = {}
 
-        for cs_id, members in cs_groups.items():
+        for fp, members in fp_groups.items():
             if len(members) < 2:
                 continue  # Single-instance font, no sharing needed
 
@@ -462,7 +466,14 @@ class PDFBuilder:
             font_name_str = (font_name.decode('latin-1')
                              if isinstance(font_name, bytes) else str(font_name))
 
-            subrs_override = best_subrs.get(cs_id)
+            # Find best Subrs across all cs_ids in this content group
+            subrs_override = None
+            for font_key, _ in members:
+                candidate = best_subrs.get(font_key[0])
+                if candidate is not None:
+                    if (subrs_override is None
+                            or len(candidate.val) > len(subrs_override.val)):
+                        subrs_override = candidate
 
             # Merge all instances' glyph sets for a combined subset
             merged_glyphs: set[int] = set()
@@ -517,7 +528,10 @@ class PDFBuilder:
             font_descriptor[NameObject('/FontFile')] = font_file_ref
             font_descriptor_ref = writer._add_object(font_descriptor)
 
-            shared_descriptors[cs_id] = font_descriptor_ref
+            # Map ALL member cs_ids to this shared descriptor so lookups
+            # via font_key[0] find it regardless of which instance is queried
+            for font_key, _ in members:
+                shared_descriptors[font_key[0]] = font_descriptor_ref
 
         return shared_descriptors
 
@@ -1322,6 +1336,39 @@ class PDFBuilder:
 
 
 # --- Helper functions (shared with pdf_injector patterns) ---
+
+
+def _charstrings_fingerprint(font_dict: ps.Dict) -> tuple:
+    """Compute a content-based fingerprint for a font's CharStrings.
+
+    DVIPS re-encoding creates new CharStrings dict objects per font instance,
+    so Python id() differs even though the glyph programs are identical.
+    Additionally, DVIPS subsets CharStrings per instance (only including
+    needed glyphs), so the glyph name set varies even for the same base font.
+
+    Uses (FontName, FontBBox) as a stable fingerprint — both are constant
+    across all subsets of the same font program.  This correctly groups
+    same-font instances while keeping genuinely different fonts separate
+    (e.g., CMR10 in the main document vs CMR10 in an embedded EPS from a
+    different TeX installation).
+
+    Args:
+        font_dict: PostScript font dictionary.
+
+    Returns:
+        Tuple usable as a dict key, or empty tuple if identification fails.
+    """
+    font_name = font_dict.val.get(b'FontName')
+    if not font_name:
+        return ()
+    bbox = font_dict.val.get(b'FontBBox')
+    if bbox and bbox.TYPE in ps.ARRAY_TYPES and bbox.length >= 4:
+        bbox_tuple = tuple(
+            bbox.val[bbox.start + i].val for i in range(4))
+    else:
+        bbox_tuple = ()
+    return (font_name.val, bbox_tuple)
+
 
 def _get_font_bbox(font_dict: ps.Dict) -> tuple[float, float, float, float]:
     """Extract FontBBox from a PostScript font dictionary."""
