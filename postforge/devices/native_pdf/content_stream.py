@@ -2472,10 +2472,18 @@ def _emit_function_shading(lines: list[bytes],
     cm_tx = tx1 * a2 + ty1 * c2 + tx2
     cm_ty = tx1 * b2 + ty1 * d2 + ty2
 
+    # The rasterization stores domain y_min at pixel row 0 (image top).
+    # PDF images render row 0 at the top of the unit square (y=1), so
+    # unit (0,0) — image bottom — would land at the domain-bottom position,
+    # placing domain-bottom at the visual top after the global Y-flip.
+    # Fix by negating the Y basis and shifting the origin so the image
+    # top (row 0, domain y_min) lands at the domain-bottom position.
+    cm_c_h = cm_c * h
+    cm_d_h = cm_d * h
     lines.append(b'q')
     lines.append(
-        f'{_fmt(cm_a * w)} {_fmt(cm_b * w)} {_fmt(cm_c * h)} {_fmt(cm_d * h)} '
-        f'{_fmt(cm_tx)} {_fmt(cm_ty)} cm'.encode())
+        f'{_fmt(cm_a * w)} {_fmt(cm_b * w)} {_fmt(-cm_c_h)} {_fmt(-cm_d_h)} '
+        f'{_fmt(cm_tx + cm_c_h)} {_fmt(cm_ty + cm_d_h)} cm'.encode())
 
     lines.append(b'BI')
     lines.append(f'/W {w}'.encode())
