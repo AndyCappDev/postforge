@@ -475,13 +475,44 @@ class PDFBuilder:
                             or len(candidate.val) > len(subrs_override.val)):
                         subrs_override = candidate
 
-            # Merge all instances' glyph sets for a combined subset
-            merged_glyphs: set[int] = set()
+            # Merge CharStrings and resolve glyph names from all instances.
+            # DVIPS subsets CharStrings per re-encoded instance and each has
+            # its own Encoding, so we must:
+            #  1. Resolve each instance's char codes through its OWN Encoding
+            #  2. Collect all needed glyph names across all instances
+            #  3. Merge CharStrings entries from all instances so the
+            #     representative has glyph programs for every needed name
+            merged_names: set[bytes] = set()
             for _, member_usage in members:
-                merged_glyphs.update(member_usage.glyphs_used)
+                member_dict = member_usage.font_dict
+                member_enc = member_dict.val.get(b'Encoding')
+                for code in member_usage.glyphs_used:
+                    name = self.font_embedder._get_glyph_name_for_code(
+                        member_enc, code)
+                    if name:
+                        merged_names.add(name)
+
+            # Add missing CharStrings entries from other instances to the
+            # representative so the font program contains all needed glyphs
+            rep_cs = font_dict.val.get(b'CharStrings')
+            saved_cs = None
+            if rep_cs and rep_cs.TYPE == ps.T_DICT:
+                saved_cs = dict(rep_cs.val)  # snapshot for restore
+                for _, member_usage in members:
+                    member_cs = member_usage.font_dict.val.get(
+                        b'CharStrings')
+                    if member_cs and member_cs.TYPE == ps.T_DICT:
+                        for name in merged_names:
+                            if name not in rep_cs.val and name in member_cs.val:
+                                rep_cs.val[name] = member_cs.val[name]
 
             result = self.font_embedder.get_font_file_data(
-                font_dict, font_name_str, merged_glyphs, subrs_override)
+                font_dict, font_name_str, None, subrs_override,
+                needed_glyph_names=merged_names)
+
+            # Restore original CharStrings
+            if saved_cs is not None:
+                rep_cs.val = saved_cs
             if result is None:
                 continue  # Fall through to per-instance embedding
 

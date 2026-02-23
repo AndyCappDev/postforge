@@ -80,7 +80,9 @@ class FontEmbedder:
     def get_font_file_data(self, font_dict: ps.Dict,
                            unique_font_name: str | bytes | None = None,
                            glyphs_used: set[int] | None = None,
-                           subrs_override: object = None) -> tuple[bytes, int, int, int] | None:
+                           subrs_override: object = None,
+                           needed_glyph_names: set[bytes] | None = None,
+                           ) -> tuple[bytes, int, int, int] | None:
         """
         Reconstruct Type 1 font file data from font dictionary.
 
@@ -95,6 +97,10 @@ class FontEmbedder:
                          .notdef) are included, reducing font size.
             subrs_override: Optional Subrs array to use instead of the font's own.
                             Used when re-encoded font instances have truncated Subrs.
+            needed_glyph_names: Optional pre-computed set of glyph name bytes.
+                         When provided, bypasses Encoding-based resolution from
+                         glyphs_used.  Used for shared FontFiles where glyph
+                         names are resolved through each instance's own Encoding.
 
         Returns:
             tuple: (font_data, length1, length2, length3) where:
@@ -111,7 +117,9 @@ class FontEmbedder:
         try:
             # Build the three sections of a Type 1 font
             clear_text = self._build_clear_text(font_dict, unique_font_name)
-            encrypted = self._build_encrypted_section(font_dict, unique_font_name, glyphs_used, subrs_override)
+            encrypted = self._build_encrypted_section(
+                font_dict, unique_font_name, glyphs_used, subrs_override,
+                needed_glyph_names)
             footer = self._build_footer()
 
             font_data = clear_text + encrypted + footer
@@ -184,13 +192,16 @@ class FontEmbedder:
     def _build_encrypted_section(self, font_dict: ps.Dict,
                                    unique_font_name: str | bytes | None = None,
                                    glyphs_used: set[int] | None = None,
-                                   subrs_override: object = None) -> bytes:
+                                   subrs_override: object = None,
+                                   needed_glyph_names: set[bytes] | None = None,
+                                   ) -> bytes:
         """Build and encrypt the Private dict and CharStrings."""
         # Note: unique_font_name is not used here - the eexec section uses
         # "dup /FontName get exch definefont" which reads from the dict
         # built in the clear text section.
         # Build the plaintext content that goes inside eexec
-        plaintext = self._build_private_and_charstrings(font_dict, glyphs_used, subrs_override)
+        plaintext = self._build_private_and_charstrings(
+            font_dict, glyphs_used, subrs_override, needed_glyph_names)
 
         # Encrypt with eexec
         encrypted = self._eexec_encrypt(plaintext)
@@ -202,7 +213,9 @@ class FontEmbedder:
 
     def _build_private_and_charstrings(self, font_dict: ps.Dict,
                                         glyphs_used: set[int] | None = None,
-                                        subrs_override: object = None) -> bytes:
+                                        subrs_override: object = None,
+                                        needed_glyph_names: set[bytes] | None = None,
+                                        ) -> bytes:
         """Build the Private dict and CharStrings as plaintext (to be encrypted)."""
         lines = []
 
@@ -253,7 +266,12 @@ class FontEmbedder:
         if char_strings and char_strings.TYPE == ps.T_DICT:
             # Determine which glyph names to include (subsetting)
             needed_names = None
-            if glyphs_used is not None:
+            if needed_glyph_names is not None:
+                # Pre-computed glyph names (shared FontFile path)
+                needed_names = set(needed_glyph_names)
+                needed_names.add(b'.notdef')
+                self._resolve_seac_dependencies(font_dict, needed_names)
+            elif glyphs_used is not None:
                 needed_names = self._get_needed_glyph_names(font_dict, glyphs_used)
 
             # Count actual entries that will be emitted (intersection of
