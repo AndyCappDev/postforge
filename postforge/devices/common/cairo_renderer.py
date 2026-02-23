@@ -8,7 +8,7 @@ from __future__ import annotations
 Shared Cairo Rendering Module
 
 This module provides the main display list dispatcher and text/glyph rendering
-logic used by multiple output devices (PNG, PDF, SVG, Qt).
+logic used by the Cairo-based output devices (PNG, SVG, TIFF, Qt).
 
 Architecture:
 - render_display_list() is the main entry point for device implementations

@@ -45,7 +45,7 @@
 | Types 2-5 | **Accepted, not processed** | Dictionary validation passes but no halftone-specific rendering behavior. Falls through to device defaults. |
 | Types 6, 10, 16 | **Accepted, not processed** | Same as above |
 
-**Practical impact:** Low. PostForge outputs to Cairo-backed devices (PNG, PDF, SVG) which handle their own halftoning.
+**Practical impact:** Low. PostForge's raster devices (PNG, SVG, TIFF) use Cairo which handles its own halftoning, and the PDF device generates vector output directly.
 
 ### Transfer Functions
 

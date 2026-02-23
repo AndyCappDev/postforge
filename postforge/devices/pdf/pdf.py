@@ -7,261 +7,297 @@ from __future__ import annotations
 """
 PDF Output Device
 
-This module renders PostScript display lists to PDF files using Cairo's PDFSurface.
-It uses the common Cairo renderer, applying a transformation matrix to convert
-from device coordinates to PDF coordinates (points, 72 DPI).
+Generates PDF content streams directly from the PostScript display list,
+preserving original color space information (CMYK, Gray, RGB).
 
-Multi-Page Support:
-    PDF output creates a single file with all pages. The PDFDocumentState class
-    maintains the Cairo surface across showpage calls. The document is finalized
-    when finalize_document() is called (at job end).
-
-Font Embedding Architecture:
-- Standard 14 fonts: Rendered by Cairo, guaranteed available in all PDF viewers
-- Non-Standard fonts: Deferred during Cairo rendering, then written directly to PDF
-  using pypdf with embedded Type 1 font data reconstructed from PostScript font
-  dictionaries. This bypasses Cairo's font substitution to ensure correct rendering.
+The device accumulates pages and assembles the final PDF at document end,
+with Type 1, CID, CFF, and Type 42 font embedding.
 """
 
+import math
 import os
 
-import cairo
-
 from ...core import types as ps
-from ..common.cairo_renderer import render_display_list
 from .font_tracker import FontTracker
-from .pdf_injector import is_pypdf_available
+from .font_embedder import FontEmbedder
+from .cff_font_embedder import CFFEmbedder
+from .content_stream import generate_content_stream
+from .pdf_builder import PDFBuilder, PageData
 
 
 class PDFDocumentState:
-    """
-    Maintains state for a multi-page PDF document.
+    """Maintains state for a multi-page PDF document."""
 
-    This class is stored in the page device dictionary and persists across
-    showpage calls. It accumulates font usage and deferred text objects
-    across all pages for final injection at document end.
-    """
-
-    def __init__(self, file_path: str, width_pdf: float, height_pdf: float) -> None:
-        """
-        Initialize PDF document state.
-
-        Args:
-            file_path: Output file path
-            width_pdf: Page width in PDF points
-            height_pdf: Page height in PDF points
-        """
+    def __init__(self, file_path: str) -> None:
         self.file_path = file_path
-        self.width_pdf = width_pdf
-        self.height_pdf = height_pdf
-
-        # Create PDF surface
-        self.surface = cairo.PDFSurface(file_path, width_pdf, height_pdf)
-        self.context = cairo.Context(self.surface)
-
-        # Font tracking across all pages
         self.font_tracker = FontTracker()
-
-        # Deferred text objects from all pages (for font embedding)
-        self.all_deferred_text_objs = []
-
-        # Page counter
+        self.pages: list[PageData] = []
         self.pages_written = 0
-
-        # Scaling factors (set per page, should be consistent)
-        self.scale_x = None
-        self.scale_y = None
-
-    def start_new_page(self, width_pdf: float, height_pdf: float, scale_x: float, scale_y: float) -> None:
-        """
-        Start a new page in the document.
-
-        For pages after the first, this calls show_page() on the surface
-        to advance to a new page.
-
-        Args:
-            width_pdf: Page width in PDF points
-            height_pdf: Page height in PDF points
-            scale_x: Device to PDF scale factor (X)
-            scale_y: Device to PDF scale factor (Y)
-        """
-        if self.pages_written > 0:
-            # Advance to next page
-            self.surface.show_page()
-
-            # Update page size if different
-            if width_pdf != self.width_pdf or height_pdf != self.height_pdf:
-                self.surface.set_size(width_pdf, height_pdf)
-                self.width_pdf = width_pdf
-                self.height_pdf = height_pdf
-
-        # Store scaling factors
-        self.scale_x = scale_x
-        self.scale_y = scale_y
-
-        # Reset context transformation for new page
-        self.context.set_matrix(cairo.Matrix(scale_x, 0, 0, scale_y, 0, 0))
-
-    def finish_page(self) -> None:
-        """Mark the current page as complete."""
-        self.pages_written += 1
+        self.lossless_images = False
+        # Document-level Type 3 font accumulation (shared across pages)
+        self.type3_fonts: dict = {}
+        self.type3_font_counter: int = 0
 
     def finalize(self) -> None:
-        """
-        Finalize the PDF document.
+        """Assemble all pages into final PDF with embedded fonts."""
+        if not self.pages:
+            return
 
-        This closes the Cairo surface, injects embedded fonts,
-        and compresses all streams to minimize file size.
-        """
-        # Finalize the last page (show_page is normally called by the NEXT
-        # page's start_new_page, but the last page has no successor)
-        if self.pages_written > 0:
-            self.surface.show_page()
+        try:
+            builder = PDFBuilder(lossless_images=self.lossless_images)
 
-        # Finish the Cairo surface
-        self.surface.finish()
+            # Pre-compute glyph widths for TJ kern calculations
+            font_widths_cache: dict[tuple, dict[int, int]] = {}
+            font_embedder = FontEmbedder()
+            cff_embedder = CFFEmbedder()
+            for font_key, usage in self.font_tracker.get_fonts_in_order():
+                if not FontTracker.is_cid_font(font_key):
+                    if builder._is_cff_font(usage.font_dict):
+                        widths = cff_embedder.get_glyph_widths(
+                            usage.font_dict, usage.glyphs_used)
+                    elif builder._is_type42_font(usage.font_dict):
+                        widths = builder._get_type42_glyph_widths(
+                            usage.font_dict, usage.glyphs_used)
+                    else:
+                        widths = font_embedder.get_glyph_widths(
+                            usage.font_dict, usage.glyphs_used)
+                    if widths:
+                        font_widths_cache[font_key] = widths
 
-        # Inject fonts if needed
-        if self.all_deferred_text_objs and is_pypdf_available():
-            from .pdf_injector import PDFInjector
-            pdf_injector = PDFInjector()
-            pdf_injector.inject_text_and_fonts(
-                self.file_path,
-                self.all_deferred_text_objs,
-                self.font_tracker,
-                self.scale_x,
-                self.scale_y,
-                self.height_pdf
-            )
-        elif is_pypdf_available():
-            # No font injection needed, but still compress Cairo's
-            # uncompressed content streams to reduce file size
-            _compress_pdf(self.file_path)
+            # Build and write PDF
+            builder.build_pdf(self.pages, self.font_tracker, self.file_path,
+                              self.type3_fonts)
+            print(f"   Output: {self.file_path} ({self.pages_written} page(s))")
+        except Exception as e:
+            import traceback
+            print(f"[pdf] Failed to build PDF: {e}")
+            traceback.print_exc()
 
 
-# Key used to store PDF state in page device
+# Key used to store state in page device
 PDF_STATE_KEY = b'_PDFDocumentState'
 
 
 def showpage(ctxt: ps.Context, pd: dict) -> None:
-    """
-    Render the current display list to the PDF document.
+    """Render the current display list to the PDF document.
 
     Args:
-        ctxt: PostScript context containing the display list
-        pd: Page device dictionary with rendering parameters
+        ctxt: PostScript context containing the display list.
+        pd: Page device dictionary with rendering parameters.
     """
-    # Compute transformation from device space to PDF space
-    # PDF uses points (72 DPI), device may use different resolution
     hw_res_x = pd[b"HWResolution"].get(ps.Int(0))[1].val
     hw_res_y = pd[b"HWResolution"].get(ps.Int(1))[1].val
 
-    # Scale factors: device pixels to PDF points
-    scale_x = 72.0 / hw_res_x
-    scale_y = 72.0 / hw_res_y
-
-    min_line_width = pd[b"LineWidthMin"].val
-
-    # Get page dimensions in device space
-    WIDTH_device = pd[b"MediaSize"].get(ps.Int(0))[1].val
-    HEIGHT_device = pd[b"MediaSize"].get(ps.Int(1))[1].val
+    # Page dimensions in device space
+    width_device = pd[b"MediaSize"].get(ps.Int(0))[1].val
+    height_device = pd[b"MediaSize"].get(ps.Int(1))[1].val
 
     # Convert to PDF points
-    WIDTH_pdf = WIDTH_device * scale_x
-    HEIGHT_pdf = HEIGHT_device * scale_y
+    scale_x = 72.0 / hw_res_x
+    scale_y = 72.0 / hw_res_y
+    width_pts = width_device * scale_x
+    height_pts = height_device * scale_y
 
-    # Get or create PDF document state
-    pdf_state = pd.get(PDF_STATE_KEY)
-
-    if pdf_state is None:
-        # First page - create new document
-        # Get base name from page device, default to "page"
+    # Get or create document state
+    state = pd.get(PDF_STATE_KEY)
+    if state is None:
         if b"OutputBaseName" in pd:
             base_name = pd[b"OutputBaseName"].python_string()
         else:
             base_name = "page"
 
-        # Get output directory from page device, default to OUTPUT_DIRECTORY
         if b"OutputDirectory" in pd:
             output_dir = pd[b"OutputDirectory"].python_string()
         else:
             output_dir = ps.OUTPUT_DIRECTORY
 
-        file_name = os.path.join(os.getcwd(), output_dir, f"{base_name}.pdf")
+        file_path = os.path.join(os.getcwd(), output_dir, f"{base_name}.pdf")
+        state = PDFDocumentState(file_path)
+        lossless = pd.get(b'LosslessImages')
+        if lossless is not None and lossless.val:
+            state.lossless_images = True
+        pd[PDF_STATE_KEY] = state
 
-        # Create PDF document state
-        pdf_state = PDFDocumentState(file_name, WIDTH_pdf, HEIGHT_pdf)
-        pd[PDF_STATE_KEY] = pdf_state
+    # Track fonts used in display list
+    for item in ctxt.display_list:
+        if isinstance(item, ps.TextObj):
+            state.font_tracker.track_text_obj(item)
 
-    # Start new page
-    pdf_state.start_new_page(WIDTH_pdf, HEIGHT_pdf, scale_x, scale_y)
+    # Build embedded_fonts dict for content stream generation
+    # (We need this to know which font resource names to use.)
+    # For now, build a temporary mapping from font_key to resource name
+    # that will match what pdf_builder uses.
+    embedded_fonts = _build_temp_font_mapping(state.font_tracker)
 
-    # Set Cairo context properties
-    cc = pdf_state.context
-    cc.set_tolerance(ctxt.gstate.flatness / 10.0)
+    # Pre-compute glyph widths for text rendering
+    font_widths_cache: dict[tuple, dict[int, int]] = {}
+    font_embedder = FontEmbedder()
+    cff_embedder = CFFEmbedder()
+    for font_key, usage in state.font_tracker.get_fonts_in_order():
+        if not FontTracker.is_cid_font(font_key):
+            if _is_cff_font(usage.font_dict):
+                widths = cff_embedder.get_glyph_widths(
+                    usage.font_dict, usage.glyphs_used)
+            elif _is_type42_font(usage.font_dict):
+                widths = {}  # Type 42 widths handled differently
+            else:
+                widths = font_embedder.get_glyph_widths(
+                    usage.font_dict, usage.glyphs_used)
+            if widths:
+                font_widths_cache[font_key] = widths
 
-    # Track fonts used in the display list and detect ActualText markers
+    # Generate PDF content stream from display list
+    device_scale = 72.0 / hw_res_x  # device units → PDF points
+    (content_stream, shading_defs, image_defs, type3_font_defs,
+     state.type3_font_counter, type3_page_keys) = generate_content_stream(
+        ctxt.display_list, height_device,
+        state.font_tracker, embedded_fonts, font_widths_cache,
+        device_scale, state.type3_fonts, state.type3_font_counter)
+    state.type3_fonts = type3_font_defs
+
+    # Collect fonts used on this page
+    page_font_keys: set[tuple] = set()
+    standard14_used: set[str] = set()
     has_actual_text = False
     for item in ctxt.display_list:
         if isinstance(item, ps.TextObj):
-            pdf_state.font_tracker.track_text_obj(item)
+            font_key = state.font_tracker.get_font_key_for_dict(item.font_dict)
+            if font_key is not None:
+                page_font_keys.add(font_key)
+            elif item.font_name in FontTracker.STANDARD_14:
+                standard14_used.add(item.font_name.decode('latin-1'))
         elif isinstance(item, ps.ActualTextStart):
             has_actual_text = True
 
-    # Collect deferred text: non-Standard 14 fonts and Type 3 ActualText entries
-    needs_deferred = pdf_state.font_tracker.needs_embedding() or has_actual_text
-    deferred_text_objs = [] if needs_deferred else None
+    # Page rotation: prefer DSC %%Orientation (set by cli_runner),
+    # fall back to display list CTM analysis for files without DSC.
+    # Only apply rotation on portrait pages — if the MediaBox is already
+    # landscape (e.g., via setpagedevice), rotation would be wrong.
+    page_rotate = 0
+    if width_pts < height_pts:
+        dsc_orient = pd.get(b'DSCOrientation')
+        if dsc_orient is not None and dsc_orient.val == b'Landscape':
+            page_rotate = 90
+        else:
+            page_rotate = _detect_landscape(
+                ctxt.display_list, width_pts, height_pts)
 
-    # Use common renderer
-    render_display_list(ctxt, cc, HEIGHT_device, min_line_width, deferred_text_objs)
-
-    # Accumulate deferred text objects for later font injection
-    # Tag each with current page number (0-indexed)
-    # Each entry in deferred_text_objs is (text_obj, clip_info)
-    if deferred_text_objs:
-        page_num = pdf_state.pages_written  # Current page before finish_page increments
-        for text_obj, clip_info in deferred_text_objs:
-            pdf_state.all_deferred_text_objs.append((page_num, text_obj, clip_info))
-
-    # Mark page complete
-    pdf_state.finish_page()
-
-
-def _compress_pdf(file_path: str) -> None:
-    """Compress content streams in a Cairo-generated PDF.
-
-    Cairo writes uncompressed content streams. This reads the PDF with pypdf,
-    applies FlateDecode compression to all page content streams, and writes
-    it back. Typically reduces file size by ~70%.
-    """
-    try:
-        from pypdf import PdfReader, PdfWriter
-        with open(file_path, 'rb') as f:
-            reader = PdfReader(f, strict=False)
-            writer = PdfWriter()
-            for page in reader.pages:
-                writer.add_page(page)
-            for page in writer.pages:
-                page.compress_content_streams()
-            with open(file_path, 'wb') as f:
-                writer.write(f)
-    except Exception:
-        pass  # Compression is best-effort — uncompressed PDF still works
+    # Store page data
+    page_data = PageData(content_stream, width_pts, height_pts)
+    page_data.font_keys_used = page_font_keys
+    page_data.standard14_fonts = standard14_used
+    page_data.needs_invisible_font = has_actual_text
+    page_data.rotate = page_rotate
+    page_data.shading_defs = shading_defs
+    page_data.image_defs = image_defs
+    page_data.type3_page_keys = type3_page_keys
+    state.pages.append(page_data)
+    state.pages_written += 1
 
 
-def finalize_document(pd: dict) -> None:
-    """
-    Finalize the PDF document at job end.
-
-    This should be called when the job completes to close the PDF surface
-    and inject any embedded fonts.
+def finalize(pd: dict) -> None:
+    """Finalize the PDF document at job end.
 
     Args:
-        pd: Page device dictionary containing the PDF state
+        pd: Page device dictionary containing the document state.
     """
-    pdf_state = pd.get(PDF_STATE_KEY)
-
-    if pdf_state is not None:
-        pdf_state.finalize()
-        # Remove state from page device
+    state = pd.get(PDF_STATE_KEY)
+    if state is not None:
+        state.finalize()
         del pd[PDF_STATE_KEY]
+
+
+def _build_temp_font_mapping(font_tracker: FontTracker) -> dict[tuple, tuple[str, None]]:
+    """Build a temporary font mapping for content stream generation.
+
+    The actual font refs are created later by pdf_builder, but the resource
+    names must match. This builds the same naming scheme.
+
+    Args:
+        font_tracker: Font tracker with usage data.
+
+    Returns:
+        Dict mapping font_key -> (resource_name, None).
+    """
+    mapping: dict[tuple, tuple[str, None]] = {}
+    font_name_counts: dict[bytes, int] = {}
+
+    for font_key, usage in font_tracker.get_fonts_in_order():
+        font_name = usage.font_name
+
+        if font_name not in font_name_counts:
+            font_name_counts[font_name] = 0
+        instance_num = font_name_counts[font_name]
+        font_name_counts[font_name] += 1
+
+        font_name_str = font_name.decode('latin-1') if isinstance(font_name, bytes) else str(font_name)
+        base_name = font_name_str.replace('-', '').replace(' ', '')
+        resource_name = f'/{base_name}_{instance_num}' if instance_num > 0 else f'/{base_name}'
+        mapping[font_key] = (resource_name, None)
+
+    return mapping
+
+
+def _is_cff_font(font_dict: ps.Dict) -> bool:
+    """Check if a font dictionary is a CFF (Type 2) font."""
+    font_type = font_dict.val.get(b'FontType')
+    return font_type is not None and font_type.val == 2
+
+
+def _is_type42_font(font_dict: ps.Dict) -> bool:
+    """Check if a font dictionary is a Type 42 (TrueType) font."""
+    font_type = font_dict.val.get(b'FontType')
+    return font_type is not None and font_type.val == 42
+
+
+def _detect_landscape(display_list: list, width_pts: float,
+                       height_pts: float) -> int:
+    """Heuristic fallback for landscape detection when DSC is absent.
+
+    Examines CTMs of display list elements to determine the dominant content
+    rotation.  Each element's x-axis direction ``(a, b)`` is classified to
+    the nearest 90-degree multiple.  If the vast majority agree on a non-zero
+    rotation, that value is returned as the page ``/Rotate``.
+
+    Args:
+        display_list: Display list elements from the context.
+        width_pts: Page width in PDF points.
+        height_pts: Page height in PDF points.
+
+    Returns:
+        Rotation angle (0, 90, or 270).
+    """
+    # Only consider portrait pages
+    if width_pts >= height_pts:
+        return 0
+
+    votes: dict[int, int] = {0: 0, 90: 0, 180: 0, 270: 0}
+    for item in display_list:
+        ctm = getattr(item, 'ctm', None)
+        if ctm is None or len(ctm) < 4:
+            continue
+        a, b = ctm[0], ctm[1]
+        if a * a + b * b < 1e-10:
+            continue
+        # Classify x-axis direction to nearest 90°.
+        # The content stream's initial cm has a negative y-scale (y-flip)
+        # which mirrors the rotation direction: a PS +90° CCW rotation
+        # appears as -90° in the rendered PDF.  Swap 90↔270 to produce
+        # the correct /Rotate value that compensates.
+        if abs(a) >= abs(b):
+            nearest = 0 if a >= 0 else 180
+        else:
+            nearest = 270 if b >= 0 else 90
+        votes[nearest] += 1
+
+    total = sum(votes.values())
+    if total < 5:
+        return 0
+
+    best = max(votes, key=votes.get)
+    # Only apply rotation for landscape orientations (90/270)
+    if best in (90, 270) and votes[best] > total * 0.8:
+        return best
+    return 0
+
+

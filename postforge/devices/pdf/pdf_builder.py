@@ -17,10 +17,10 @@ import struct
 import zlib
 
 from ...core import types as ps
-from ..pdf.font_tracker import FontTracker, FontUsage
-from ..pdf.font_embedder import FontEmbedder, generate_tounicode_cmap
-from ..pdf.cid_font_embedder import CIDFontEmbedder, generate_cid_tounicode_cmap
-from ..pdf.cff_font_embedder import CFFEmbedder
+from .font_tracker import FontTracker, FontUsage
+from .font_embedder import FontEmbedder, generate_tounicode_cmap
+from .cid_font_embedder import CIDFontEmbedder, generate_cid_tounicode_cmap
+from .cff_font_embedder import CFFEmbedder
 from .font_helpers import (
     _charstrings_fingerprint, _get_font_bbox, _get_char_range, _get_widths,
     _get_font_flags, _to_pfb, _build_tounicode_map, _build_pdf_encoding,
@@ -74,7 +74,7 @@ class PDFBuilder:
     def __init__(self, lossless_images: bool = False) -> None:
         if not PYPDF_AVAILABLE:
             raise ImportError(
-                "pypdf is required for native_pdf device. "
+                "pypdf is required for pdf device. "
                 "Install with: pip install pypdf"
             )
         self.font_embedder = FontEmbedder()

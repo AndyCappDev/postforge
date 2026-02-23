@@ -17,7 +17,7 @@ focused submodules (stroke_ops, text_ops, type3_ops, image_ops, shading_ops).
 
 from ...core import types as ps
 from ...core.types.context import global_resources
-from ..pdf.font_tracker import FontTracker
+from .font_tracker import FontTracker
 from ._common import _fmt, _GState, _Type3GlyphDef, _Type3FontDef
 from .stroke_ops import (_emit_path, _emit_fill, _emit_stroke,
                          _close_aniso_batch, _emit_color)
@@ -283,7 +283,7 @@ def generate_content_stream(display_list: ps.DisplayList,
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
             type3_suppress_invis = False
-            # PatternFill is not in scope for native_pdf v1
+            # PatternFill is not yet supported
             current_path = None
             current_path_lines = []
 

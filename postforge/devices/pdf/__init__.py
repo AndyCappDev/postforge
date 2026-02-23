@@ -5,4 +5,4 @@
 from __future__ import annotations
 
 # PostForge pdf device module
-from .pdf import showpage
+from .pdf import finalize, showpage

@@ -3,7 +3,7 @@
 <p align="center"><strong>A modern, open-source PostScript interpreter written in Python.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/AndyCappDev/postforge/releases"><img src="https://img.shields.io/badge/Version-0.9.2-green.svg" alt="Version 0.9.0"></a>
+  <a href="https://github.com/AndyCappDev/postforge/releases"><img src="https://img.shields.io/badge/Version-0.9.3-green.svg" alt="Version 0.9.0"></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.13%2B-blue.svg" alt="Python 3.13+"></a>
 </p>
@@ -52,10 +52,11 @@ See the [sample gallery](docs/samples.md) for larger rendered examples.
   exploration, debugging, and experimentation
 - **Cython-Accelerated Execution** — Optional Cython-compiled execution loop
   providing 15–40% speedup depending on workload
-- **Multiple Output Formats** — PNG, PDF, SVG, and TIFF output via Cairo
-  graphics backend, plus an interactive Qt display window with a PostScript
-  command prompt; TIFF supports multi-page and CMYK output for prepress
-  workflows; extensible architecture makes it straightforward to add new devices
+- **Multiple Output Formats** — PNG, PDF, SVG, and TIFF output, plus an
+  interactive Qt display window with a PostScript command prompt; the PDF
+  device generates content streams directly, preserving CMYK/Gray/RGB color
+  spaces; TIFF supports multi-page and CMYK output for prepress workflows;
+  extensible architecture makes it straightforward to add new devices
 - **PDF Font Embedding** — Type 1 font reconstruction and subsetting,
   TrueType/CID font extraction with CIDToGIDMap and ToUnicode support
 - **EPS Support** — Automatic page cropping to EPS content dimensions with

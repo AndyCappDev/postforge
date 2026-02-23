@@ -16,8 +16,8 @@ import struct
 
 from ...core import types as ps
 from ...core.unicode_mapping import glyph_name_to_unicode
-from ..pdf.font_embedder import FontEmbedder
-from ..pdf.cid_font_embedder import CIDFontEmbedder
+from .font_embedder import FontEmbedder
+from .cid_font_embedder import CIDFontEmbedder
 
 try:
     from pypdf.generic import (

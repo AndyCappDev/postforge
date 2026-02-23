@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 """
-Image processing and XObject building for native PDF output.
+Image processing and XObject building for PDF output.
 
 Section 1: Content stream image emission -- color space classification,
 CIE/ICC conversion, indexed image expansion, and XObject references.

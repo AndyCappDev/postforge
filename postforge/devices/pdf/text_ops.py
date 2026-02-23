@@ -15,7 +15,7 @@ import math
 import unicodedata
 
 from ...core import types as ps
-from ..pdf.font_tracker import FontTracker
+from .font_tracker import FontTracker
 from ._common import _fmt, _cfmt, _GState
 
 

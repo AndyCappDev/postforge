@@ -311,8 +311,8 @@ def render_display_list(
 
 - `page_height` is needed for the PostScript-to-Cairo coordinate system flip
   (PostScript origin is bottom-left, Cairo is top-left)
-- `deferred_text_objs` is used by the PDF device to collect text objects for
-  later font embedding. Pass `None` for bitmap devices.
+- `deferred_text_objs` can be used to collect text objects for later
+  processing. Pass `None` for bitmap devices.
 
 ### Option B: Process the Display List Directly
 
@@ -433,24 +433,23 @@ you can store arbitrary Python objects in it (class instances, lists,
 open file handles, etc.) using a bytes key, and retrieve them on subsequent
 `showpage` calls.
 
-The PDF device uses this to maintain a `PDFDocumentState` that holds the Cairo
-PDF surface, font tracker, deferred text objects, and page counter across all
-pages:
+The PDF device uses this to maintain a `PDFDocumentState` that holds the
+font tracker, accumulated page data, Type 3 font state, and page counter
+across all pages:
 
 ```python
 PDF_STATE_KEY = b'_PDFDocumentState'
 
 def showpage(ctxt, pd):
-    pdf_state = pd.get(PDF_STATE_KEY)
-    if pdf_state is None:
+    state = pd.get(PDF_STATE_KEY)
+    if state is None:
         # First page — initialize and store in page device dict
-        pdf_state = PDFDocumentState(file_path, width, height)
-        pd[PDF_STATE_KEY] = pdf_state
+        state = PDFDocumentState(file_path)
+        pd[PDF_STATE_KEY] = state
 
-    # Render current page using persistent state
-    pdf_state.start_new_page(...)
-    render_display_list(ctxt, pdf_state.context, ...)
-    pdf_state.finish_page()
+    # Generate content stream from display list and store page data
+    content_stream, ... = generate_content_stream(ctxt.display_list, ...)
+    state.pages.append(PageData(content_stream, width_pts, height_pts))
 ```
 
 This works because the page device dictionary is just a Python `dict` — you can
@@ -471,15 +470,15 @@ dict entirely are `setpagedevice` (which rebuilds it from scratch) and
 ### Job Finalization (PDF)
 
 Multi-page devices may need a finalization step after the last page. The PDF
-device uses a `finalize_document` function that closes the Cairo surface and
-injects embedded fonts. This is called from the job control code in
+device uses a `finalize` function that assembles all accumulated pages into
+the final PDF with embedded fonts. This is called from the job control code in
 `postforge/operators/control.py`:
 
 ```python
 # In control.py job cleanup:
-from ..devices.pdf.pdf import PDF_STATE_KEY, finalize_document
+from ..devices.pdf.pdf import PDF_STATE_KEY, finalize
 if PDF_STATE_KEY in pd:
-    finalize_document(pd)
+    finalize(pd)
 ```
 
 If your device needs finalization, follow the same pattern: export a
@@ -493,8 +492,8 @@ The PDF device uses `/TextRenderingMode /TextObjs` to receive structured text
 data instead of rendered glyph paths. It then:
 
 1. Tracks font usage across all pages via `FontTracker`
-2. Collects deferred `TextObj` elements that need font embedding
-3. At finalization, reconstructs Type 1 fonts and injects them into the PDF
+2. Generates PDF text operators (BT/ET blocks, TJ arrays with kern values)
+3. At finalization, embeds fonts (Type 1, CID, CFF, Type 42, Type 3) into the PDF
 
 This pattern is only needed for devices that require structured text
 information (e.g., for searchability or font embedding).
@@ -526,13 +525,14 @@ Key features: anti-alias mode support, configurable output path.
 ### PDF (`postforge/devices/pdf/`)
 
 Complex multi-page device. Maintains a `PDFDocumentState` across pages.
-Uses Cairo `PDFSurface` for graphics, then post-processes with pypdf for
-font embedding. Applies a scaling transform to convert from device coordinates
-(at `HWResolution`) to PDF points (72 DPI).
+Generates PDF content streams directly from the display list (does not use
+Cairo), preserving original color spaces (CMYK, Gray, RGB). Content stream
+generation is split into focused submodules (stroke_ops, text_ops, type3_ops,
+image_ops, shading_ops). The final PDF is assembled at document end via pypdf.
 
-Key features: persistent state, font tracking and embedding (Type 1 and
-CID/TrueType), deferred text rendering, document finalization, stream
-compression.
+Key features: persistent state, color space preservation, font tracking and
+embedding (Type 1, CID/TrueType, CFF, Type 42, Type 3), text batching with
+TJ arrays, document finalization.
 
 ### SVG (`postforge/devices/svg/`)
 

@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 """
-Type 3 font operations for native PDF output.
+Type 3 font operations for PDF output.
 
 Handles Type 3 glyph emission in content streams (CharProc building,
 text runs, glyph reference fallback) and PDF Type 3 font object
@@ -18,7 +18,7 @@ import zlib
 from ...core import types as ps
 from ...core.types.context import global_resources
 from ...core.unicode_mapping import glyph_name_to_unicode
-from ..pdf.font_embedder import generate_tounicode_cmap
+from .font_embedder import generate_tounicode_cmap
 from ._common import _fmt, _cfmt, _Type3GlyphDef, _Type3FontDef, _GState
 from .stroke_ops import _emit_path, _emit_path_offset, _emit_color
 from .image_ops import _compute_image_cm, _emit_image_xobject

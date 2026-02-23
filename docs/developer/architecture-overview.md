@@ -39,14 +39,14 @@ PostScript Source ──► Tokenizer ──► Execution ──► │ Display 
    like `fill`, `stroke`, and `show` append elements here.
 
 5. **Output Device** — When `showpage` fires, the accumulated display list is
-   handed to a device for rendering. Devices live in `postforge/devices/` and
-   the current implementation typically delegates to a shared Cairo rendering
-   backend, but this is not a requirement — an output device can use whatever
-   rendering method it wants to process the display list. After rendering,
-   `showpage` erases the display list and reinitializes the graphics state for
-   the next page. `copypage` follows the same rendering path but preserves
-   both the display list and graphics state, allowing further drawing on top
-   of the existing page contents.
+   handed to a device for rendering. Devices live in `postforge/devices/` —
+   raster devices (PNG, TIFF, Qt) and SVG use a shared Cairo rendering
+   backend, while the PDF device generates content streams directly from the
+   display list. An output device can use whatever rendering method it wants.
+   After rendering, `showpage` erases the display list and reinitializes the
+   graphics state for the next page. `copypage` follows the same rendering
+   path but preserves both the display list and graphics state, allowing
+   further drawing on top of the existing page contents.
 
 
 ## The Execution Engine
@@ -357,7 +357,7 @@ The display list is a flat Python list containing instances of these classes
 | `Stroke` | `stroke` | Stroked path with line properties and CTM |
 | `PatternFill` | `fill` with pattern color space | Pattern-tiled fill |
 | `ImageElement` | `image`, `imagemask`, `colorimage` | Raster image data |
-| `TextObj` | `show` (in TextObjs mode) | Text for native PDF output |
+| `TextObj` | `show` (in TextObjs mode) | Structured text for PDF output |
 | `ClipElement` | `clip`, `eoclip`, `initclip` | Clipping path update |
 | `GlyphRef` | show (cache hit) | Reference to cached glyph bitmap |
 | `GlyphStart`/`GlyphEnd` | show (cache miss) | Glyph bitmap capture markers |
@@ -421,8 +421,8 @@ conversion formulas (NTSC weighting for gray, etc.).
 ### Color Conversion at Rendering Time
 
 Color conversion is *lazy* — `setcolor` stores the color in the graphics
-state, but the conversion to device color (RGB for the Cairo renderer) happens
-only when a painting operator builds a display list element:
+state, but the conversion to device color happens only when a painting operator
+builds a display list element:
 
 1. A painting operator (`fill`, `stroke`, etc.) calls
    `ColorSpaceEngine.convert_to_device_color()`.
@@ -430,10 +430,14 @@ only when a painting operator builds a display list element:
    through (with cross-conversion if needed), CIE-based spaces run through
    their decode/matrix/XYZ pipeline, and ICCBased spaces apply an lcms2
    transform.
-3. The resulting RGB values are stored in the display list element (`Fill`,
-   `Stroke`, etc.).
-4. The rendering device receives pre-converted RGB and passes it straight
-   to Cairo.
+3. The resulting color values are stored in the display list element (`Fill`,
+   `Stroke`, etc.). When a `/ColorModel` is set in the page device (e.g.,
+   `/DeviceRGB` for Cairo-based raster devices), colors are converted to that
+   model. When no `/ColorModel` is set (the PDF device), original device color
+   spaces (CMYK, Gray, RGB) are preserved.
+4. The rendering device consumes these colors — Cairo-based devices receive
+   RGB, while the PDF device emits the appropriate PDF color operators for
+   whatever color space was used.
 
 ### ICC Color Management Tiers
 
@@ -472,10 +476,10 @@ Output devices render the display list into a final format. Each device
 consists of two parts that work together: a PostScript configuration file
 in `postforge/resources/OutputDevice/` (e.g., `png.ps`) that defines the page device
 dictionary, and a Python module in `postforge/devices/` that implements a
-`showpage(ctxt, pd)` function to perform the actual rendering. The built-in
-devices use a shared Cairo rendering backend, but this is a convenience, not
-a requirement — a custom device can use any rendering approach it wants
-without involving Cairo at all.
+`showpage(ctxt, pd)` function to perform the actual rendering. The raster
+devices (PNG, TIFF, Qt) use a shared Cairo rendering backend, while the PDF
+device generates PDF content streams directly from the display list. A custom
+device can use any rendering approach it wants.
 
 ### Device Architecture
 
@@ -486,32 +490,43 @@ without involving Cairo at all.
                     │                                                                │
                     │  cairo_renderer.py - dispatch     cairo_patterns.py - patterns │
                     │  cairo_images.py   - images       cairo_shading.py  - shading  │
-                    └─────┬────────────┬────────────┬─────────────┬────────────┬─────┘
-                          │            │            │             │            │
-                          ▼            ▼            ▼             ▼            ▼
-                     ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
-                     │   PNG    │ │   PDF    │ │   SVG    │ │   TIFF   │ │    Qt    │
-                     │  device  │ │  device  │ │  device  │ │  device  │ │  device  │
-                     └──────────┘ └────┬─────┘ └──────────┘ └──────────┘ └──────────┘
-                                       │
-                              ┌────────┴────────┐
-                              │ Font embedding  │
-                              │ (font_embedder, │
-                              │  cid_font_      │
-                              │  embedder,      │
-                              │  pdf_injector)  │
-                              └─────────────────┘
+                    └─────────┬──────────────┬──────────────┬──────────────┬─────────┘
+                              │              │              │              │
+                              ▼              ▼              ▼              ▼
+                         ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
+                         │   PNG    │   │   SVG    │   │   TIFF   │   │    Qt    │
+                         │  device  │   │  device  │   │  device  │   │  device  │
+                         └──────────┘   └──────────┘   └──────────┘   └──────────┘
+
+                     ┌─────────────────────────────────────────┐
+                     │            PDF device                   │
+                     │         (devices/pdf/)                  │
+                     │                                         │
+                     │  pdf.py ──► content_stream.py           │
+                     │               ├─ stroke_ops.py          │
+                     │               ├─ text_ops.py            │
+                     │               ├─ type3_ops.py           │
+                     │               ├─ image_ops.py           │
+                     │               └─ shading_ops.py         │
+                     │          ──► pdf_builder.py             │
+                     │               ├─ font_embedder.py       │
+                     │               ├─ cid_font_embedder.py   │
+                     │               ├─ cff_font_embedder.py   │
+                     │               └─ font_tracker.py        │
+                     └─────────────────────────────────────────┘
 ```
 
 **PNG** (`postforge/devices/png/png.py`) — Creates a Cairo ImageSurface, calls
 `render_display_list()`, writes a `.png` file. The simplest device and a good
 starting point for understanding the rendering pipeline.
 
-**PDF** (`postforge/devices/pdf/`) — Renders to a Cairo PDFSurface, then
-post-processes the PDF with pypdf to inject embedded fonts. Text in PDF mode
-uses `TextObj` elements that are written as native PDF text operators, producing
+**PDF** (`postforge/devices/pdf/`) — Generates PDF content streams directly
+from the display list (does not use Cairo). Preserves original color spaces
+(CMYK, Gray, RGB) instead of converting everything to RGB. Text uses `TextObj`
+elements written as PDF text operators with TJ arrays and kern values, producing
 searchable/selectable text. Font embedding handles Type 1 reconstruction,
-CID/TrueType extraction, and subsetting.
+CID/TrueType extraction, CFF, Type 42, Type 3, and subsetting. The final PDF
+is assembled at document end via pypdf.
 
 **SVG** (`postforge/devices/svg/svg.py`) — Renders to a Cairo SVGSurface,
 then post-processes the SVG to convert text from outlines to selectable `<text>`
@@ -541,8 +556,10 @@ dictionary is loaded and merged into the graphics state's `page_device`.
 ### Shared Cairo Renderer
 
 `render_display_list()` in `postforge/devices/common/cairo_renderer.py` is the
-main dispatch loop. It iterates over display list elements and delegates to
-type-specific rendering functions:
+main dispatch loop used by the raster and vector-surface devices (PNG, SVG,
+TIFF, Qt). The PDF device does not use this renderer — it generates PDF content
+streams directly. The Cairo renderer iterates over display list elements and
+delegates to type-specific rendering functions:
 
 - Path construction → Cairo `move_to`, `line_to`, `curve_to`, `close_path`
 - Fill/Stroke → Cairo `fill` / `stroke` with color and line properties
@@ -554,10 +571,11 @@ type-specific rendering functions:
 
 **Stroke method**: For bitmap devices (PNG, Qt), strokes are converted to filled
 paths by the interpreter before they reach the display list. This works around
-bugs in Cairo's stroke rasterization, particularly with dashed lines. The PDF
-device uses Cairo's native stroke rendering instead. This behavior is controlled
-per-device by the `/StrokeMethod` entry in the page device dictionary (set in
-each device's `.ps` configuration file).
+bugs in Cairo's stroke rasterization, particularly with dashed lines. Vector
+devices (PDF, SVG) use native stroke rendering instead — PDF emits stroke
+operators directly, while SVG uses Cairo's vector surface. This behavior is
+controlled per-device by the `/StrokeMethod` entry in the page device dictionary
+(set in each device's `.ps` configuration file).
 
 
 ## Resource System

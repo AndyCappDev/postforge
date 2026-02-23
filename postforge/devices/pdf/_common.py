@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 """
-Shared utilities for the native PDF content stream and builder modules.
+Shared utilities for the PDF content stream and builder modules.
 
 Contains formatting helpers and state tracking used across all submodules.
 This module breaks what would otherwise be circular imports between
