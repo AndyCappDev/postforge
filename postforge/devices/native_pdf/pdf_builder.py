@@ -28,7 +28,7 @@ from ..pdf.cid_font_embedder import CIDFontEmbedder, generate_cid_tounicode_cmap
 from ..pdf.cff_font_embedder import CFFEmbedder
 
 try:
-    from pypdf import PdfWriter
+    from pypdf import PdfReader, PdfWriter
     from pypdf.generic import (
         ArrayObject,
         BooleanObject,
@@ -134,9 +134,20 @@ class PDFBuilder:
         for page_data in pages:
             self._add_page(writer, page_data, embedded_fonts)
 
-        # Write output
+        # Write to memory, then re-serialize through PdfReader/PdfWriter.
+        # pypdf's initial object ordering places the last page dict as the
+        # final object in the file, which triggers a text-selection bug in
+        # poppler-based viewers (Evince).  A round-trip through PdfReader
+        # reorders objects so page dicts precede their resources, fixing the
+        # issue with negligible overhead (the PDF is already in memory).
+        buf = io.BytesIO()
+        writer.write(buf)
+        buf.seek(0)
+        reader = PdfReader(buf)
+        final_writer = PdfWriter()
+        final_writer.append_pages_from_reader(reader)
         with open(output_path, 'wb') as f:
-            writer.write(f)
+            final_writer.write(f)
 
         return embedded_fonts
 
@@ -192,6 +203,9 @@ class PDFBuilder:
             page_data: Page content and dimensions.
             embedded_fonts: Dict of embedded fonts.
         """
+        page = writer.add_blank_page(
+            width=page_data.width_pts, height=page_data.height_pts)
+
         # Compress content stream
         compressed = zlib.compress(page_data.content_stream)
         content_stream = StreamObject()
@@ -259,9 +273,7 @@ class PDFBuilder:
         if xobject_dict:
             resources[NameObject('/XObject')] = xobject_dict
 
-        # Create blank page and configure it
-        page = writer.add_blank_page(
-            width=page_data.width_pts, height=page_data.height_pts)
+        # Configure the page
         page[NameObject('/Contents')] = content_ref
         page[NameObject('/Resources')] = resources
         if page_data.rotate:
@@ -375,13 +387,19 @@ class PDFBuilder:
         font_obj[NameObject('/LastChar')] = NumberObject(last_char)
         font_obj[NameObject('/Widths')] = widths_array
 
-        # Build ToUnicode CMap for text selection/searchability
+        # Build ToUnicode CMap for text selection/searchability.
+        # Prefer ActualText-derived unicode_map (accurate for re-encoded
+        # fonts with non-standard glyph names), fall back to Adobe Glyph
+        # List lookup from glyph names.
         tounicode_map: dict[int, str] = {}
         for cc, glyph_def in t3_def.glyphs.items():
-            gname_bytes = glyph_def.glyph_name.encode('latin-1')
-            unicode_char = glyph_name_to_unicode(gname_bytes)
-            if unicode_char and unicode_char != '\ufffd':
-                tounicode_map[cc] = unicode_char
+            if cc in t3_def.unicode_map:
+                tounicode_map[cc] = t3_def.unicode_map[cc]
+            else:
+                gname_bytes = glyph_def.glyph_name.encode('latin-1')
+                unicode_char = glyph_name_to_unicode(gname_bytes)
+                if unicode_char and unicode_char != '\ufffd':
+                    tounicode_map[cc] = unicode_char
         if tounicode_map:
             cmap_data = generate_tounicode_cmap(tounicode_map, 'Type3')
             cmap_stream = StreamObject()

@@ -50,6 +50,7 @@ class _Type3FontDef:
     resource_name: str       # e.g. '/T3F0'
     glyphs: dict[int, _Type3GlyphDef] = field(default_factory=dict)
     font_dict: object = None  # PS font dict reference (for Encoding access)
+    unicode_map: dict[int, str] = field(default_factory=dict)  # char_code → Unicode char
 
 
 def _fmt(v: float) -> str:
@@ -157,6 +158,8 @@ def generate_content_stream(display_list: ps.DisplayList,
     type3_batch_font_key: tuple | None = None
     type3_batch_color: tuple | None = None
     type3_suppress_invis = False  # suppress ActualTextStart for Type 3 text
+    # Pending Type 3 char codes for ActualText → ToUnicode correlation
+    type3_pending_codes: list[tuple] = []  # (char_code, font_key)
 
     def _flush_text_batch() -> None:
         nonlocal text_batch, text_batch_font
@@ -174,6 +177,7 @@ def generate_content_stream(display_list: ps.DisplayList,
 
     def _flush_type3_text() -> None:
         nonlocal type3_text_batch, type3_batch_font_key, type3_batch_color
+        nonlocal type3_pending_codes
         if type3_text_batch and type3_batch_font_key is not None:
             _emit_type3_text_run(lines, type3_text_batch,
                                  type3_fonts[type3_batch_font_key],
@@ -181,6 +185,7 @@ def generate_content_stream(display_list: ps.DisplayList,
             type3_text_batch = []
             type3_batch_font_key = None
             type3_batch_color = None
+        type3_pending_codes = []
 
     # The display list is in device space (Y=0 at top, Y increases downward)
     # but PDF uses Y=0 at bottom, Y increases upward. Apply a combined
@@ -401,6 +406,7 @@ def generate_content_stream(display_list: ps.DisplayList,
                 type3_text_batch.append(
                     (char_code, item.position_x, item.position_y,
                      t3_font.glyphs[char_code].width_x))
+                type3_pending_codes.append((char_code, font_key))
                 type3_suppress_invis = True
             else:
                 # Non-cacheable or missing — fall back to inline paths
@@ -476,6 +482,7 @@ def generate_content_stream(display_list: ps.DisplayList,
                     type3_text_batch.append(
                         (char_code, ox, oy,
                          t3_font.glyphs[char_code].width_x))
+                    type3_pending_codes.append((char_code, font_key))
                     type3_suppress_invis = True
 
                 collecting_type3 = False
@@ -484,8 +491,16 @@ def generate_content_stream(display_list: ps.DisplayList,
 
         elif isinstance(item, ps.ActualTextStart):
             if type3_suppress_invis or type3_text_batch:
-                # Type 3 font has ToUnicode CMap — skip invisible overlay
-                pass
+                # Skip invisible overlay, but extract Unicode mappings
+                # from ActualText for the ToUnicode CMap
+                unicode_text = item.unicode_text
+                if unicode_text and type3_pending_codes:
+                    if len(unicode_text) == len(type3_pending_codes):
+                        for (cc, fk), uch in zip(
+                                type3_pending_codes, unicode_text):
+                            if fk in type3_fonts:
+                                type3_fonts[fk].unicode_map[cc] = uch
+                    type3_pending_codes = []
             else:
                 _flush_text_batch()
                 _close_aniso_batch(lines, gs)
