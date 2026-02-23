@@ -278,7 +278,7 @@ For a quick start:
 
 - **Python 3.13+**
 - **Cairo** graphics library (system package on Linux/macOS; bundled with pycairo on Windows)
-- **Core Python packages**: pycairo, psutil, jpeglib, Pillow, pypdf
+- **Core Python packages**: pycairo, psutil, jpeglib, Pillow, numpy
 - **Optional**: PySide6 (for the interactive Qt display)
 
 ## License

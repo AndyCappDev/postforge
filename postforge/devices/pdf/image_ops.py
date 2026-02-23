@@ -28,20 +28,9 @@ from ...core.color_space import (ColorSpaceEngine, _get_cie_float_array,
 from ._common import _fmt, _cfmt, _GState
 from .shading_ops import _pdf_number
 from .text_ops import _emit_text_color
-
-try:
-    from pypdf.generic import (
-        ArrayObject,
-        BooleanObject,
-        DictionaryObject,
-        FloatObject,
-        NameObject,
-        NumberObject,
-        StreamObject,
-    )
-    PYPDF_AVAILABLE = True
-except ImportError:
-    PYPDF_AVAILABLE = False
+from .pdf_objects import (
+    PdfArray, PdfBool, PdfDict, PdfName, PdfNumber, PdfStream,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -850,19 +839,17 @@ class ImageXObjectBuilder:
             return None
 
         compressed = zlib.compress(raw_bytes)
-        icc_stream = StreamObject()
-        icc_stream._data = compressed
-        icc_stream[NameObject('/Length')] = NumberObject(len(compressed))
-        icc_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
-        icc_stream[NameObject('/N')] = NumberObject(n)
+        icc_stream = PdfStream(compressed)
+        icc_stream['/Filter'] = PdfName('/FlateDecode')
+        icc_stream['/N'] = PdfNumber(n)
 
         # Add /Alternate for graceful fallback
         alt_map = {1: '/DeviceGray', 3: '/DeviceRGB', 4: '/DeviceCMYK'}
         alt_cs = alt_map.get(n)
         if alt_cs:
-            icc_stream[NameObject('/Alternate')] = NameObject(alt_cs)
+            icc_stream['/Alternate'] = PdfName(alt_cs)
 
-        ref = writer._add_object(icc_stream)
+        ref = writer.add_object(icc_stream)
         self._icc_profile_refs[profile_hash] = ref
         return ref
 
@@ -886,48 +873,48 @@ class ImageXObjectBuilder:
             device_cs = img_desc['device_cs']
             cs_map = {'/G': '/DeviceGray', '/RGB': '/DeviceRGB',
                       '/CMYK': '/DeviceCMYK'}
-            return NameObject(cs_map.get(device_cs, '/DeviceRGB'))
+            return PdfName(cs_map.get(device_cs, '/DeviceRGB'))
 
         if cs_type == 'icc':
             profile_ref = self._get_icc_profile_ref(
                 writer, img_desc['icc_hash'], img_desc['icc_n'])
             if profile_ref is not None:
-                return ArrayObject([NameObject('/ICCBased'), profile_ref])
+                return PdfArray([PdfName('/ICCBased'), profile_ref])
             # Fallback to device space
             alt_map = {1: '/DeviceGray', 3: '/DeviceRGB', 4: '/DeviceCMYK'}
-            return NameObject(alt_map.get(img_desc['icc_n'], '/DeviceRGB'))
+            return PdfName(alt_map.get(img_desc['icc_n'], '/DeviceRGB'))
 
         if cs_type == 'calrgb':
             cal_params = img_desc['cal_params']
-            cal_dict = DictionaryObject()
-            cal_dict[NameObject('/WhitePoint')] = ArrayObject(
-                [FloatObject(round(v, 6)) for v in cal_params['WhitePoint']])
+            cal_dict = PdfDict()
+            cal_dict['/WhitePoint'] = PdfArray(
+                [PdfNumber(round(v, 6)) for v in cal_params['WhitePoint']])
             if 'BlackPoint' in cal_params:
-                cal_dict[NameObject('/BlackPoint')] = ArrayObject(
-                    [FloatObject(round(v, 6)) for v in cal_params['BlackPoint']])
+                cal_dict['/BlackPoint'] = PdfArray(
+                    [PdfNumber(round(v, 6)) for v in cal_params['BlackPoint']])
             if 'Gamma' in cal_params:
-                cal_dict[NameObject('/Gamma')] = ArrayObject(
-                    [FloatObject(round(v, 6)) for v in cal_params['Gamma']])
+                cal_dict['/Gamma'] = PdfArray(
+                    [PdfNumber(round(v, 6)) for v in cal_params['Gamma']])
             if 'Matrix' in cal_params:
-                cal_dict[NameObject('/Matrix')] = ArrayObject(
-                    [FloatObject(round(v, 6)) for v in cal_params['Matrix']])
-            return ArrayObject([NameObject('/CalRGB'), cal_dict])
+                cal_dict['/Matrix'] = PdfArray(
+                    [PdfNumber(round(v, 6)) for v in cal_params['Matrix']])
+            return PdfArray([PdfName('/CalRGB'), cal_dict])
 
         if cs_type == 'calgray':
             cal_params = img_desc['cal_params']
-            cal_dict = DictionaryObject()
-            cal_dict[NameObject('/WhitePoint')] = ArrayObject(
-                [FloatObject(round(v, 6)) for v in cal_params['WhitePoint']])
+            cal_dict = PdfDict()
+            cal_dict['/WhitePoint'] = PdfArray(
+                [PdfNumber(round(v, 6)) for v in cal_params['WhitePoint']])
             if 'BlackPoint' in cal_params:
-                cal_dict[NameObject('/BlackPoint')] = ArrayObject(
-                    [FloatObject(round(v, 6)) for v in cal_params['BlackPoint']])
+                cal_dict['/BlackPoint'] = PdfArray(
+                    [PdfNumber(round(v, 6)) for v in cal_params['BlackPoint']])
             if 'Gamma' in cal_params:
-                cal_dict[NameObject('/Gamma')] = FloatObject(
+                cal_dict['/Gamma'] = PdfNumber(
                     round(cal_params['Gamma'], 6))
-            return ArrayObject([NameObject('/CalGray'), cal_dict])
+            return PdfArray([PdfName('/CalGray'), cal_dict])
 
         # Fallback
-        return NameObject('/DeviceRGB')
+        return PdfName('/DeviceRGB')
 
     def _compute_image_signature(self, img_desc: dict) -> bytes:
         """Compute a SHA-256 signature for image XObject deduplication.
@@ -1041,50 +1028,45 @@ class ImageXObjectBuilder:
         use_flate = len(compressed_flate) < len(sample_data)
         if dct_data is not None and len(dct_data) < len(compressed_flate):
             # DCT wins
-            img_stream = StreamObject()
-            img_stream._data = dct_data
-            img_stream[NameObject('/Length')] = NumberObject(len(dct_data))
-            img_stream[NameObject('/Filter')] = NameObject('/DCTDecode')
+            img_stream = PdfStream(dct_data)
+            img_stream['/Filter'] = PdfName('/DCTDecode')
         else:
             # Flate wins (or raw if Flate is larger)
-            img_stream = StreamObject()
-            img_stream._data = compressed_flate if use_flate else sample_data
-            img_stream[NameObject('/Length')] = NumberObject(
-                len(compressed_flate) if use_flate else len(sample_data))
+            img_stream = PdfStream(
+                compressed_flate if use_flate else sample_data)
             if use_flate:
-                img_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
+                img_stream['/Filter'] = PdfName('/FlateDecode')
 
-        img_stream[NameObject('/Type')] = NameObject('/XObject')
-        img_stream[NameObject('/Subtype')] = NameObject('/Image')
-        img_stream[NameObject('/Width')] = NumberObject(img_desc['width'])
-        img_stream[NameObject('/Height')] = NumberObject(img_desc['height'])
+        img_stream['/Type'] = PdfName('/XObject')
+        img_stream['/Subtype'] = PdfName('/Image')
+        img_stream['/Width'] = PdfNumber(img_desc['width'])
+        img_stream['/Height'] = PdfNumber(img_desc['height'])
 
         if img_desc['is_mask']:
-            img_stream[NameObject('/ImageMask')] = BooleanObject(True)
-            img_stream[NameObject('/BitsPerComponent')] = NumberObject(1)
+            img_stream['/ImageMask'] = PdfBool(True)
+            img_stream['/BitsPerComponent'] = PdfNumber(1)
             # PostScript: polarity=true means paint where bit=1
             # PDF: default Decode [0 1] paints where bit=0
             # So polarity=true needs /Decode [1 0] to invert
             polarity = img_desc.get('mask_polarity', True)
             if polarity:
-                img_stream[NameObject('/Decode')] = ArrayObject([
-                    NumberObject(1), NumberObject(0)])
+                img_stream['/Decode'] = PdfArray([
+                    PdfNumber(1), PdfNumber(0)])
         else:
-            img_stream[NameObject('/BitsPerComponent')] = NumberObject(
-                img_desc['bpc'])
+            img_stream['/BitsPerComponent'] = PdfNumber(img_desc['bpc'])
             cs_obj = self._build_image_color_space(writer, img_desc)
             if cs_obj is not None:
-                img_stream[NameObject('/ColorSpace')] = cs_obj
+                img_stream['/ColorSpace'] = cs_obj
 
             decode_array = img_desc.get('decode_array')
             if decode_array:
-                img_stream[NameObject('/Decode')] = ArrayObject(
+                img_stream['/Decode'] = PdfArray(
                     [_pdf_number(v) for v in decode_array])
 
             # Type 4 color key mask -> PDF /Mask array
             if color_key_mask is not None:
-                img_stream[NameObject('/Mask')] = ArrayObject(
-                    [NumberObject(v) for v in color_key_mask])
+                img_stream['/Mask'] = PdfArray(
+                    [PdfNumber(v) for v in color_key_mask])
 
             # Type 3 stencil mask -> PDF /Mask with Image XObject ref
             stencil_mask = img_desc.get('stencil_mask')
@@ -1092,12 +1074,12 @@ class ImageXObjectBuilder:
                 mask_ref = self._build_stencil_mask_xobject(
                     writer, img_desc)
                 if mask_ref is not None:
-                    img_stream[NameObject('/Mask')] = mask_ref
+                    img_stream['/Mask'] = mask_ref
 
         if img_desc.get('interpolate'):
-            img_stream[NameObject('/Interpolate')] = BooleanObject(True)
+            img_stream['/Interpolate'] = PdfBool(True)
 
-        ref = writer._add_object(img_stream)
+        ref = writer.add_object(img_stream)
         self._image_xobj_refs[sig] = ref
         return ref
 
@@ -1125,23 +1107,21 @@ class ImageXObjectBuilder:
         polarity = img_desc.get('stencil_mask_polarity', True)
 
         compressed = zlib.compress(mask_data)
-        mask_stream = StreamObject()
-        mask_stream._data = compressed
-        mask_stream[NameObject('/Length')] = NumberObject(len(compressed))
-        mask_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
-        mask_stream[NameObject('/Type')] = NameObject('/XObject')
-        mask_stream[NameObject('/Subtype')] = NameObject('/Image')
-        mask_stream[NameObject('/Width')] = NumberObject(mask_width)
-        mask_stream[NameObject('/Height')] = NumberObject(mask_height)
-        mask_stream[NameObject('/BitsPerComponent')] = NumberObject(1)
-        mask_stream[NameObject('/ImageMask')] = BooleanObject(True)
+        mask_stream = PdfStream(compressed)
+        mask_stream['/Filter'] = PdfName('/FlateDecode')
+        mask_stream['/Type'] = PdfName('/XObject')
+        mask_stream['/Subtype'] = PdfName('/Image')
+        mask_stream['/Width'] = PdfNumber(mask_width)
+        mask_stream['/Height'] = PdfNumber(mask_height)
+        mask_stream['/BitsPerComponent'] = PdfNumber(1)
+        mask_stream['/ImageMask'] = PdfBool(True)
 
         # polarity=True (PS Decode [0 1]): bit=0 -> paint base image
         #   Matches PDF default (value 0 = paint) -- no Decode needed
         # polarity=False (PS Decode [1 0]): bit=1 -> paint base image
         #   Need Decode [1 0] to invert
         if not polarity:
-            mask_stream[NameObject('/Decode')] = ArrayObject([
-                NumberObject(1), NumberObject(0)])
+            mask_stream['/Decode'] = PdfArray([
+                PdfNumber(1), PdfNumber(0)])
 
-        return writer._add_object(mask_stream)
+        return writer.add_object(mask_stream)

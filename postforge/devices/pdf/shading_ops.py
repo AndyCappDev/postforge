@@ -8,27 +8,16 @@ from __future__ import annotations
 Shading operations for PDF content streams and PDF dict builders.
 
 Handles axial, radial, function-based, mesh (Gouraud), and patch (Coons/tensor)
-shadings. Includes both content stream emission and pypdf object construction.
+shadings. Includes both content stream emission and PDF object construction.
 """
 
 import zlib
 
 from ...core import types as ps
 from ._common import _fmt, _cfmt
-
-try:
-    from pypdf.generic import (
-        ArrayObject,
-        BooleanObject,
-        DictionaryObject,
-        FloatObject,
-        NameObject,
-        NumberObject,
-        StreamObject,
-    )
-    PYPDF_AVAILABLE = True
-except ImportError:
-    PYPDF_AVAILABLE = False
+from .pdf_objects import (
+    PdfArray, PdfBool, PdfDict, PdfName, PdfNumber, PdfStream,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -357,7 +346,7 @@ def _build_patch_shading(shading: ps.PatchShadingFill) -> dict | None:
 
 def _build_pdf_shading(writer: object,
                         desc: dict) -> object | None:
-    """Convert a shading description dict to a pypdf indirect object.
+    """Convert a shading description dict to a PDF indirect object.
 
     Handles Type 2/3 (gradient with function) and Type 4/6/7 (stream-based).
     """
@@ -374,26 +363,25 @@ def _build_pdf_shading(writer: object,
         if func_ref is None:
             return None
 
-        shading_obj = DictionaryObject()
-        shading_obj[NameObject('/ShadingType')] = NumberObject(shading_type)
-        shading_obj[NameObject('/ColorSpace')] = NameObject(
-            '/' + desc['color_space'])
+        shading_obj = PdfDict()
+        shading_obj['/ShadingType'] = PdfNumber(shading_type)
+        shading_obj['/ColorSpace'] = PdfName('/' + desc['color_space'])
 
         coords = desc['coords']
-        shading_obj[NameObject('/Coords')] = ArrayObject(
+        shading_obj['/Coords'] = PdfArray(
             [_pdf_number(v) for v in coords])
 
         extend = desc.get('extend', [False, False])
-        shading_obj[NameObject('/Extend')] = ArrayObject([
-            BooleanObject(extend[0]), BooleanObject(extend[1])])
+        shading_obj['/Extend'] = PdfArray([
+            PdfBool(extend[0]), PdfBool(extend[1])])
 
-        shading_obj[NameObject('/Function')] = func_ref
+        shading_obj['/Function'] = func_ref
 
         if 'bbox' in desc:
-            shading_obj[NameObject('/BBox')] = ArrayObject(
+            shading_obj['/BBox'] = PdfArray(
                 [_pdf_number(v) for v in desc['bbox']])
 
-        return writer._add_object(shading_obj)
+        return writer.add_object(shading_obj)
 
     elif shading_type in (4, 6, 7):
         # Stream-based shading (mesh, Coons, tensor)
@@ -402,36 +390,32 @@ def _build_pdf_shading(writer: object,
             return None
 
         compressed = zlib.compress(stream_data)
-        sh_stream = StreamObject()
-        sh_stream._data = compressed
-        sh_stream[NameObject('/Length')] = NumberObject(len(compressed))
-        sh_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
-        sh_stream[NameObject('/ShadingType')] = NumberObject(shading_type)
-        sh_stream[NameObject('/ColorSpace')] = NameObject(
-            '/' + desc['color_space'])
-        sh_stream[NameObject('/BitsPerCoordinate')] = NumberObject(
+        sh_stream = PdfStream(compressed)
+        sh_stream['/Filter'] = PdfName('/FlateDecode')
+        sh_stream['/ShadingType'] = PdfNumber(shading_type)
+        sh_stream['/ColorSpace'] = PdfName('/' + desc['color_space'])
+        sh_stream['/BitsPerCoordinate'] = PdfNumber(
             desc['bits_per_coordinate'])
-        sh_stream[NameObject('/BitsPerComponent')] = NumberObject(
+        sh_stream['/BitsPerComponent'] = PdfNumber(
             desc['bits_per_component'])
-        sh_stream[NameObject('/BitsPerFlag')] = NumberObject(
-            desc['bits_per_flag'])
+        sh_stream['/BitsPerFlag'] = PdfNumber(desc['bits_per_flag'])
 
         decode = desc['decode']
-        sh_stream[NameObject('/Decode')] = ArrayObject(
+        sh_stream['/Decode'] = PdfArray(
             [_pdf_number(v) for v in decode])
 
         if 'bbox' in desc:
-            sh_stream[NameObject('/BBox')] = ArrayObject(
+            sh_stream['/BBox'] = PdfArray(
                 [_pdf_number(v) for v in desc['bbox']])
 
-        return writer._add_object(sh_stream)
+        return writer.add_object(sh_stream)
 
     return None
 
 
 def _build_pdf_function(writer: object,
                          func_desc: dict) -> object | None:
-    """Convert a function description dict to a pypdf indirect object.
+    """Convert a function description dict to a PDF indirect object.
 
     Supports Type 0 (sampled) functions.
     """
@@ -444,25 +428,23 @@ def _build_pdf_function(writer: object,
         return None
 
     compressed = zlib.compress(stream_data)
-    func_stream = StreamObject()
-    func_stream._data = compressed
-    func_stream[NameObject('/Length')] = NumberObject(len(compressed))
-    func_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
-    func_stream[NameObject('/FunctionType')] = NumberObject(0)
-    func_stream[NameObject('/Domain')] = ArrayObject(
+    func_stream = PdfStream(compressed)
+    func_stream['/Filter'] = PdfName('/FlateDecode')
+    func_stream['/FunctionType'] = PdfNumber(0)
+    func_stream['/Domain'] = PdfArray(
         [_pdf_number(v) for v in func_desc['domain']])
-    func_stream[NameObject('/Range')] = ArrayObject(
+    func_stream['/Range'] = PdfArray(
         [_pdf_number(v) for v in func_desc['range']])
-    func_stream[NameObject('/Size')] = ArrayObject(
-        [NumberObject(s) for s in func_desc['size']])
-    func_stream[NameObject('/BitsPerSample')] = NumberObject(func_desc['bps'])
-    func_stream[NameObject('/Order')] = NumberObject(func_desc.get('order', 1))
+    func_stream['/Size'] = PdfArray(
+        [PdfNumber(s) for s in func_desc['size']])
+    func_stream['/BitsPerSample'] = PdfNumber(func_desc['bps'])
+    func_stream['/Order'] = PdfNumber(func_desc.get('order', 1))
 
-    return writer._add_object(func_stream)
+    return writer.add_object(func_stream)
 
 
-def _pdf_number(v: float) -> NumberObject:
-    """Create a NumberObject, using int when the value is whole."""
+def _pdf_number(v: float) -> PdfNumber:
+    """Create a PdfNumber, using int when the value is whole."""
     if isinstance(v, int) or (isinstance(v, float) and v == int(v)):
-        return NumberObject(int(v))
-    return FloatObject(round(v, 6))
+        return PdfNumber(int(v))
+    return PdfNumber(round(v, 6))

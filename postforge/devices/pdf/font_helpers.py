@@ -18,19 +18,7 @@ from ...core import types as ps
 from ...core.unicode_mapping import glyph_name_to_unicode
 from .font_embedder import FontEmbedder
 from .cid_font_embedder import CIDFontEmbedder
-
-try:
-    from pypdf.generic import (
-        ArrayObject,
-        DictionaryObject,
-        NameObject,
-        NumberObject,
-        StreamObject,
-    )
-    from pypdf.generic import create_string_object
-    PYPDF_AVAILABLE = True
-except ImportError:
-    PYPDF_AVAILABLE = False
+from .pdf_objects import PdfArray, PdfDict, PdfName, PdfNumber, PdfString
 
 
 def _charstrings_fingerprint(font_dict: ps.Dict) -> tuple:
@@ -93,12 +81,12 @@ def _get_char_range(glyphs_used: set[int]) -> tuple[int, int]:
 
 def _get_widths(font_dict: ps.Dict, glyphs_used: set[int],
                 first_char: int, last_char: int,
-                font_embedder: FontEmbedder) -> ArrayObject:
+                font_embedder: FontEmbedder) -> PdfArray:
     """Get widths array for Type 1 font."""
     width_map = font_embedder.get_glyph_widths(font_dict, glyphs_used)
     default_width = 600
-    return ArrayObject([
-        NumberObject(width_map.get(cc, default_width))
+    return PdfArray([
+        PdfNumber(width_map.get(cc, default_width))
         for cc in range(first_char, last_char + 1)
     ])
 
@@ -184,7 +172,7 @@ def _build_tounicode_map(font_dict: ps.Dict,
 
 
 def _build_pdf_encoding(font_dict: ps.Dict, first_char: int,
-                        last_char: int) -> DictionaryObject | None:
+                        last_char: int) -> PdfDict | None:
     """Build PDF Encoding dictionary from PostScript encoding."""
     encoding = font_dict.val.get(b'Encoding')
     if not encoding or encoding.TYPE not in ps.ARRAY_TYPES:
@@ -206,16 +194,16 @@ def _build_pdf_encoding(font_dict: ps.Dict, first_char: int,
             continue
 
         if cc != last_code + 1:
-            differences.append(NumberObject(cc))
-        differences.append(NameObject('/' + glyph_name))
+            differences.append(PdfNumber(cc))
+        differences.append(PdfName('/' + glyph_name))
         last_code = cc
 
     if not differences:
         return None
 
-    enc_dict = DictionaryObject()
-    enc_dict[NameObject('/Type')] = NameObject('/Encoding')
-    enc_dict[NameObject('/Differences')] = ArrayObject(differences)
+    enc_dict = PdfDict()
+    enc_dict['/Type'] = PdfName('/Encoding')
+    enc_dict['/Differences'] = PdfArray(differences)
     return enc_dict
 
 
@@ -412,20 +400,20 @@ def _get_type42_hmtx_widths(font_dict: ps.Dict, font_data: bytes,
     return widths
 
 
-def _build_pdf_w_array(w_array_data: list) -> ArrayObject | None:
-    """Convert width data list to PDF /W ArrayObject."""
+def _build_pdf_w_array(w_array_data: list) -> PdfArray | None:
+    """Convert width data list to PDF /W PdfArray."""
     if not w_array_data:
         return None
-    result = ArrayObject()
+    result = PdfArray()
     for entry in w_array_data:
         if isinstance(entry, int):
-            result.append(NumberObject(entry))
+            result.append(PdfNumber(entry))
         elif isinstance(entry, list):
-            inner = ArrayObject([NumberObject(w) for w in entry])
+            inner = PdfArray([PdfNumber(w) for w in entry])
             result.append(inner)
     return result
 
 
-def _make_pdf_string(value: str) -> StreamObject:
+def _make_pdf_string(value: str) -> PdfString:
     """Create a PDF string object from a Python string."""
-    return create_string_object(value)
+    return PdfString(value)

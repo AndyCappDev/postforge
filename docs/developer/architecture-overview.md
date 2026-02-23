@@ -526,7 +526,7 @@ from the display list (does not use Cairo). Preserves original color spaces
 elements written as PDF text operators with TJ arrays and kern values, producing
 searchable/selectable text. Font embedding handles Type 1 reconstruction,
 CID/TrueType extraction, CFF, Type 42, Type 3, and subsetting. The final PDF
-is assembled at document end via pypdf.
+is assembled at document end via a native PDF writer (`pdf_objects.py`).
 
 **SVG** (`postforge/devices/svg/svg.py`) — Renders to a Cairo SVGSurface,
 then post-processes the SVG to convert text from outlines to selectable `<text>`

@@ -528,7 +528,7 @@ Complex multi-page device. Maintains a `PDFDocumentState` across pages.
 Generates PDF content streams directly from the display list (does not use
 Cairo), preserving original color spaces (CMYK, Gray, RGB). Content stream
 generation is split into focused submodules (stroke_ops, text_ops, type3_ops,
-image_ops, shading_ops). The final PDF is assembled at document end via pypdf.
+image_ops, shading_ops). The final PDF is assembled at document end via a native PDF writer (`pdf_objects.py`).
 
 Key features: persistent state, color space preservation, font tracking and
 embedding (Type 1, CID/TrueType, CFF, Type 42, Type 3), text batching with

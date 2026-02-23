@@ -83,7 +83,7 @@ enormous advantages for interpreter development:
   copy-on-write layer avoids the cost of full snapshots on every save
   operation
 - **Rich library ecosystem** — Cairo for rendering, Pillow for image
-  processing and ICC color management, pypdf for PDF construction
+  processing and ICC color management
 
 The tradeoff is runtime performance, but the optional Cython-compiled
 execution loop recovers 15-40% of that gap. For a tool focused on

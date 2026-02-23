@@ -8,11 +8,9 @@ from __future__ import annotations
 PDF Document Builder
 
 Assembles PDF files from content streams, fonts, and page metadata.
-Uses pypdf for PDF object management and serialization.
+Uses native PDF object types for object management and serialization.
 """
 
-import io
-import logging
 import struct
 import zlib
 
@@ -29,20 +27,9 @@ from .font_helpers import (
 from .type3_ops import build_type3_font
 from .image_ops import ImageXObjectBuilder
 from .shading_ops import _build_pdf_shading
-
-try:
-    from pypdf import PdfReader, PdfWriter
-    from pypdf.generic import (
-        ArrayObject,
-        DictionaryObject,
-        NameObject,
-        NumberObject,
-        StreamObject,
-    )
-    PYPDF_AVAILABLE = True
-    logging.getLogger('pypdf').setLevel(logging.ERROR)
-except ImportError:
-    PYPDF_AVAILABLE = False
+from .pdf_objects import (
+    PdfArray, PdfDict, PdfName, PdfNumber, PdfStream, PdfWriter,
+)
 
 
 class PageData:
@@ -72,11 +59,6 @@ class PDFBuilder:
     """Build a complete PDF document from pages and fonts."""
 
     def __init__(self, lossless_images: bool = False) -> None:
-        if not PYPDF_AVAILABLE:
-            raise ImportError(
-                "pypdf is required for pdf device. "
-                "Install with: pip install pypdf"
-            )
         self.font_embedder = FontEmbedder()
         self.cid_font_embedder = CIDFontEmbedder()
         self.cff_embedder = CFFEmbedder()
@@ -116,20 +98,11 @@ class PDFBuilder:
             self._add_page(writer, page_data, embedded_fonts,
                            type3_font_refs)
 
-        # Write to memory, then re-serialize through PdfReader/PdfWriter.
-        # pypdf's initial object ordering places the last page dict as the
-        # final object in the file, which triggers a text-selection bug in
-        # poppler-based viewers (Evince).  A round-trip through PdfReader
-        # reorders objects so page dicts precede their resources, fixing the
-        # issue with negligible overhead (the PDF is already in memory).
-        buf = io.BytesIO()
-        writer.write(buf)
-        buf.seek(0)
-        reader = PdfReader(buf)
-        final_writer = PdfWriter()
-        final_writer.append_pages_from_reader(reader)
+        # Write directly — native PdfWriter places Pages tree and Catalog
+        # after all page dicts, fixing the poppler text-selection bug
+        # without any round-trip.
         with open(output_path, 'wb') as f:
-            final_writer.write(f)
+            writer.write(f)
 
         return embedded_fonts
 
@@ -193,81 +166,79 @@ class PDFBuilder:
             embedded_fonts: Dict of embedded fonts.
             type3_font_refs: Pre-built Type 3 font refs (font_key -> (name, ref)).
         """
-        page = writer.add_blank_page(
+        page = writer.add_page(
             width=page_data.width_pts, height=page_data.height_pts)
 
         # Compress content stream
         compressed = zlib.compress(page_data.content_stream)
-        content_stream = StreamObject()
-        content_stream._data = compressed
-        content_stream[NameObject('/Length')] = NumberObject(len(compressed))
-        content_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
+        content_stream = PdfStream(compressed)
+        content_stream['/Filter'] = PdfName('/FlateDecode')
 
-        content_ref = writer._add_object(content_stream)
+        content_ref = writer.add_object(content_stream)
 
         # Build font resources dictionary — only fonts used on this page
-        font_dict = DictionaryObject()
+        font_dict = PdfDict()
 
         # Add embedded fonts used on this page
         for font_key, (resource_name, font_ref) in embedded_fonts.items():
             if font_key in page_data.font_keys_used:
-                font_dict[NameObject(resource_name)] = font_ref
+                font_dict[resource_name] = font_ref
 
         # Add Standard 14 fonts used on this page
         for std14_name in page_data.standard14_fonts:
             resource_name = '/' + std14_name
-            if NameObject(resource_name) not in font_dict:
-                std_font = DictionaryObject()
-                std_font[NameObject('/Type')] = NameObject('/Font')
-                std_font[NameObject('/Subtype')] = NameObject('/Type1')
-                std_font[NameObject('/BaseFont')] = NameObject('/' + std14_name)
-                font_ref = writer._add_object(std_font)
-                font_dict[NameObject(resource_name)] = font_ref
+            if resource_name not in font_dict:
+                std_font = PdfDict()
+                std_font['/Type'] = PdfName('/Font')
+                std_font['/Subtype'] = PdfName('/Type1')
+                std_font['/BaseFont'] = PdfName('/' + std14_name)
+                font_ref = writer.add_object(std_font)
+                font_dict[resource_name] = font_ref
 
         # Add Courier for invisible text overlay (ActualText / Type 3 fonts)
         if page_data.needs_invisible_font:
-            cour_dict = DictionaryObject()
-            cour_dict[NameObject('/Type')] = NameObject('/Font')
-            cour_dict[NameObject('/Subtype')] = NameObject('/Type1')
-            cour_dict[NameObject('/BaseFont')] = NameObject('/Courier')
-            cour_dict[NameObject('/Encoding')] = NameObject('/WinAnsiEncoding')
-            font_dict[NameObject('/PFCour')] = writer._add_object(cour_dict)
+            cour_dict = PdfDict()
+            cour_dict['/Type'] = PdfName('/Font')
+            cour_dict['/Subtype'] = PdfName('/Type1')
+            cour_dict['/BaseFont'] = PdfName('/Courier')
+            cour_dict['/Encoding'] = PdfName('/WinAnsiEncoding')
+            font_dict['/PFCour'] = writer.add_object(cour_dict)
 
         # Build shading resources
-        shading_dict = DictionaryObject()
+        shading_dict = PdfDict()
         for sh_name, sh_desc in page_data.shading_defs:
             sh_ref = _build_pdf_shading(writer, sh_desc)
             if sh_ref is not None:
-                shading_dict[NameObject(sh_name)] = sh_ref
+                shading_dict[sh_name] = sh_ref
 
         # Build XObject image resources
-        xobject_dict = DictionaryObject()
+        xobject_dict = PdfDict()
         for img_name, img_desc in page_data.image_defs:
             img_ref = self.image_builder.build_image_xobject(writer, img_desc)
             if img_ref is not None:
-                xobject_dict[NameObject(img_name)] = img_ref
+                xobject_dict[img_name] = img_ref
 
         # Add pre-built Type 3 fonts used on this page
         if type3_font_refs:
             for font_key in page_data.type3_page_keys:
                 if font_key in type3_font_refs:
                     res_name, t3_ref = type3_font_refs[font_key]
-                    font_dict[NameObject(res_name)] = t3_ref
+                    font_dict[res_name] = t3_ref
 
         # Build resources
-        resources = DictionaryObject()
+        resources = PdfDict()
         if font_dict:
-            resources[NameObject('/Font')] = font_dict
+            resources['/Font'] = font_dict
         if shading_dict:
-            resources[NameObject('/Shading')] = shading_dict
+            resources['/Shading'] = shading_dict
         if xobject_dict:
-            resources[NameObject('/XObject')] = xobject_dict
+            resources['/XObject'] = xobject_dict
 
         # Configure the page
-        page[NameObject('/Contents')] = content_ref
-        page[NameObject('/Resources')] = resources
+        page['/Contents'] = content_ref
+        page['/Resources'] = resources
         if page_data.rotate:
-            page[NameObject('/Rotate')] = NumberObject(page_data.rotate)
+            page['/Rotate'] = PdfNumber(page_data.rotate)
 
     def _build_shared_type1_descriptors(
             self, writer: PdfWriter, font_tracker: FontTracker,
@@ -374,43 +345,35 @@ class PDFBuilder:
 
             # FontFile stream
             compressed = zlib.compress(pfb_data)
-            font_file_stream = StreamObject()
-            font_file_stream._data = compressed
-            font_file_stream[NameObject('/Length')] = NumberObject(
-                len(compressed))
-            font_file_stream[NameObject('/Length1')] = NumberObject(length1)
-            font_file_stream[NameObject('/Length2')] = NumberObject(length2)
-            font_file_stream[NameObject('/Length3')] = NumberObject(length3)
-            font_file_stream[NameObject('/Filter')] = NameObject(
-                '/FlateDecode')
-            font_file_ref = writer._add_object(font_file_stream)
+            font_file_stream = PdfStream(compressed)
+            font_file_stream['/Length1'] = PdfNumber(length1)
+            font_file_stream['/Length2'] = PdfNumber(length2)
+            font_file_stream['/Length3'] = PdfNumber(length3)
+            font_file_stream['/Filter'] = PdfName('/FlateDecode')
+            font_file_ref = writer.add_object(font_file_stream)
 
             # FontDescriptor — uses base font name (all instances are the
             # same PostScript font, just re-encoded)
             font_bbox = _get_font_bbox(font_dict)
-            font_descriptor = DictionaryObject()
-            font_descriptor[NameObject('/Type')] = NameObject(
-                '/FontDescriptor')
-            font_descriptor[NameObject('/FontName')] = NameObject(
-                '/' + font_name_str)
-            font_descriptor[NameObject('/Flags')] = NumberObject(
+            font_descriptor = PdfDict()
+            font_descriptor['/Type'] = PdfName('/FontDescriptor')
+            font_descriptor['/FontName'] = PdfName('/' + font_name_str)
+            font_descriptor['/Flags'] = PdfNumber(
                 _get_font_flags(font_dict))
-            font_descriptor[NameObject('/FontBBox')] = ArrayObject([
-                NumberObject(int(font_bbox[0])),
-                NumberObject(int(font_bbox[1])),
-                NumberObject(int(font_bbox[2])),
-                NumberObject(int(font_bbox[3])),
+            font_descriptor['/FontBBox'] = PdfArray([
+                PdfNumber(int(font_bbox[0])),
+                PdfNumber(int(font_bbox[1])),
+                PdfNumber(int(font_bbox[2])),
+                PdfNumber(int(font_bbox[3])),
             ])
-            font_descriptor[NameObject('/ItalicAngle')] = NumberObject(0)
-            font_descriptor[NameObject('/Ascent')] = NumberObject(
-                int(font_bbox[3]))
-            font_descriptor[NameObject('/Descent')] = NumberObject(
-                int(font_bbox[1]))
-            font_descriptor[NameObject('/CapHeight')] = NumberObject(
+            font_descriptor['/ItalicAngle'] = PdfNumber(0)
+            font_descriptor['/Ascent'] = PdfNumber(int(font_bbox[3]))
+            font_descriptor['/Descent'] = PdfNumber(int(font_bbox[1]))
+            font_descriptor['/CapHeight'] = PdfNumber(
                 int(font_bbox[3] * 0.7))
-            font_descriptor[NameObject('/StemV')] = NumberObject(80)
-            font_descriptor[NameObject('/FontFile')] = font_file_ref
-            font_descriptor_ref = writer._add_object(font_descriptor)
+            font_descriptor['/StemV'] = PdfNumber(80)
+            font_descriptor['/FontFile'] = font_file_ref
+            font_descriptor_ref = writer.add_object(font_descriptor)
 
             # Map ALL member cs_ids to this shared descriptor so lookups
             # via font_key[0] find it regardless of which instance is queried
@@ -455,73 +418,62 @@ class PDFBuilder:
 
             # FontFile stream
             compressed = zlib.compress(pfb_data)
-            font_file_stream = StreamObject()
-            font_file_stream._data = compressed
-            font_file_stream[NameObject('/Length')] = NumberObject(
-                len(compressed))
-            font_file_stream[NameObject('/Length1')] = NumberObject(length1)
-            font_file_stream[NameObject('/Length2')] = NumberObject(length2)
-            font_file_stream[NameObject('/Length3')] = NumberObject(length3)
-            font_file_stream[NameObject('/Filter')] = NameObject(
-                '/FlateDecode')
-            font_file_ref = writer._add_object(font_file_stream)
+            font_file_stream = PdfStream(compressed)
+            font_file_stream['/Length1'] = PdfNumber(length1)
+            font_file_stream['/Length2'] = PdfNumber(length2)
+            font_file_stream['/Length3'] = PdfNumber(length3)
+            font_file_stream['/Filter'] = PdfName('/FlateDecode')
+            font_file_ref = writer.add_object(font_file_stream)
 
             # FontDescriptor
             font_bbox = _get_font_bbox(font_dict)
-            font_descriptor = DictionaryObject()
-            font_descriptor[NameObject('/Type')] = NameObject(
-                '/FontDescriptor')
-            font_descriptor[NameObject('/FontName')] = NameObject(
-                '/' + unique_font_name)
-            font_descriptor[NameObject('/Flags')] = NumberObject(
+            font_descriptor = PdfDict()
+            font_descriptor['/Type'] = PdfName('/FontDescriptor')
+            font_descriptor['/FontName'] = PdfName('/' + unique_font_name)
+            font_descriptor['/Flags'] = PdfNumber(
                 _get_font_flags(font_dict))
-            font_descriptor[NameObject('/FontBBox')] = ArrayObject([
-                NumberObject(int(font_bbox[0])),
-                NumberObject(int(font_bbox[1])),
-                NumberObject(int(font_bbox[2])),
-                NumberObject(int(font_bbox[3])),
+            font_descriptor['/FontBBox'] = PdfArray([
+                PdfNumber(int(font_bbox[0])),
+                PdfNumber(int(font_bbox[1])),
+                PdfNumber(int(font_bbox[2])),
+                PdfNumber(int(font_bbox[3])),
             ])
-            font_descriptor[NameObject('/ItalicAngle')] = NumberObject(0)
-            font_descriptor[NameObject('/Ascent')] = NumberObject(
-                int(font_bbox[3]))
-            font_descriptor[NameObject('/Descent')] = NumberObject(
-                int(font_bbox[1]))
-            font_descriptor[NameObject('/CapHeight')] = NumberObject(
+            font_descriptor['/ItalicAngle'] = PdfNumber(0)
+            font_descriptor['/Ascent'] = PdfNumber(int(font_bbox[3]))
+            font_descriptor['/Descent'] = PdfNumber(int(font_bbox[1]))
+            font_descriptor['/CapHeight'] = PdfNumber(
                 int(font_bbox[3] * 0.7))
-            font_descriptor[NameObject('/StemV')] = NumberObject(80)
-            font_descriptor[NameObject('/FontFile')] = font_file_ref
-            font_descriptor_ref = writer._add_object(font_descriptor)
+            font_descriptor['/StemV'] = PdfNumber(80)
+            font_descriptor['/FontFile'] = font_file_ref
+            font_descriptor_ref = writer.add_object(font_descriptor)
 
         # ToUnicode CMap (always per-instance)
         tounicode_map = _build_tounicode_map(font_dict, glyphs_used)
         tounicode_ref = None
         if tounicode_map:
             cmap_data = generate_tounicode_cmap(tounicode_map, font_name_str)
-            cmap_stream = StreamObject()
             cmap_compressed = zlib.compress(cmap_data)
-            cmap_stream._data = cmap_compressed
-            cmap_stream[NameObject('/Length')] = NumberObject(
-                len(cmap_compressed))
-            cmap_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
-            tounicode_ref = writer._add_object(cmap_stream)
+            cmap_stream = PdfStream(cmap_compressed)
+            cmap_stream['/Filter'] = PdfName('/FlateDecode')
+            tounicode_ref = writer.add_object(cmap_stream)
 
         # Font dictionary (always per-instance)
-        font_obj = DictionaryObject()
-        font_obj[NameObject('/Type')] = NameObject('/Font')
-        font_obj[NameObject('/Subtype')] = NameObject('/Type1')
-        font_obj[NameObject('/BaseFont')] = NameObject('/' + unique_font_name)
-        font_obj[NameObject('/FirstChar')] = NumberObject(first_char)
-        font_obj[NameObject('/LastChar')] = NumberObject(last_char)
-        font_obj[NameObject('/Widths')] = widths
-        font_obj[NameObject('/FontDescriptor')] = font_descriptor_ref
+        font_obj = PdfDict()
+        font_obj['/Type'] = PdfName('/Font')
+        font_obj['/Subtype'] = PdfName('/Type1')
+        font_obj['/BaseFont'] = PdfName('/' + unique_font_name)
+        font_obj['/FirstChar'] = PdfNumber(first_char)
+        font_obj['/LastChar'] = PdfNumber(last_char)
+        font_obj['/Widths'] = widths
+        font_obj['/FontDescriptor'] = font_descriptor_ref
 
         encoding_obj = _build_pdf_encoding(font_dict, first_char, last_char)
         if encoding_obj:
-            font_obj[NameObject('/Encoding')] = encoding_obj
+            font_obj['/Encoding'] = encoding_obj
         if tounicode_ref:
-            font_obj[NameObject('/ToUnicode')] = tounicode_ref
+            font_obj['/ToUnicode'] = tounicode_ref
 
-        font_ref = writer._add_object(font_obj)
+        font_ref = writer.add_object(font_obj)
 
         base_name = font_name_str.replace('-', '').replace(' ', '')
         resource_name = f'/{base_name}_{instance_num}' if instance_num > 0 else f'/{base_name}'
@@ -542,31 +494,29 @@ class PDFBuilder:
             return None
 
         compressed = zlib.compress(font_file_data)
-        font_file_stream = StreamObject()
-        font_file_stream._data = compressed
-        font_file_stream[NameObject('/Length')] = NumberObject(len(compressed))
-        font_file_stream[NameObject('/Length1')] = NumberObject(len(font_file_data))
-        font_file_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
-        font_file_ref = writer._add_object(font_file_stream)
+        font_file_stream = PdfStream(compressed)
+        font_file_stream['/Length1'] = PdfNumber(len(font_file_data))
+        font_file_stream['/Filter'] = PdfName('/FlateDecode')
+        font_file_ref = writer.add_object(font_file_stream)
 
         metrics = self.cid_font_embedder.get_font_metrics(font_dict)
         bbox = metrics['bbox']
 
-        font_descriptor = DictionaryObject()
-        font_descriptor[NameObject('/Type')] = NameObject('/FontDescriptor')
-        font_descriptor[NameObject('/FontName')] = NameObject('/' + unique_font_name)
-        font_descriptor[NameObject('/Flags')] = NumberObject(4)
-        font_descriptor[NameObject('/FontBBox')] = ArrayObject([
-            NumberObject(bbox[0]), NumberObject(bbox[1]),
-            NumberObject(bbox[2]), NumberObject(bbox[3]),
+        font_descriptor = PdfDict()
+        font_descriptor['/Type'] = PdfName('/FontDescriptor')
+        font_descriptor['/FontName'] = PdfName('/' + unique_font_name)
+        font_descriptor['/Flags'] = PdfNumber(4)
+        font_descriptor['/FontBBox'] = PdfArray([
+            PdfNumber(bbox[0]), PdfNumber(bbox[1]),
+            PdfNumber(bbox[2]), PdfNumber(bbox[3]),
         ])
-        font_descriptor[NameObject('/ItalicAngle')] = NumberObject(0)
-        font_descriptor[NameObject('/Ascent')] = NumberObject(metrics['ascent'])
-        font_descriptor[NameObject('/Descent')] = NumberObject(metrics['descent'])
-        font_descriptor[NameObject('/CapHeight')] = NumberObject(metrics['cap_height'])
-        font_descriptor[NameObject('/StemV')] = NumberObject(metrics['stem_v'])
-        font_descriptor[NameObject('/FontFile2')] = font_file_ref
-        font_descriptor_ref = writer._add_object(font_descriptor)
+        font_descriptor['/ItalicAngle'] = PdfNumber(0)
+        font_descriptor['/Ascent'] = PdfNumber(metrics['ascent'])
+        font_descriptor['/Descent'] = PdfNumber(metrics['descent'])
+        font_descriptor['/CapHeight'] = PdfNumber(metrics['cap_height'])
+        font_descriptor['/StemV'] = PdfNumber(metrics['stem_v'])
+        font_descriptor['/FontFile2'] = font_file_ref
+        font_descriptor_ref = writer.add_object(font_descriptor)
 
         cid_to_gid = self.cid_font_embedder.get_cid_to_gid_dict(font_dict, glyphs_used)
         glyph_widths = self.cid_font_embedder.get_glyph_widths(
@@ -576,59 +526,54 @@ class PDFBuilder:
         default_width = self.cid_font_embedder.get_default_width(font_dict)
         registry, ordering, supplement = self.cid_font_embedder.get_cid_system_info(font_dict)
 
-        cid_system_info = DictionaryObject()
-        cid_system_info[NameObject('/Registry')] = _make_pdf_string(registry)
-        cid_system_info[NameObject('/Ordering')] = _make_pdf_string(ordering)
-        cid_system_info[NameObject('/Supplement')] = NumberObject(supplement)
+        cid_system_info = PdfDict()
+        cid_system_info['/Registry'] = _make_pdf_string(registry)
+        cid_system_info['/Ordering'] = _make_pdf_string(ordering)
+        cid_system_info['/Supplement'] = PdfNumber(supplement)
 
-        cid_font_dict_obj = DictionaryObject()
-        cid_font_dict_obj[NameObject('/Type')] = NameObject('/Font')
-        cid_font_dict_obj[NameObject('/Subtype')] = NameObject('/CIDFontType2')
-        cid_font_dict_obj[NameObject('/BaseFont')] = NameObject('/' + unique_font_name)
-        cid_font_dict_obj[NameObject('/CIDSystemInfo')] = cid_system_info
-        cid_font_dict_obj[NameObject('/FontDescriptor')] = font_descriptor_ref
-        cid_font_dict_obj[NameObject('/DW')] = NumberObject(default_width)
+        cid_font_dict_obj = PdfDict()
+        cid_font_dict_obj['/Type'] = PdfName('/Font')
+        cid_font_dict_obj['/Subtype'] = PdfName('/CIDFontType2')
+        cid_font_dict_obj['/BaseFont'] = PdfName('/' + unique_font_name)
+        cid_font_dict_obj['/CIDSystemInfo'] = cid_system_info
+        cid_font_dict_obj['/FontDescriptor'] = font_descriptor_ref
+        cid_font_dict_obj['/DW'] = PdfNumber(default_width)
 
         if w_array_data:
             w_array = _build_pdf_w_array(w_array_data)
             if w_array:
-                cid_font_dict_obj[NameObject('/W')] = w_array
+                cid_font_dict_obj['/W'] = w_array
 
         cid_to_gid_data = self.cid_font_embedder.build_cid_to_gid_map(
             font_dict, glyphs_used, cid_to_gid)
         if cid_to_gid_data:
-            cid_to_gid_stream = StreamObject()
-            cid_to_gid_stream._data = cid_to_gid_data
-            cid_to_gid_stream[NameObject('/Length')] = NumberObject(len(cid_to_gid_data))
-            cid_font_dict_obj[NameObject('/CIDToGIDMap')] = writer._add_object(cid_to_gid_stream)
+            cid_to_gid_stream = PdfStream(cid_to_gid_data)
+            cid_font_dict_obj['/CIDToGIDMap'] = writer.add_object(cid_to_gid_stream)
         else:
-            cid_font_dict_obj[NameObject('/CIDToGIDMap')] = NameObject('/Identity')
+            cid_font_dict_obj['/CIDToGIDMap'] = PdfName('/Identity')
 
-        cid_font_ref = writer._add_object(cid_font_dict_obj)
+        cid_font_ref = writer.add_object(cid_font_dict_obj)
 
         tounicode_ref = None
         tounicode_map = self.cid_font_embedder.build_tounicode_map(
             font_dict, glyphs_used, cid_to_gid)
         if tounicode_map:
             cmap_data = generate_cid_tounicode_cmap(tounicode_map, unique_font_name)
-            cmap_stream = StreamObject()
             cmap_compressed = zlib.compress(cmap_data)
-            cmap_stream._data = cmap_compressed
-            cmap_stream[NameObject('/Length')] = NumberObject(
-                len(cmap_compressed))
-            cmap_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
-            tounicode_ref = writer._add_object(cmap_stream)
+            cmap_stream = PdfStream(cmap_compressed)
+            cmap_stream['/Filter'] = PdfName('/FlateDecode')
+            tounicode_ref = writer.add_object(cmap_stream)
 
-        font_obj = DictionaryObject()
-        font_obj[NameObject('/Type')] = NameObject('/Font')
-        font_obj[NameObject('/Subtype')] = NameObject('/Type0')
-        font_obj[NameObject('/BaseFont')] = NameObject('/' + unique_font_name)
-        font_obj[NameObject('/Encoding')] = NameObject('/Identity-H')
-        font_obj[NameObject('/DescendantFonts')] = ArrayObject([cid_font_ref])
+        font_obj = PdfDict()
+        font_obj['/Type'] = PdfName('/Font')
+        font_obj['/Subtype'] = PdfName('/Type0')
+        font_obj['/BaseFont'] = PdfName('/' + unique_font_name)
+        font_obj['/Encoding'] = PdfName('/Identity-H')
+        font_obj['/DescendantFonts'] = PdfArray([cid_font_ref])
         if tounicode_ref:
-            font_obj[NameObject('/ToUnicode')] = tounicode_ref
+            font_obj['/ToUnicode'] = tounicode_ref
 
-        font_ref = writer._add_object(font_obj)
+        font_ref = writer.add_object(font_obj)
 
         base_name = font_name_str.replace('-', '').replace(' ', '')
         resource_name = f'/{base_name}_{instance_num}' if instance_num > 0 else f'/{base_name}'
@@ -653,59 +598,54 @@ class PDFBuilder:
 
         glyph_widths = self.cff_embedder.get_glyph_widths(font_dict, glyphs_used)
         default_width = 600
-        widths = ArrayObject([
-            NumberObject(glyph_widths.get(cc, default_width))
+        widths = PdfArray([
+            PdfNumber(glyph_widths.get(cc, default_width))
             for cc in range(first_char, last_char + 1)
         ])
 
         compressed = zlib.compress(cff_data)
-        font_file_stream = StreamObject()
-        font_file_stream._data = compressed
-        font_file_stream[NameObject('/Length')] = NumberObject(len(compressed))
-        font_file_stream[NameObject('/Subtype')] = NameObject('/Type1C')
-        font_file_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
-        font_file_ref = writer._add_object(font_file_stream)
+        font_file_stream = PdfStream(compressed)
+        font_file_stream['/Subtype'] = PdfName('/Type1C')
+        font_file_stream['/Filter'] = PdfName('/FlateDecode')
+        font_file_ref = writer.add_object(font_file_stream)
 
-        font_descriptor = DictionaryObject()
-        font_descriptor[NameObject('/Type')] = NameObject('/FontDescriptor')
-        font_descriptor[NameObject('/FontName')] = NameObject('/' + unique_font_name)
-        font_descriptor[NameObject('/Flags')] = NumberObject(_get_font_flags(font_dict))
-        font_descriptor[NameObject('/FontBBox')] = ArrayObject([
-            NumberObject(int(font_bbox[0])), NumberObject(int(font_bbox[1])),
-            NumberObject(int(font_bbox[2])), NumberObject(int(font_bbox[3])),
+        font_descriptor = PdfDict()
+        font_descriptor['/Type'] = PdfName('/FontDescriptor')
+        font_descriptor['/FontName'] = PdfName('/' + unique_font_name)
+        font_descriptor['/Flags'] = PdfNumber(_get_font_flags(font_dict))
+        font_descriptor['/FontBBox'] = PdfArray([
+            PdfNumber(int(font_bbox[0])), PdfNumber(int(font_bbox[1])),
+            PdfNumber(int(font_bbox[2])), PdfNumber(int(font_bbox[3])),
         ])
-        font_descriptor[NameObject('/ItalicAngle')] = NumberObject(0)
-        font_descriptor[NameObject('/Ascent')] = NumberObject(int(font_bbox[3]))
-        font_descriptor[NameObject('/Descent')] = NumberObject(int(font_bbox[1]))
-        font_descriptor[NameObject('/CapHeight')] = NumberObject(int(font_bbox[3] * 0.7))
-        font_descriptor[NameObject('/StemV')] = NumberObject(80)
-        font_descriptor[NameObject('/FontFile3')] = font_file_ref
-        font_descriptor_ref = writer._add_object(font_descriptor)
+        font_descriptor['/ItalicAngle'] = PdfNumber(0)
+        font_descriptor['/Ascent'] = PdfNumber(int(font_bbox[3]))
+        font_descriptor['/Descent'] = PdfNumber(int(font_bbox[1]))
+        font_descriptor['/CapHeight'] = PdfNumber(int(font_bbox[3] * 0.7))
+        font_descriptor['/StemV'] = PdfNumber(80)
+        font_descriptor['/FontFile3'] = font_file_ref
+        font_descriptor_ref = writer.add_object(font_descriptor)
 
         tounicode_map = _build_tounicode_map(font_dict, glyphs_used)
         tounicode_ref = None
         if tounicode_map:
             cmap_data = generate_tounicode_cmap(tounicode_map, font_name_str)
-            cmap_stream = StreamObject()
             cmap_compressed = zlib.compress(cmap_data)
-            cmap_stream._data = cmap_compressed
-            cmap_stream[NameObject('/Length')] = NumberObject(
-                len(cmap_compressed))
-            cmap_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
-            tounicode_ref = writer._add_object(cmap_stream)
+            cmap_stream = PdfStream(cmap_compressed)
+            cmap_stream['/Filter'] = PdfName('/FlateDecode')
+            tounicode_ref = writer.add_object(cmap_stream)
 
-        font_obj = DictionaryObject()
-        font_obj[NameObject('/Type')] = NameObject('/Font')
-        font_obj[NameObject('/Subtype')] = NameObject('/Type1')
-        font_obj[NameObject('/BaseFont')] = NameObject('/' + unique_font_name)
-        font_obj[NameObject('/FirstChar')] = NumberObject(first_char)
-        font_obj[NameObject('/LastChar')] = NumberObject(last_char)
-        font_obj[NameObject('/Widths')] = widths
-        font_obj[NameObject('/FontDescriptor')] = font_descriptor_ref
+        font_obj = PdfDict()
+        font_obj['/Type'] = PdfName('/Font')
+        font_obj['/Subtype'] = PdfName('/Type1')
+        font_obj['/BaseFont'] = PdfName('/' + unique_font_name)
+        font_obj['/FirstChar'] = PdfNumber(first_char)
+        font_obj['/LastChar'] = PdfNumber(last_char)
+        font_obj['/Widths'] = widths
+        font_obj['/FontDescriptor'] = font_descriptor_ref
         if tounicode_ref:
-            font_obj[NameObject('/ToUnicode')] = tounicode_ref
+            font_obj['/ToUnicode'] = tounicode_ref
 
-        font_ref = writer._add_object(font_obj)
+        font_ref = writer.add_object(font_obj)
 
         base_name = font_name_str.replace('-', '').replace(' ', '')
         resource_name = f'/{base_name}_{instance_num}' if instance_num > 0 else f'/{base_name}'
@@ -767,18 +707,16 @@ class PDFBuilder:
         glyph_widths_map = self._get_type42_glyph_widths(
             font_dict, glyphs_used, font_file_data, tables, units_per_em)
         default_width = 600
-        widths = ArrayObject([
-            NumberObject(glyph_widths_map.get(cc, default_width))
+        widths = PdfArray([
+            PdfNumber(glyph_widths_map.get(cc, default_width))
             for cc in range(first_char, last_char + 1)
         ])
 
         compressed = zlib.compress(font_file_data)
-        font_file_stream = StreamObject()
-        font_file_stream._data = compressed
-        font_file_stream[NameObject('/Length')] = NumberObject(len(compressed))
-        font_file_stream[NameObject('/Length1')] = NumberObject(len(font_file_data))
-        font_file_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
-        font_file_ref = writer._add_object(font_file_stream)
+        font_file_stream = PdfStream(compressed)
+        font_file_stream['/Length1'] = PdfNumber(len(font_file_data))
+        font_file_stream['/Filter'] = PdfName('/FlateDecode')
+        font_file_ref = writer.add_object(font_file_stream)
 
         # Get ascent/descent/capHeight from TrueType tables
         ascent = int(font_bbox[3])
@@ -803,50 +741,47 @@ class PDFBuilder:
                 if ch > 0:
                     cap_height = int(round(ch * scale))
 
-        font_descriptor = DictionaryObject()
-        font_descriptor[NameObject('/Type')] = NameObject('/FontDescriptor')
-        font_descriptor[NameObject('/FontName')] = NameObject('/' + unique_font_name)
-        font_descriptor[NameObject('/Flags')] = NumberObject(_get_font_flags(font_dict))
-        font_descriptor[NameObject('/FontBBox')] = ArrayObject([
-            NumberObject(int(font_bbox[0])), NumberObject(int(font_bbox[1])),
-            NumberObject(int(font_bbox[2])), NumberObject(int(font_bbox[3])),
+        font_descriptor = PdfDict()
+        font_descriptor['/Type'] = PdfName('/FontDescriptor')
+        font_descriptor['/FontName'] = PdfName('/' + unique_font_name)
+        font_descriptor['/Flags'] = PdfNumber(_get_font_flags(font_dict))
+        font_descriptor['/FontBBox'] = PdfArray([
+            PdfNumber(int(font_bbox[0])), PdfNumber(int(font_bbox[1])),
+            PdfNumber(int(font_bbox[2])), PdfNumber(int(font_bbox[3])),
         ])
-        font_descriptor[NameObject('/ItalicAngle')] = NumberObject(0)
-        font_descriptor[NameObject('/Ascent')] = NumberObject(ascent)
-        font_descriptor[NameObject('/Descent')] = NumberObject(descent)
-        font_descriptor[NameObject('/CapHeight')] = NumberObject(cap_height)
-        font_descriptor[NameObject('/StemV')] = NumberObject(80)
-        font_descriptor[NameObject('/FontFile2')] = font_file_ref
-        font_descriptor_ref = writer._add_object(font_descriptor)
+        font_descriptor['/ItalicAngle'] = PdfNumber(0)
+        font_descriptor['/Ascent'] = PdfNumber(ascent)
+        font_descriptor['/Descent'] = PdfNumber(descent)
+        font_descriptor['/CapHeight'] = PdfNumber(cap_height)
+        font_descriptor['/StemV'] = PdfNumber(80)
+        font_descriptor['/FontFile2'] = font_file_ref
+        font_descriptor_ref = writer.add_object(font_descriptor)
 
         tounicode_map = _build_tounicode_map(font_dict, glyphs_used)
         tounicode_ref = None
         if tounicode_map:
             cmap_data = generate_tounicode_cmap(tounicode_map, font_name_str)
-            cmap_stream = StreamObject()
             cmap_compressed = zlib.compress(cmap_data)
-            cmap_stream._data = cmap_compressed
-            cmap_stream[NameObject('/Length')] = NumberObject(
-                len(cmap_compressed))
-            cmap_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
-            tounicode_ref = writer._add_object(cmap_stream)
+            cmap_stream = PdfStream(cmap_compressed)
+            cmap_stream['/Filter'] = PdfName('/FlateDecode')
+            tounicode_ref = writer.add_object(cmap_stream)
 
-        font_obj = DictionaryObject()
-        font_obj[NameObject('/Type')] = NameObject('/Font')
-        font_obj[NameObject('/Subtype')] = NameObject('/TrueType')
-        font_obj[NameObject('/BaseFont')] = NameObject('/' + unique_font_name)
-        font_obj[NameObject('/FirstChar')] = NumberObject(first_char)
-        font_obj[NameObject('/LastChar')] = NumberObject(last_char)
-        font_obj[NameObject('/Widths')] = widths
-        font_obj[NameObject('/FontDescriptor')] = font_descriptor_ref
+        font_obj = PdfDict()
+        font_obj['/Type'] = PdfName('/Font')
+        font_obj['/Subtype'] = PdfName('/TrueType')
+        font_obj['/BaseFont'] = PdfName('/' + unique_font_name)
+        font_obj['/FirstChar'] = PdfNumber(first_char)
+        font_obj['/LastChar'] = PdfNumber(last_char)
+        font_obj['/Widths'] = widths
+        font_obj['/FontDescriptor'] = font_descriptor_ref
 
         encoding_obj = _build_pdf_encoding(font_dict, first_char, last_char)
         if encoding_obj:
-            font_obj[NameObject('/Encoding')] = encoding_obj
+            font_obj['/Encoding'] = encoding_obj
         if tounicode_ref:
-            font_obj[NameObject('/ToUnicode')] = tounicode_ref
+            font_obj['/ToUnicode'] = tounicode_ref
 
-        font_ref = writer._add_object(font_obj)
+        font_ref = writer.add_object(font_obj)
 
         base_name = font_name_str.replace('-', '').replace(' ', '')
         resource_name = f'/{base_name}_{instance_num}' if instance_num > 0 else f'/{base_name}'

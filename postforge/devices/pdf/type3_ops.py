@@ -23,19 +23,9 @@ from ._common import _fmt, _cfmt, _Type3GlyphDef, _Type3FontDef, _GState
 from .stroke_ops import _emit_path, _emit_path_offset, _emit_color
 from .image_ops import _compute_image_cm, _emit_image_xobject
 from .text_ops import _emit_text_color
-
-try:
-    from pypdf.generic import (
-        ArrayObject,
-        DictionaryObject,
-        FloatObject,
-        NameObject,
-        NumberObject,
-        StreamObject,
-    )
-    PYPDF_AVAILABLE = True
-except ImportError:
-    PYPDF_AVAILABLE = False
+from .pdf_objects import (
+    PdfArray, PdfDict, PdfName, PdfNumber, PdfStream,
+)
 
 
 def _type3_font_key(cache_key: object) -> tuple:
@@ -353,59 +343,57 @@ def build_type3_font(writer: object, t3_def: _Type3FontDef) -> object | None:
                 bbox_union[3] = max(bbox_union[3], ury)
 
     # Build CharProcs dictionary
-    charprocs_dict = DictionaryObject()
+    charprocs_dict = PdfDict()
     for glyph_def in t3_def.glyphs.values():
-        cp_stream = StreamObject()
         compressed = zlib.compress(glyph_def.charproc_stream)
-        cp_stream._data = compressed
-        cp_stream[NameObject('/Length')] = NumberObject(len(compressed))
-        cp_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
-        cp_ref = writer._add_object(cp_stream)
-        charprocs_dict[NameObject('/' + glyph_def.glyph_name)] = cp_ref
+        cp_stream = PdfStream(compressed)
+        cp_stream['/Filter'] = PdfName('/FlateDecode')
+        cp_ref = writer.add_object(cp_stream)
+        charprocs_dict['/' + glyph_def.glyph_name] = cp_ref
 
     # Build Encoding with Differences array
-    differences = ArrayObject()
+    differences = PdfArray()
     last_code = -2
     for cc in char_codes:
         glyph_def = t3_def.glyphs[cc]
         if cc != last_code + 1:
-            differences.append(NumberObject(cc))
-        differences.append(NameObject('/' + glyph_def.glyph_name))
+            differences.append(PdfNumber(cc))
+        differences.append(PdfName('/' + glyph_def.glyph_name))
         last_code = cc
 
-    encoding_dict = DictionaryObject()
-    encoding_dict[NameObject('/Type')] = NameObject('/Encoding')
-    encoding_dict[NameObject('/Differences')] = differences
+    encoding_dict = PdfDict()
+    encoding_dict['/Type'] = PdfName('/Encoding')
+    encoding_dict['/Differences'] = differences
 
     # Build Widths array
-    widths_array = ArrayObject()
+    widths_array = PdfArray()
     for cc in range(first_char, last_char + 1):
         glyph_def = t3_def.glyphs.get(cc)
         if glyph_def is not None:
-            widths_array.append(FloatObject(round(glyph_def.width_x, 2)))
+            widths_array.append(PdfNumber(round(glyph_def.width_x, 2)))
         else:
-            widths_array.append(NumberObject(0))
+            widths_array.append(PdfNumber(0))
 
     # Build font dictionary
-    font_obj = DictionaryObject()
-    font_obj[NameObject('/Type')] = NameObject('/Font')
-    font_obj[NameObject('/Subtype')] = NameObject('/Type3')
-    font_obj[NameObject('/FontBBox')] = ArrayObject([
-        FloatObject(round(bbox_union[0], 2)),
-        FloatObject(round(bbox_union[1], 2)),
-        FloatObject(round(bbox_union[2], 2)),
-        FloatObject(round(bbox_union[3], 2)),
+    font_obj = PdfDict()
+    font_obj['/Type'] = PdfName('/Font')
+    font_obj['/Subtype'] = PdfName('/Type3')
+    font_obj['/FontBBox'] = PdfArray([
+        PdfNumber(round(bbox_union[0], 2)),
+        PdfNumber(round(bbox_union[1], 2)),
+        PdfNumber(round(bbox_union[2], 2)),
+        PdfNumber(round(bbox_union[3], 2)),
     ])
-    font_obj[NameObject('/FontMatrix')] = ArrayObject([
-        NumberObject(1), NumberObject(0),
-        NumberObject(0), NumberObject(1),
-        NumberObject(0), NumberObject(0),
+    font_obj['/FontMatrix'] = PdfArray([
+        PdfNumber(1), PdfNumber(0),
+        PdfNumber(0), PdfNumber(1),
+        PdfNumber(0), PdfNumber(0),
     ])
-    font_obj[NameObject('/CharProcs')] = writer._add_object(charprocs_dict)
-    font_obj[NameObject('/Encoding')] = encoding_dict
-    font_obj[NameObject('/FirstChar')] = NumberObject(first_char)
-    font_obj[NameObject('/LastChar')] = NumberObject(last_char)
-    font_obj[NameObject('/Widths')] = widths_array
+    font_obj['/CharProcs'] = writer.add_object(charprocs_dict)
+    font_obj['/Encoding'] = encoding_dict
+    font_obj['/FirstChar'] = PdfNumber(first_char)
+    font_obj['/LastChar'] = PdfNumber(last_char)
+    font_obj['/Widths'] = widths_array
 
     # Build ToUnicode CMap for text selection/searchability.
     # Prefer ActualText-derived unicode_map (accurate for re-encoded
@@ -422,13 +410,9 @@ def build_type3_font(writer: object, t3_def: _Type3FontDef) -> object | None:
                 tounicode_map[cc] = unicode_char
     if tounicode_map:
         cmap_data = generate_tounicode_cmap(tounicode_map, 'Type3')
-        cmap_stream = StreamObject()
         cmap_compressed = zlib.compress(cmap_data)
-        cmap_stream._data = cmap_compressed
-        cmap_stream[NameObject('/Length')] = NumberObject(
-            len(cmap_compressed))
-        cmap_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
-        font_obj[NameObject('/ToUnicode')] = writer._add_object(
-            cmap_stream)
+        cmap_stream = PdfStream(cmap_compressed)
+        cmap_stream['/Filter'] = PdfName('/FlateDecode')
+        font_obj['/ToUnicode'] = writer.add_object(cmap_stream)
 
-    return writer._add_object(font_obj)
+    return writer.add_object(font_obj)
