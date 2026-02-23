@@ -51,7 +51,7 @@ class PageData:
     __slots__ = ('content_stream', 'width_pts', 'height_pts',
                  'font_resources', 'standard14_fonts', 'font_keys_used',
                  'needs_invisible_font', 'rotate', 'shading_defs',
-                 'image_defs')
+                 'image_defs', 'type3_font_defs')
 
     def __init__(self, content_stream: bytes, width_pts: float,
                  height_pts: float) -> None:
@@ -65,6 +65,7 @@ class PageData:
         self.rotate: int = 0  # PDF page rotation (0, 90, 180, 270)
         self.shading_defs: list[tuple[str, dict]] = []  # (name, shading_desc)
         self.image_defs: list[tuple[str, dict]] = []  # (name, image_desc)
+        self.type3_font_defs: dict = {}  # font_key -> _Type3FontDef
 
 
 def _get_ncomp(img_desc: dict) -> int:
@@ -242,6 +243,13 @@ class PDFBuilder:
             if img_ref is not None:
                 xobject_dict[NameObject(img_name)] = img_ref
 
+        # Add PDF Type 3 fonts for this page
+        for t3_font_def in page_data.type3_font_defs.values():
+            t3_ref = self._build_type3_font(writer, t3_font_def,
+                                            xobject_dict)
+            if t3_ref is not None:
+                font_dict[NameObject(t3_font_def.resource_name)] = t3_ref
+
         # Build resources
         resources = DictionaryObject()
         if font_dict:
@@ -258,6 +266,142 @@ class PDFBuilder:
         page[NameObject('/Resources')] = resources
         if page_data.rotate:
             page[NameObject('/Rotate')] = NumberObject(page_data.rotate)
+
+    def _build_type3_font(self, writer: PdfWriter,
+                          t3_def: object,
+                          page_xobjects: DictionaryObject) -> object | None:
+        """Build a PDF Type 3 font object from collected glyph data.
+
+        Args:
+            writer: PdfWriter to add objects to.
+            t3_def: _Type3FontDef with glyph definitions.
+            page_xobjects: Page-level XObject dict (for CharProc image refs).
+
+        Returns:
+            Indirect reference to the Type 3 font object, or None.
+        """
+        if not t3_def.glyphs:
+            return None
+
+        # Determine char code range
+        char_codes = sorted(t3_def.glyphs.keys())
+        first_char = char_codes[0]
+        last_char = char_codes[-1]
+
+        # Compute union bounding box across all glyphs
+        bbox_union = [0.0, 0.0, 1.0, 1.0]
+        has_bbox = False
+        for glyph_def in t3_def.glyphs.values():
+            if glyph_def.bbox:
+                llx, lly, urx, ury = glyph_def.bbox
+                if not has_bbox:
+                    bbox_union = [llx, lly, urx, ury]
+                    has_bbox = True
+                else:
+                    bbox_union[0] = min(bbox_union[0], llx)
+                    bbox_union[1] = min(bbox_union[1], lly)
+                    bbox_union[2] = max(bbox_union[2], urx)
+                    bbox_union[3] = max(bbox_union[3], ury)
+
+        # Build CharProcs dictionary
+        charprocs_dict = DictionaryObject()
+        # Collect XObject names referenced by CharProcs
+        charproc_xobject_names: set[str] = set()
+        for glyph_def in t3_def.glyphs.values():
+            cp_stream = StreamObject()
+            compressed = zlib.compress(glyph_def.charproc_stream)
+            cp_stream._data = compressed
+            cp_stream[NameObject('/Length')] = NumberObject(len(compressed))
+            cp_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
+            cp_ref = writer._add_object(cp_stream)
+            charprocs_dict[NameObject('/' + glyph_def.glyph_name)] = cp_ref
+
+            # Check if charproc references any XObject images
+            if b'/Im' in glyph_def.charproc_stream and b' Do' in glyph_def.charproc_stream:
+                # Extract /ImN references from the charproc
+                stream_text = glyph_def.charproc_stream.decode('latin-1')
+                for part in stream_text.split('/Im'):
+                    if part and part[0].isdigit():
+                        num = ''
+                        for ch in part:
+                            if ch.isdigit():
+                                num += ch
+                            else:
+                                break
+                        if num:
+                            charproc_xobject_names.add(f'/Im{num}')
+
+        # Build Encoding with Differences array
+        differences = ArrayObject()
+        last_code = -2
+        for cc in char_codes:
+            glyph_def = t3_def.glyphs[cc]
+            if cc != last_code + 1:
+                differences.append(NumberObject(cc))
+            differences.append(NameObject('/' + glyph_def.glyph_name))
+            last_code = cc
+
+        encoding_dict = DictionaryObject()
+        encoding_dict[NameObject('/Type')] = NameObject('/Encoding')
+        encoding_dict[NameObject('/Differences')] = differences
+
+        # Build Widths array
+        widths_array = ArrayObject()
+        for cc in range(first_char, last_char + 1):
+            glyph_def = t3_def.glyphs.get(cc)
+            if glyph_def is not None:
+                widths_array.append(FloatObject(round(glyph_def.width_x, 2)))
+            else:
+                widths_array.append(NumberObject(0))
+
+        # Build font dictionary
+        font_obj = DictionaryObject()
+        font_obj[NameObject('/Type')] = NameObject('/Font')
+        font_obj[NameObject('/Subtype')] = NameObject('/Type3')
+        font_obj[NameObject('/FontBBox')] = ArrayObject([
+            FloatObject(round(bbox_union[0], 2)),
+            FloatObject(round(bbox_union[1], 2)),
+            FloatObject(round(bbox_union[2], 2)),
+            FloatObject(round(bbox_union[3], 2)),
+        ])
+        font_obj[NameObject('/FontMatrix')] = ArrayObject([
+            NumberObject(1), NumberObject(0),
+            NumberObject(0), NumberObject(1),
+            NumberObject(0), NumberObject(0),
+        ])
+        font_obj[NameObject('/CharProcs')] = writer._add_object(charprocs_dict)
+        font_obj[NameObject('/Encoding')] = encoding_dict
+        font_obj[NameObject('/FirstChar')] = NumberObject(first_char)
+        font_obj[NameObject('/LastChar')] = NumberObject(last_char)
+        font_obj[NameObject('/Widths')] = widths_array
+
+        # Build ToUnicode CMap for text selection/searchability
+        tounicode_map: dict[int, str] = {}
+        for cc, glyph_def in t3_def.glyphs.items():
+            gname_bytes = glyph_def.glyph_name.encode('latin-1')
+            unicode_char = glyph_name_to_unicode(gname_bytes)
+            if unicode_char and unicode_char != '\ufffd':
+                tounicode_map[cc] = unicode_char
+        if tounicode_map:
+            cmap_data = generate_tounicode_cmap(tounicode_map, 'Type3')
+            cmap_stream = StreamObject()
+            cmap_stream._data = cmap_data
+            cmap_stream[NameObject('/Length')] = NumberObject(len(cmap_data))
+            font_obj[NameObject('/ToUnicode')] = writer._add_object(
+                cmap_stream)
+
+        # Add Resources if CharProcs reference XObjects
+        if charproc_xobject_names:
+            cp_xobj_dict = DictionaryObject()
+            for xobj_name in charproc_xobject_names:
+                if NameObject(xobj_name) in page_xobjects:
+                    cp_xobj_dict[NameObject(xobj_name)] = page_xobjects[NameObject(xobj_name)]
+            if cp_xobj_dict:
+                cp_resources = DictionaryObject()
+                cp_resources[NameObject('/XObject')] = cp_xobj_dict
+                font_obj[NameObject('/Resources')] = cp_resources
+
+        return writer._add_object(font_obj)
 
     def _embed_type1_font(self, writer: PdfWriter, font_name: bytes,
                           usage: FontUsage, instance_num: int,

@@ -16,6 +16,7 @@ import copy
 import math
 import unicodedata
 import zlib
+from dataclasses import dataclass, field
 
 from ...core import types as ps
 from ...core import icc_profile
@@ -28,6 +29,27 @@ from ..pdf.font_tracker import FontTracker
 
 # Module-level ref to font widths, set during generate_content_stream
 _active_font_widths: dict[tuple, dict[int, int]] = {}
+
+
+@dataclass
+class _Type3GlyphDef:
+    """Single glyph definition for a PDF Type 3 font."""
+    char_code: int           # 0-255
+    glyph_name: str          # from PS Encoding, e.g. 'A'
+    width_x: float           # device-space advance width (wx)
+    bbox: tuple | None       # (llx, lly, urx, ury) in device space or None
+    charproc_stream: bytes   # PDF operators for the CharProc content stream
+
+
+@dataclass
+class _Type3FontDef:
+    """Accumulated Type 3 font definition for a PDF page."""
+    font_id: object          # from cache_key (FontName or id)
+    font_matrix: tuple       # from cache_key
+    ctm_scale: tuple         # from cache_key
+    resource_name: str       # e.g. '/T3F0'
+    glyphs: dict[int, _Type3GlyphDef] = field(default_factory=dict)
+    font_dict: object = None  # PS font dict reference (for Encoding access)
 
 
 def _fmt(v: float) -> str:
@@ -87,7 +109,7 @@ def generate_content_stream(display_list: ps.DisplayList,
                             embedded_fonts: dict,
                             font_widths_cache: dict,
                             device_scale: float = 1.0,
-                            ) -> tuple[bytes, list[tuple[str, dict]], list[tuple[str, dict]]]:
+                            ) -> tuple[bytes, list[tuple[str, dict]], list[tuple[str, dict]], dict[tuple, _Type3FontDef]]:
     """Generate PDF content stream from a display list.
 
     Args:
@@ -99,10 +121,11 @@ def generate_content_stream(display_list: ps.DisplayList,
         device_scale: Scale factor from device units to PDF points (72/dpi).
 
     Returns:
-        Tuple of (content_stream_bytes, shading_defs, image_defs) where
-        shading_defs is a list of (resource_name, shading_description_dict)
-        pairs and image_defs is a list of (resource_name, image_description_dict)
-        pairs for XObject images.
+        Tuple of (content_stream_bytes, shading_defs, image_defs, type3_font_defs)
+        where shading_defs is a list of (resource_name, shading_description_dict)
+        pairs, image_defs is a list of (resource_name, image_description_dict)
+        pairs for XObject images, and type3_font_defs maps font_key tuples to
+        _Type3FontDef objects for PDF Type 3 font construction.
     """
     global _active_font_widths
     _active_font_widths = font_widths_cache
@@ -122,6 +145,19 @@ def generate_content_stream(display_list: ps.DisplayList,
     # Invisible text batch: same-baseline ActualTextStart entries
     invis_batch: list[tuple] = []
 
+    # Type 3 font collection state
+    type3_fonts: dict[tuple, _Type3FontDef] = {}
+    type3_font_counter = 0
+    collecting_type3 = False
+    type3_glyph_elements: list = []
+    type3_glyph_cache_key: object = None
+    type3_glyph_pos: tuple[float, float] = (0.0, 0.0)
+    # Type 3 text batching: consecutive same-font/color chars → single BT/ET
+    type3_text_batch: list[tuple] = []  # (char_code, x, y, width_x)
+    type3_batch_font_key: tuple | None = None
+    type3_batch_color: tuple | None = None
+    type3_suppress_invis = False  # suppress ActualTextStart for Type 3 text
+
     def _flush_text_batch() -> None:
         nonlocal text_batch, text_batch_font
         if text_batch:
@@ -136,6 +172,16 @@ def generate_content_stream(display_list: ps.DisplayList,
             _flush_invisible_batch(lines, invis_batch)
             invis_batch = []
 
+    def _flush_type3_text() -> None:
+        nonlocal type3_text_batch, type3_batch_font_key, type3_batch_color
+        if type3_text_batch and type3_batch_font_key is not None:
+            _emit_type3_text_run(lines, type3_text_batch,
+                                 type3_fonts[type3_batch_font_key],
+                                 type3_batch_color, gs)
+            type3_text_batch = []
+            type3_batch_font_key = None
+            type3_batch_color = None
+
     # The display list is in device space (Y=0 at top, Y increases downward)
     # but PDF uses Y=0 at bottom, Y increases upward. Apply a combined
     # device-to-points scale + Y-flip transform at the start.
@@ -145,30 +191,48 @@ def generate_content_stream(display_list: ps.DisplayList,
 
     for item in display_list:
         if isinstance(item, ps.Path):
+            if collecting_type3:
+                type3_glyph_elements.append(item)
+                continue
+            _flush_type3_text()
             _flush_text_batch()
             _flush_invis_batch()
+            type3_suppress_invis = False
             current_path = item
             current_path_lines = _emit_path(item)
 
         elif isinstance(item, ps.Fill):
+            if collecting_type3:
+                type3_glyph_elements.append(item)
+                continue
+            _flush_type3_text()
             _flush_text_batch()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            type3_suppress_invis = False
             _emit_fill(lines, current_path_lines, item, gs)
             current_path = None
             current_path_lines = []
 
         elif isinstance(item, ps.Stroke):
+            if collecting_type3:
+                # Strokes in Type 3 glyphs are unusual; include as element
+                type3_glyph_elements.append(item)
+                continue
+            _flush_type3_text()
             _flush_text_batch()
             _flush_invis_batch()
+            type3_suppress_invis = False
             _emit_stroke(lines, current_path_lines, current_path, item, gs)
             current_path = None
             current_path_lines = []
 
         elif isinstance(item, ps.ClipElement):
+            _flush_type3_text()
             _flush_text_batch()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            type3_suppress_invis = False
 
             if item.is_initclip:
                 # initclip resets to page bounds — pop ALL nested clip groups
@@ -192,8 +256,10 @@ def generate_content_stream(display_list: ps.DisplayList,
                 gs.invalidate()
 
         elif isinstance(item, ps.TextObj):
+            _flush_type3_text()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            type3_suppress_invis = False
             # Batch consecutive same-font TextObjs into one BT/ET
             font_name = _resolve_text_font(item, font_tracker, embedded_fonts)
             if font_name is not None and font_name == text_batch_font:
@@ -205,16 +271,23 @@ def generate_content_stream(display_list: ps.DisplayList,
                     text_batch_font = font_name
 
         elif isinstance(item, ps.ImageElement):
+            if collecting_type3:
+                type3_glyph_elements.append(item)
+                continue
+            _flush_type3_text()
             _flush_text_batch()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            type3_suppress_invis = False
             img_name, image_counter = _emit_image_xobject(
                 lines, item, image_defs, image_counter, gs)
 
         elif isinstance(item, (ps.AxialShadingFill, ps.RadialShadingFill)):
+            _flush_type3_text()
             _flush_text_batch()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            type3_suppress_invis = False
             if isinstance(item, ps.AxialShadingFill):
                 sh_desc = _build_axial_shading(item)
             else:
@@ -226,15 +299,19 @@ def generate_content_stream(display_list: ps.DisplayList,
                 _emit_shading_ref(lines, sh_name, item.ctm)
 
         elif isinstance(item, ps.FunctionShadingFill):
+            _flush_type3_text()
             _flush_text_batch()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            type3_suppress_invis = False
             _emit_function_shading(lines, item)
 
         elif isinstance(item, ps.MeshShadingFill):
+            _flush_type3_text()
             _flush_text_batch()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            type3_suppress_invis = False
             sh_desc = _build_mesh_shading(item)
             if sh_desc is not None:
                 sh_name = f'/Sh{shading_counter}'
@@ -243,9 +320,11 @@ def generate_content_stream(display_list: ps.DisplayList,
                 _emit_shading_ref(lines, sh_name, item.ctm)
 
         elif isinstance(item, ps.PatchShadingFill):
+            _flush_type3_text()
             _flush_text_batch()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            type3_suppress_invis = False
             sh_desc = _build_patch_shading(item)
             if sh_desc is not None:
                 sh_name = f'/Sh{shading_counter}'
@@ -260,9 +339,11 @@ def generate_content_stream(display_list: ps.DisplayList,
             pass  # Handled by caller
 
         elif isinstance(item, (ps.PatternFill,)):
+            _flush_type3_text()
             _flush_text_batch()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            type3_suppress_invis = False
             # PatternFill is not in scope for native_pdf v1
             current_path = None
             current_path_lines = []
@@ -270,28 +351,158 @@ def generate_content_stream(display_list: ps.DisplayList,
         elif isinstance(item, ps.GlyphRef):
             _flush_text_batch()
             _close_aniso_batch(lines, gs)
-            image_counter = _emit_glyph_ref(
-                lines, item, gs, image_defs, image_counter)
 
-        elif isinstance(item, (ps.GlyphStart, ps.GlyphEnd)):
-            # Cache miss markers — the elements between GlyphStart/GlyphEnd
-            # are normal Path/Fill items handled by the existing dispatch above.
-            pass
+            # Try to emit as Type 3 font reference
+            path_cache = global_resources.get_glyph_cache()
+            cached = path_cache.get(item.cache_key)
+            if cached is not None and cached.char_bbox is not None:
+                # Cacheable glyph (d1) — emit as Type 3 font character
+                font_key = _type3_font_key(item.cache_key)
+                color = item.cache_key.color
+                if font_key not in type3_fonts:
+                    t3_name = f'/T3F{type3_font_counter}'
+                    type3_font_counter += 1
+                    type3_fonts[font_key] = _Type3FontDef(
+                        font_id=item.cache_key.font_id,
+                        font_matrix=item.cache_key.font_matrix,
+                        ctm_scale=item.cache_key.ctm_scale,
+                        resource_name=t3_name,
+                        font_dict=cached.font_dict)
+                t3_font = type3_fonts[font_key]
+
+                char_code = item.cache_key.char_selector[0]
+                if char_code not in t3_font.glyphs:
+                    glyph_name = _get_glyph_name_for_code(
+                        cached.font_dict, char_code)
+                    # Transform metrics from character space to device space
+                    dev_wx, dev_bbox = _charspace_to_device(
+                        cached.char_width, cached.char_bbox,
+                        item.cache_key.font_matrix,
+                        item.cache_key.ctm_scale)
+                    charproc, cp_imgs, image_counter = _build_charproc_stream(
+                        cached.display_elements,
+                        (dev_wx, 0.0), dev_bbox,
+                        image_defs, image_counter)
+                    t3_font.glyphs[char_code] = _Type3GlyphDef(
+                        char_code=char_code,
+                        glyph_name=glyph_name,
+                        width_x=dev_wx,
+                        bbox=dev_bbox,
+                        charproc_stream=charproc)
+                    if cp_imgs:
+                        image_defs.extend(cp_imgs)
+
+                # Batch for combined BT/ET emission
+                if (font_key != type3_batch_font_key
+                        or color != type3_batch_color):
+                    _flush_type3_text()
+                    type3_batch_font_key = font_key
+                    type3_batch_color = color
+                type3_text_batch.append(
+                    (char_code, item.position_x, item.position_y,
+                     t3_font.glyphs[char_code].width_x))
+                type3_suppress_invis = True
+            else:
+                # Non-cacheable or missing — fall back to inline paths
+                _flush_type3_text()
+                type3_suppress_invis = False
+                image_counter = _emit_glyph_ref(
+                    lines, item, gs, image_defs, image_counter)
+
+        elif isinstance(item, ps.GlyphStart):
+            # Check if this is a cacheable glyph (has char_bbox in cache)
+            path_cache = global_resources.get_glyph_cache()
+            cached = path_cache.get(item.cache_key)
+            if cached is not None and cached.char_bbox is not None:
+                # Cacheable (d1) — collect elements for CharProc
+                collecting_type3 = True
+                type3_glyph_elements = []
+                type3_glyph_cache_key = item.cache_key
+                type3_glyph_pos = (item.position_x, item.position_y)
+            # else: non-cacheable — elements flow through normal dispatch
+
+        elif isinstance(item, ps.GlyphEnd):
+            if collecting_type3 and type3_glyph_cache_key is not None:
+                # End of cache miss — build CharProc from cached elements
+                path_cache = global_resources.get_glyph_cache()
+                cached = path_cache.get(type3_glyph_cache_key)
+                ck = type3_glyph_cache_key
+
+                if cached is not None and cached.display_elements:
+                    font_key = _type3_font_key(ck)
+                    color = ck.color
+                    if font_key not in type3_fonts:
+                        t3_name = f'/T3F{type3_font_counter}'
+                        type3_font_counter += 1
+                        type3_fonts[font_key] = _Type3FontDef(
+                            font_id=ck.font_id,
+                            font_matrix=ck.font_matrix,
+                            ctm_scale=ck.ctm_scale,
+                            resource_name=t3_name,
+                            font_dict=cached.font_dict)
+                    t3_font = type3_fonts[font_key]
+
+                    char_code = ck.char_selector[0]
+                    if char_code not in t3_font.glyphs:
+                        glyph_name = _get_glyph_name_for_code(
+                            t3_font.font_dict, char_code)
+                        # Transform metrics from character space to device space
+                        dev_wx, dev_bbox = _charspace_to_device(
+                            cached.char_width, cached.char_bbox,
+                            ck.font_matrix, ck.ctm_scale)
+                        charproc, cp_imgs, image_counter = \
+                            _build_charproc_stream(
+                                cached.display_elements,
+                                (dev_wx, 0.0), dev_bbox,
+                                image_defs, image_counter)
+                        t3_font.glyphs[char_code] = _Type3GlyphDef(
+                            char_code=char_code,
+                            glyph_name=glyph_name,
+                            width_x=dev_wx,
+                            bbox=dev_bbox,
+                            charproc_stream=charproc)
+                        if cp_imgs:
+                            image_defs.extend(cp_imgs)
+
+                    # Batch for combined BT/ET emission
+                    _flush_text_batch()
+                    _close_aniso_batch(lines, gs)
+                    if (font_key != type3_batch_font_key
+                            or color != type3_batch_color):
+                        _flush_type3_text()
+                        type3_batch_font_key = font_key
+                        type3_batch_color = color
+                    ox, oy = type3_glyph_pos
+                    type3_text_batch.append(
+                        (char_code, ox, oy,
+                         t3_font.glyphs[char_code].width_x))
+                    type3_suppress_invis = True
+
+                collecting_type3 = False
+                type3_glyph_elements = []
+                type3_glyph_cache_key = None
 
         elif isinstance(item, ps.ActualTextStart):
-            _flush_text_batch()
-            _close_aniso_batch(lines, gs)
-            params = _compute_invisible_text_params(item)
-            if params is not None:
-                if (invis_batch and
-                        _same_invisible_baseline(invis_batch[-1], params)):
-                    invis_batch.append(params)
-                else:
-                    _flush_invis_batch()
-                    invis_batch.append(params)
+            if type3_suppress_invis or type3_text_batch:
+                # Type 3 font has ToUnicode CMap — skip invisible overlay
+                pass
+            else:
+                _flush_text_batch()
+                _close_aniso_batch(lines, gs)
+                params = _compute_invisible_text_params(item)
+                if params is not None:
+                    if (invis_batch and
+                            _same_invisible_baseline(invis_batch[-1], params)):
+                        invis_batch.append(params)
+                    else:
+                        _flush_invis_batch()
+                        invis_batch.append(params)
 
         elif isinstance(item, ps.ActualTextEnd):
             pass  # Handled implicitly by batching/flushing
+
+    # Flush any pending Type 3 text batch
+    _flush_type3_text()
 
     # Flush any pending text batch
     _flush_text_batch()
@@ -307,7 +518,7 @@ def generate_content_stream(display_list: ps.DisplayList,
         lines.append(b'Q')
         clip_depth -= 1
 
-    return b'\n'.join(lines), shading_defs, image_defs
+    return b'\n'.join(lines), shading_defs, image_defs, type3_fonts
 
 
 def _close_aniso_batch(lines: list[bytes], gs: _GState) -> None:
@@ -619,6 +830,238 @@ def _emit_path_offset(path: ps.Path, ox: float, oy: float) -> list[bytes]:
             elif isinstance(elem, ps.ClosePath):
                 ops.append(b'h')
     return ops
+
+
+def _get_glyph_name_for_code(font_dict: object, char_code: int) -> str:
+    """Get glyph name from font encoding for a character code.
+
+    Falls back to a generated name if the encoding is missing or invalid.
+    """
+    if font_dict is not None and hasattr(font_dict, 'val'):
+        encoding = font_dict.val.get(b'Encoding')
+        if (encoding is not None and encoding.TYPE in ps.ARRAY_TYPES
+                and char_code < len(encoding.val)):
+            glyph_name_obj = encoding.val[char_code]
+            if glyph_name_obj.TYPE == ps.T_NAME:
+                name = glyph_name_obj.val
+                if isinstance(name, bytes):
+                    return name.decode('latin-1')
+                return str(name)
+    return f'c{char_code}'
+
+
+def _charspace_to_device(char_width: tuple, char_bbox: tuple | None,
+                         font_matrix: tuple,
+                         ctm_scale: tuple) -> tuple[float, tuple | None]:
+    """Transform character-space width and bbox to device space.
+
+    Character space values (from setcachedevice) are transformed through
+    FontMatrix × CTM_scale to match the device-space coordinates used by
+    the normalized display elements in CharProc content streams.
+
+    Args:
+        char_width: (wx, wy) advance width in character space.
+        char_bbox: (llx, lly, urx, ury) bounding box or None.
+        font_matrix: Font's FontMatrix tuple (a, b, c, d, e, f).
+        ctm_scale: CTM scale/rotation part (a, b, c, d).
+
+    Returns:
+        (device_width_x, device_bbox) where device_bbox may be None.
+    """
+    fm_a = font_matrix[0]
+    fm_b = font_matrix[1]
+    fm_c = font_matrix[2]
+    fm_d = font_matrix[3]
+    ca, cb, cc, cd = ctm_scale
+
+    # Transform width vector (delta — no translation)
+    wx = char_width[0]
+    wy = char_width[1] if len(char_width) > 1 else 0.0
+    wx_fm = fm_a * wx + fm_c * wy
+    wy_fm = fm_b * wx + fm_d * wy
+    wx_dev = ca * wx_fm + cc * wy_fm
+
+    if char_bbox is None:
+        return wx_dev, None
+
+    # Transform all 4 bbox corners and take extremes
+    llx, lly, urx, ury = char_bbox
+    dev_xs: list[float] = []
+    dev_ys: list[float] = []
+    for cx, cy in ((llx, lly), (urx, lly), (urx, ury), (llx, ury)):
+        fx = fm_a * cx + fm_c * cy
+        fy = fm_b * cx + fm_d * cy
+        dev_xs.append(ca * fx + cc * fy)
+        dev_ys.append(cb * fx + cd * fy)
+
+    return wx_dev, (min(dev_xs), min(dev_ys), max(dev_xs), max(dev_ys))
+
+
+def _build_charproc_stream(display_elements: list, char_width: tuple,
+                           char_bbox: tuple | None,
+                           image_defs: list[tuple[str, dict]],
+                           image_counter: int) -> tuple[bytes, list[tuple[str, dict]], int]:
+    """Convert cached glyph display elements to a PDF CharProc content stream.
+
+    Produces a d1 CharProc (cacheable, shape-only, inherits color from text state).
+    The stream starts with 'wx 0 llx lly urx ury d1' followed by path/fill ops.
+
+    All metrics (char_width, char_bbox) must be in device space (matching the
+    display_elements coordinates), NOT character space.  Use _charspace_to_device()
+    to transform setcachedevice values before calling this function.
+
+    Args:
+        display_elements: Path, Fill, ImageMaskElement elements from glyph cache
+            (normalized to origin, in device space).
+        char_width: (wx, wy) character advance in device space.
+        char_bbox: (llx, lly, urx, ury) bounding box in device space, or None.
+        image_defs: Image definitions list (for ImageMask XObjects in CharProcs).
+        image_counter: Current image counter for naming.
+
+    Returns:
+        (charproc_bytes, charproc_image_defs, updated_image_counter)
+    """
+    lines: list[bytes] = []
+    charproc_image_defs: list[tuple[str, dict]] = []
+
+    wx = char_width[0] if char_width else 0.0
+
+    if char_bbox:
+        llx, lly, urx, ury = char_bbox
+        lines.append(
+            f'{_cfmt(wx)} 0 {_cfmt(llx)} {_cfmt(lly)} '
+            f'{_cfmt(urx)} {_cfmt(ury)} d1'.encode())
+    else:
+        lines.append(f'{_cfmt(wx)} 0 d0'.encode())
+
+    for element in display_elements:
+        if isinstance(element, ps.Path):
+            path_lines = _emit_path(element)
+            # Path will be consumed by the next Fill element
+            last_path_lines = path_lines
+
+        elif isinstance(element, ps.Fill):
+            # For d1, don't emit color — glyph inherits text color
+            if char_bbox:
+                lines.extend(last_path_lines)
+            else:
+                # d0: emit color since glyph defines its own color
+                _emit_color(lines, element.color_space, element.source_color,
+                            element.color, stroking=False)
+                lines.extend(last_path_lines)
+            if element.winding_rule == ps.WINDING_EVEN_ODD:
+                lines.append(b'f*')
+            else:
+                lines.append(b'f')
+            last_path_lines = []
+
+        elif isinstance(element, ps.ImageMaskElement):
+            # Emit imagemask as inline image within the CharProc
+            if element.sample_data is not None:
+                cm_line = _compute_image_cm(
+                    element.image_matrix, element.ctm,
+                    element.width, element.height)
+                if cm_line:
+                    lines.append(b'q')
+                    lines.append(cm_line)
+                    # Build XObject image reference for the CharProc
+                    img_name = f'/Im{image_counter}'
+                    image_counter += 1
+                    desc: dict = {
+                        'width': element.width,
+                        'height': element.height,
+                        'bpc': 1,
+                        'sample_data': element.sample_data,
+                        'color_space_type': 'device',
+                        'device_cs': '/G',
+                        'icc_hash': None,
+                        'icc_n': None,
+                        'cal_params': None,
+                        'interpolate': element.interpolate,
+                        'is_mask': True,
+                        'mask_polarity': element.polarity,
+                        'mask_color': tuple(element.color),
+                        'decode_array': None,
+                        'stencil_mask': None,
+                        'color_key_mask': None,
+                    }
+                    charproc_image_defs.append((img_name, desc))
+                    lines.append(f'{img_name} Do'.encode())
+                    lines.append(b'Q')
+
+    last_path_lines = []  # noqa: F841
+    return b'\n'.join(lines), charproc_image_defs, image_counter
+
+
+def _type3_font_key(cache_key: object) -> tuple:
+    """Extract the Type 3 font grouping key from a GlyphCacheKey.
+
+    Groups glyphs by font identity, CTM scale, and font matrix —
+    color and subpixel_y are excluded because d1 glyphs inherit
+    color from the text state.
+    """
+    return (cache_key.font_id, cache_key.ctm_scale, cache_key.font_matrix)
+
+
+def _emit_type3_text_run(lines: list[bytes],
+                         batch: list[tuple],
+                         t3_font: _Type3FontDef,
+                         color: tuple,
+                         gs: _GState) -> None:
+    """Emit a batch of Type 3 characters as BT/ET blocks with TJ arrays.
+
+    Groups consecutive same-baseline characters into TJ runs for proper
+    text selection and extraction in PDF viewers.
+
+    Args:
+        lines: Output line buffer.
+        batch: List of (char_code, x, y, width_x) tuples.
+        t3_font: Type 3 font definition.
+        color: Fill color tuple for text.
+        gs: Graphics state tracker.
+    """
+    if not batch:
+        return
+
+    _emit_text_color(lines, color, gs)
+
+    i = 0
+    while i < len(batch):
+        char_code, x, y, width_x = batch[i]
+
+        lines.append(b'BT')
+        lines.append(f'{t3_font.resource_name} 1 Tf'.encode())
+        lines.append(
+            f'1 0 0 1 {_cfmt(x)} {_cfmt(y)} Tm'.encode())
+
+        # Collect same-baseline chars into a TJ run
+        tj_parts: list[str] = [f'<{char_code:02X}>']
+        prev_x = x
+        prev_width = width_x
+        j = i + 1
+        while j < len(batch):
+            next_code, next_x, next_y, next_width = batch[j]
+            # Same baseline = same y within 0.5 device pixels
+            if abs(next_y - y) > 0.5:
+                break
+            # Compute TJ kern: displacement from expected position
+            expected_x = prev_x + prev_width
+            gap = next_x - expected_x
+            kern = round(-gap * 1000)
+            if kern != 0:
+                tj_parts.append(str(kern))
+            tj_parts.append(f'<{next_code:02X}>')
+            prev_x = next_x
+            prev_width = next_width
+            j += 1
+
+        if len(tj_parts) == 1:
+            lines.append(f'{tj_parts[0]} Tj'.encode())
+        else:
+            lines.append(f'[{" ".join(tj_parts)}] TJ'.encode())
+
+        lines.append(b'ET')
+        i = j
 
 
 def _emit_stroke(lines: list[bytes], path_lines: list[bytes],

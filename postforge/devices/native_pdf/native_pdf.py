@@ -147,7 +147,7 @@ def showpage(ctxt: ps.Context, pd: dict) -> None:
 
     # Generate PDF content stream from display list
     device_scale = 72.0 / hw_res_x  # device units → PDF points
-    content_stream, shading_defs, image_defs = generate_content_stream(
+    content_stream, shading_defs, image_defs, type3_font_defs = generate_content_stream(
         ctxt.display_list, height_device,
         state.font_tracker, embedded_fonts, font_widths_cache,
         device_scale)
@@ -187,6 +187,7 @@ def showpage(ctxt: ps.Context, pd: dict) -> None:
     page_data.rotate = page_rotate
     page_data.shading_defs = shading_defs
     page_data.image_defs = image_defs
+    page_data.type3_font_defs = type3_font_defs
     state.pages.append(page_data)
     state.pages_written += 1
 
