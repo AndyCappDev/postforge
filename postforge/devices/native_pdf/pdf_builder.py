@@ -51,7 +51,7 @@ class PageData:
     __slots__ = ('content_stream', 'width_pts', 'height_pts',
                  'font_resources', 'standard14_fonts', 'font_keys_used',
                  'needs_invisible_font', 'rotate', 'shading_defs',
-                 'image_defs', 'type3_font_defs')
+                 'image_defs', 'type3_page_keys')
 
     def __init__(self, content_stream: bytes, width_pts: float,
                  height_pts: float) -> None:
@@ -65,7 +65,7 @@ class PageData:
         self.rotate: int = 0  # PDF page rotation (0, 90, 180, 270)
         self.shading_defs: list[tuple[str, dict]] = []  # (name, shading_desc)
         self.image_defs: list[tuple[str, dict]] = []  # (name, image_desc)
-        self.type3_font_defs: dict = {}  # font_key -> _Type3FontDef
+        self.type3_page_keys: set[tuple] = set()  # Type 3 font keys used on this page
 
 
 def _get_ncomp(img_desc: dict) -> int:
@@ -114,13 +114,17 @@ class PDFBuilder:
         self._image_xobj_refs: dict[bytes, object] = {}
 
     def build_pdf(self, pages: list[PageData], font_tracker: FontTracker,
-                  output_path: str) -> dict[tuple, tuple[str, object]]:
+                  output_path: str,
+                  type3_fonts: dict | None = None) -> dict[tuple, tuple[str, object]]:
         """Build and write a PDF file.
 
         Args:
             pages: List of PageData objects (one per page).
             font_tracker: Font usage tracker with all fonts used.
             output_path: Path to write the PDF file.
+            type3_fonts: Document-level Type 3 font definitions (shared across
+                pages). If None, Type 3 fonts are built per-page from
+                page_data.type3_page_keys (backward compat).
 
         Returns:
             Dict of embedded_fonts: font_key -> (resource_name, font_ref).
@@ -130,9 +134,18 @@ class PDFBuilder:
         # Embed all required fonts
         embedded_fonts = self._embed_all_fonts(writer, font_tracker)
 
+        # Build document-level Type 3 fonts once (shared across pages)
+        type3_font_refs: dict[tuple, tuple[str, object]] = {}
+        if type3_fonts:
+            for font_key, t3_def in type3_fonts.items():
+                t3_ref = self._build_type3_font(writer, t3_def)
+                if t3_ref is not None:
+                    type3_font_refs[font_key] = (t3_def.resource_name, t3_ref)
+
         # Create pages
         for page_data in pages:
-            self._add_page(writer, page_data, embedded_fonts)
+            self._add_page(writer, page_data, embedded_fonts,
+                           type3_font_refs)
 
         # Write to memory, then re-serialize through PdfReader/PdfWriter.
         # pypdf's initial object ordering places the last page dict as the
@@ -195,13 +208,15 @@ class PDFBuilder:
         return embedded_fonts
 
     def _add_page(self, writer: PdfWriter, page_data: PageData,
-                  embedded_fonts: dict[tuple, tuple[str, object]]) -> None:
+                  embedded_fonts: dict[tuple, tuple[str, object]],
+                  type3_font_refs: dict[tuple, tuple[str, object]] | None = None) -> None:
         """Add a page to the PDF writer.
 
         Args:
             writer: PdfWriter to add the page to.
             page_data: Page content and dimensions.
             embedded_fonts: Dict of embedded fonts.
+            type3_font_refs: Pre-built Type 3 font refs (font_key -> (name, ref)).
         """
         page = writer.add_blank_page(
             width=page_data.width_pts, height=page_data.height_pts)
@@ -257,12 +272,12 @@ class PDFBuilder:
             if img_ref is not None:
                 xobject_dict[NameObject(img_name)] = img_ref
 
-        # Add PDF Type 3 fonts for this page
-        for t3_font_def in page_data.type3_font_defs.values():
-            t3_ref = self._build_type3_font(writer, t3_font_def,
-                                            xobject_dict)
-            if t3_ref is not None:
-                font_dict[NameObject(t3_font_def.resource_name)] = t3_ref
+        # Add pre-built Type 3 fonts used on this page
+        if type3_font_refs:
+            for font_key in page_data.type3_page_keys:
+                if font_key in type3_font_refs:
+                    res_name, t3_ref = type3_font_refs[font_key]
+                    font_dict[NameObject(res_name)] = t3_ref
 
         # Build resources
         resources = DictionaryObject()
@@ -280,14 +295,15 @@ class PDFBuilder:
             page[NameObject('/Rotate')] = NumberObject(page_data.rotate)
 
     def _build_type3_font(self, writer: PdfWriter,
-                          t3_def: object,
-                          page_xobjects: DictionaryObject) -> object | None:
+                          t3_def: object) -> object | None:
         """Build a PDF Type 3 font object from collected glyph data.
+
+        CharProc streams use inline images (BI/ID/EI), so no external
+        XObject resources are needed.
 
         Args:
             writer: PdfWriter to add objects to.
             t3_def: _Type3FontDef with glyph definitions.
-            page_xobjects: Page-level XObject dict (for CharProc image refs).
 
         Returns:
             Indirect reference to the Type 3 font object, or None.
@@ -317,8 +333,6 @@ class PDFBuilder:
 
         # Build CharProcs dictionary
         charprocs_dict = DictionaryObject()
-        # Collect XObject names referenced by CharProcs
-        charproc_xobject_names: set[str] = set()
         for glyph_def in t3_def.glyphs.values():
             cp_stream = StreamObject()
             compressed = zlib.compress(glyph_def.charproc_stream)
@@ -327,21 +341,6 @@ class PDFBuilder:
             cp_stream[NameObject('/Filter')] = NameObject('/FlateDecode')
             cp_ref = writer._add_object(cp_stream)
             charprocs_dict[NameObject('/' + glyph_def.glyph_name)] = cp_ref
-
-            # Check if charproc references any XObject images
-            if b'/Im' in glyph_def.charproc_stream and b' Do' in glyph_def.charproc_stream:
-                # Extract /ImN references from the charproc
-                stream_text = glyph_def.charproc_stream.decode('latin-1')
-                for part in stream_text.split('/Im'):
-                    if part and part[0].isdigit():
-                        num = ''
-                        for ch in part:
-                            if ch.isdigit():
-                                num += ch
-                            else:
-                                break
-                        if num:
-                            charproc_xobject_names.add(f'/Im{num}')
 
         # Build Encoding with Differences array
         differences = ArrayObject()
@@ -407,17 +406,6 @@ class PDFBuilder:
             cmap_stream[NameObject('/Length')] = NumberObject(len(cmap_data))
             font_obj[NameObject('/ToUnicode')] = writer._add_object(
                 cmap_stream)
-
-        # Add Resources if CharProcs reference XObjects
-        if charproc_xobject_names:
-            cp_xobj_dict = DictionaryObject()
-            for xobj_name in charproc_xobject_names:
-                if NameObject(xobj_name) in page_xobjects:
-                    cp_xobj_dict[NameObject(xobj_name)] = page_xobjects[NameObject(xobj_name)]
-            if cp_xobj_dict:
-                cp_resources = DictionaryObject()
-                cp_resources[NameObject('/XObject')] = cp_xobj_dict
-                font_obj[NameObject('/Resources')] = cp_resources
 
         return writer._add_object(font_obj)
 

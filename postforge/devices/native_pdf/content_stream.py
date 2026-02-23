@@ -110,7 +110,9 @@ def generate_content_stream(display_list: ps.DisplayList,
                             embedded_fonts: dict,
                             font_widths_cache: dict,
                             device_scale: float = 1.0,
-                            ) -> tuple[bytes, list[tuple[str, dict]], list[tuple[str, dict]], dict[tuple, _Type3FontDef]]:
+                            type3_fonts: dict[tuple, _Type3FontDef] | None = None,
+                            type3_font_counter: int = 0,
+                            ) -> tuple[bytes, list[tuple[str, dict]], list[tuple[str, dict]], dict[tuple, _Type3FontDef], int, set[tuple]]:
     """Generate PDF content stream from a display list.
 
     Args:
@@ -120,13 +122,18 @@ def generate_content_stream(display_list: ps.DisplayList,
         embedded_fonts: Dict mapping font_key -> (pdf_resource_name, font_ref).
         font_widths_cache: Dict mapping font_key -> {char_code: width_in_1000ths}.
         device_scale: Scale factor from device units to PDF points (72/dpi).
+        type3_fonts: Shared Type 3 font definitions to accumulate into
+            (pass None to create a fresh dict).
+        type3_font_counter: Next Type 3 font counter value.
 
     Returns:
-        Tuple of (content_stream_bytes, shading_defs, image_defs, type3_font_defs)
-        where shading_defs is a list of (resource_name, shading_description_dict)
+        Tuple of (content_stream_bytes, shading_defs, image_defs,
+        type3_font_defs, type3_font_counter, type3_page_keys) where
+        shading_defs is a list of (resource_name, shading_description_dict)
         pairs, image_defs is a list of (resource_name, image_description_dict)
-        pairs for XObject images, and type3_font_defs maps font_key tuples to
-        _Type3FontDef objects for PDF Type 3 font construction.
+        pairs for XObject images, type3_font_defs maps font_key tuples to
+        _Type3FontDef objects, type3_font_counter is the updated counter, and
+        type3_page_keys is the set of font keys used on this page.
     """
     global _active_font_widths
     _active_font_widths = font_widths_cache
@@ -146,9 +153,10 @@ def generate_content_stream(display_list: ps.DisplayList,
     # Invisible text batch: same-baseline ActualTextStart entries
     invis_batch: list[tuple] = []
 
-    # Type 3 font collection state
-    type3_fonts: dict[tuple, _Type3FontDef] = {}
-    type3_font_counter = 0
+    # Type 3 font collection state (shared across pages when provided)
+    if type3_fonts is None:
+        type3_fonts = {}
+    type3_page_keys: set[tuple] = set()  # font keys used on this page
     collecting_type3 = False
     type3_glyph_elements: list = []
     type3_glyph_cache_key: object = None
@@ -374,6 +382,7 @@ def generate_content_stream(display_list: ps.DisplayList,
                         resource_name=t3_name,
                         font_dict=cached.font_dict)
                 t3_font = type3_fonts[font_key]
+                type3_page_keys.add(font_key)
 
                 char_code = item.cache_key.char_selector[0]
                 if char_code not in t3_font.glyphs:
@@ -384,18 +393,15 @@ def generate_content_stream(display_list: ps.DisplayList,
                         cached.char_width, cached.char_bbox,
                         item.cache_key.font_matrix,
                         item.cache_key.ctm_scale)
-                    charproc, cp_imgs, image_counter = _build_charproc_stream(
+                    charproc = _build_charproc_stream(
                         cached.display_elements,
-                        (dev_wx, 0.0), dev_bbox,
-                        image_defs, image_counter)
+                        (dev_wx, 0.0), dev_bbox)
                     t3_font.glyphs[char_code] = _Type3GlyphDef(
                         char_code=char_code,
                         glyph_name=glyph_name,
                         width_x=dev_wx,
                         bbox=dev_bbox,
                         charproc_stream=charproc)
-                    if cp_imgs:
-                        image_defs.extend(cp_imgs)
 
                 # Batch for combined BT/ET emission
                 if (font_key != type3_batch_font_key
@@ -447,6 +453,7 @@ def generate_content_stream(display_list: ps.DisplayList,
                             resource_name=t3_name,
                             font_dict=cached.font_dict)
                     t3_font = type3_fonts[font_key]
+                    type3_page_keys.add(font_key)
 
                     char_code = ck.char_selector[0]
                     if char_code not in t3_font.glyphs:
@@ -456,19 +463,15 @@ def generate_content_stream(display_list: ps.DisplayList,
                         dev_wx, dev_bbox = _charspace_to_device(
                             cached.char_width, cached.char_bbox,
                             ck.font_matrix, ck.ctm_scale)
-                        charproc, cp_imgs, image_counter = \
-                            _build_charproc_stream(
-                                cached.display_elements,
-                                (dev_wx, 0.0), dev_bbox,
-                                image_defs, image_counter)
+                        charproc = _build_charproc_stream(
+                            cached.display_elements,
+                            (dev_wx, 0.0), dev_bbox)
                         t3_font.glyphs[char_code] = _Type3GlyphDef(
                             char_code=char_code,
                             glyph_name=glyph_name,
                             width_x=dev_wx,
                             bbox=dev_bbox,
                             charproc_stream=charproc)
-                        if cp_imgs:
-                            image_defs.extend(cp_imgs)
 
                     # Batch for combined BT/ET emission
                     _flush_text_batch()
@@ -533,7 +536,8 @@ def generate_content_stream(display_list: ps.DisplayList,
         lines.append(b'Q')
         clip_depth -= 1
 
-    return b'\n'.join(lines), shading_defs, image_defs, type3_fonts
+    return (b'\n'.join(lines), shading_defs, image_defs, type3_fonts,
+            type3_font_counter, type3_page_keys)
 
 
 def _close_aniso_batch(lines: list[bytes], gs: _GState) -> None:
@@ -913,13 +917,13 @@ def _charspace_to_device(char_width: tuple, char_bbox: tuple | None,
 
 
 def _build_charproc_stream(display_elements: list, char_width: tuple,
-                           char_bbox: tuple | None,
-                           image_defs: list[tuple[str, dict]],
-                           image_counter: int) -> tuple[bytes, list[tuple[str, dict]], int]:
+                           char_bbox: tuple | None) -> bytes:
     """Convert cached glyph display elements to a PDF CharProc content stream.
 
     Produces a d1 CharProc (cacheable, shape-only, inherits color from text state).
     The stream starts with 'wx 0 llx lly urx ury d1' followed by path/fill ops.
+    ImageMask elements are emitted as inline images (BI/ID/EI) directly in the
+    stream, eliminating the need for external XObject references.
 
     All metrics (char_width, char_bbox) must be in device space (matching the
     display_elements coordinates), NOT character space.  Use _charspace_to_device()
@@ -930,14 +934,11 @@ def _build_charproc_stream(display_elements: list, char_width: tuple,
             (normalized to origin, in device space).
         char_width: (wx, wy) character advance in device space.
         char_bbox: (llx, lly, urx, ury) bounding box in device space, or None.
-        image_defs: Image definitions list (for ImageMask XObjects in CharProcs).
-        image_counter: Current image counter for naming.
 
     Returns:
-        (charproc_bytes, charproc_image_defs, updated_image_counter)
+        CharProc content stream bytes.
     """
     lines: list[bytes] = []
-    charproc_image_defs: list[tuple[str, dict]] = []
 
     wx = char_width[0] if char_width else 0.0
 
@@ -971,7 +972,7 @@ def _build_charproc_stream(display_elements: list, char_width: tuple,
             last_path_lines = []
 
         elif isinstance(element, ps.ImageMaskElement):
-            # Emit imagemask as inline image within the CharProc
+            # Emit imagemask as inline image (BI/ID/EI) within the CharProc
             if element.sample_data is not None:
                 cm_line = _compute_image_cm(
                     element.image_matrix, element.ctm,
@@ -979,33 +980,24 @@ def _build_charproc_stream(display_elements: list, char_width: tuple,
                 if cm_line:
                     lines.append(b'q')
                     lines.append(cm_line)
-                    # Build XObject image reference for the CharProc
-                    img_name = f'/Im{image_counter}'
-                    image_counter += 1
-                    desc: dict = {
-                        'width': element.width,
-                        'height': element.height,
-                        'bpc': 1,
-                        'sample_data': element.sample_data,
-                        'color_space_type': 'device',
-                        'device_cs': '/G',
-                        'icc_hash': None,
-                        'icc_n': None,
-                        'cal_params': None,
-                        'interpolate': element.interpolate,
-                        'is_mask': True,
-                        'mask_polarity': element.polarity,
-                        'mask_color': tuple(element.color),
-                        'decode_array': None,
-                        'stencil_mask': None,
-                        'color_key_mask': None,
-                    }
-                    charproc_image_defs.append((img_name, desc))
-                    lines.append(f'{img_name} Do'.encode())
+                    # Build inline image
+                    bi_parts = [b'BI']
+                    bi_parts.append(f'/W {element.width}'.encode())
+                    bi_parts.append(f'/H {element.height}'.encode())
+                    bi_parts.append(b'/BPC 1')
+                    bi_parts.append(b'/IM true')
+                    # PostScript: polarity=true means paint where bit=1
+                    # PDF: default Decode [0 1] paints where bit=0
+                    # So polarity=true needs /D [1 0] to invert
+                    if element.polarity:
+                        bi_parts.append(b'/D [1 0]')
+                    bi_parts.append(b'ID ')
+                    header = b'\n'.join(bi_parts)
+                    lines.append(header + element.sample_data + b'\nEI')
                     lines.append(b'Q')
 
     last_path_lines = []  # noqa: F841
-    return b'\n'.join(lines), charproc_image_defs, image_counter
+    return b'\n'.join(lines)
 
 
 def _type3_font_key(cache_key: object) -> tuple:

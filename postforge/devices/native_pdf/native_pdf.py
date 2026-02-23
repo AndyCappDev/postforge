@@ -35,6 +35,9 @@ class NativePDFDocumentState:
         self.pages: list[PageData] = []
         self.pages_written = 0
         self.lossless_images = False
+        # Document-level Type 3 font accumulation (shared across pages)
+        self.type3_fonts: dict = {}
+        self.type3_font_counter: int = 0
 
     def finalize(self) -> None:
         """Assemble all pages into final PDF with embedded fonts."""
@@ -63,7 +66,8 @@ class NativePDFDocumentState:
                         font_widths_cache[font_key] = widths
 
             # Build and write PDF
-            builder.build_pdf(self.pages, self.font_tracker, self.file_path)
+            builder.build_pdf(self.pages, self.font_tracker, self.file_path,
+                              self.type3_fonts)
             print(f"   Output: {self.file_path} ({self.pages_written} page(s))")
         except Exception as e:
             import traceback
@@ -147,10 +151,12 @@ def showpage(ctxt: ps.Context, pd: dict) -> None:
 
     # Generate PDF content stream from display list
     device_scale = 72.0 / hw_res_x  # device units → PDF points
-    content_stream, shading_defs, image_defs, type3_font_defs = generate_content_stream(
+    (content_stream, shading_defs, image_defs, type3_font_defs,
+     state.type3_font_counter, type3_page_keys) = generate_content_stream(
         ctxt.display_list, height_device,
         state.font_tracker, embedded_fonts, font_widths_cache,
-        device_scale)
+        device_scale, state.type3_fonts, state.type3_font_counter)
+    state.type3_fonts = type3_font_defs
 
     # Collect fonts used on this page
     page_font_keys: set[tuple] = set()
@@ -187,7 +193,7 @@ def showpage(ctxt: ps.Context, pd: dict) -> None:
     page_data.rotate = page_rotate
     page_data.shading_defs = shading_defs
     page_data.image_defs = image_defs
-    page_data.type3_font_defs = type3_font_defs
+    page_data.type3_page_keys = type3_page_keys
     state.pages.append(page_data)
     state.pages_written += 1
 
