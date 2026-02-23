@@ -135,6 +135,11 @@ class DisplayList(list):
 
         self.width = width
         self.height = height
+        # CTM rotation vote counters collected during painting ops.
+        # Each paint operation's CTM x-axis is classified to the nearest
+        # 90° and tallied here.  Used by orientation detection to determine
+        # content rotation — fixed 4-int cost regardless of document size.
+        self.rotation_votes: list[int] = [0, 0, 0, 0]  # [0°, 90°, 180°, 270°]
 
     """
     This is a list of elements like Paths, Fills, Strokes, etc...

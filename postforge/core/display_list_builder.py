@@ -63,6 +63,18 @@ class DisplayListBuilder:
         # so we don't need to create them here
         ctxt.display_list.append(graphics_element)
 
+        # Tally CTM x-axis direction for orientation detection.
+        # Classifies each paint op's CTM to the nearest 90° and increments
+        # the corresponding counter — fixed 4-int overhead per page.
+        ctm_arr = ctxt.gstate.CTM.val
+        a, b = ctm_arr[0].val, ctm_arr[1].val
+        if a * a + b * b >= 1e-10:
+            votes = ctxt.display_list.rotation_votes
+            if abs(a) >= abs(b):
+                votes[0 if a >= 0 else 2] += 1   # 0° or 180°
+            else:
+                votes[3 if b >= 0 else 1] += 1   # 270° or 90°
+
         # Notify Qt device (or other interactive device) to refresh if callback registered
         # This enables live rendering in interactive mode
         if hasattr(ctxt, 'on_paint_callback') and ctxt.on_paint_callback:

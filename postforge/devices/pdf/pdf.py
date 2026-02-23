@@ -18,6 +18,7 @@ import math
 import os
 
 from ...core import types as ps
+from ..common.orientation import detect_landscape
 from .font_tracker import FontTracker
 from .font_embedder import FontEmbedder
 from .cff_font_embedder import CFFEmbedder
@@ -179,7 +180,7 @@ def showpage(ctxt: ps.Context, pd: dict) -> None:
         if dsc_orient is not None and dsc_orient.val == b'Landscape':
             page_rotate = 90
         else:
-            page_rotate = _detect_landscape(
+            page_rotate = detect_landscape(
                 ctxt.display_list, width_pts, height_pts)
 
     # Store page data
@@ -248,56 +249,5 @@ def _is_type42_font(font_dict: ps.Dict) -> bool:
     """Check if a font dictionary is a Type 42 (TrueType) font."""
     font_type = font_dict.val.get(b'FontType')
     return font_type is not None and font_type.val == 42
-
-
-def _detect_landscape(display_list: list, width_pts: float,
-                       height_pts: float) -> int:
-    """Heuristic fallback for landscape detection when DSC is absent.
-
-    Examines CTMs of display list elements to determine the dominant content
-    rotation.  Each element's x-axis direction ``(a, b)`` is classified to
-    the nearest 90-degree multiple.  If the vast majority agree on a non-zero
-    rotation, that value is returned as the page ``/Rotate``.
-
-    Args:
-        display_list: Display list elements from the context.
-        width_pts: Page width in PDF points.
-        height_pts: Page height in PDF points.
-
-    Returns:
-        Rotation angle (0, 90, or 270).
-    """
-    # Only consider portrait pages
-    if width_pts >= height_pts:
-        return 0
-
-    votes: dict[int, int] = {0: 0, 90: 0, 180: 0, 270: 0}
-    for item in display_list:
-        ctm = getattr(item, 'ctm', None)
-        if ctm is None or len(ctm) < 4:
-            continue
-        a, b = ctm[0], ctm[1]
-        if a * a + b * b < 1e-10:
-            continue
-        # Classify x-axis direction to nearest 90°.
-        # The content stream's initial cm has a negative y-scale (y-flip)
-        # which mirrors the rotation direction: a PS +90° CCW rotation
-        # appears as -90° in the rendered PDF.  Swap 90↔270 to produce
-        # the correct /Rotate value that compensates.
-        if abs(a) >= abs(b):
-            nearest = 0 if a >= 0 else 180
-        else:
-            nearest = 270 if b >= 0 else 90
-        votes[nearest] += 1
-
-    total = sum(votes.values())
-    if total < 5:
-        return 0
-
-    best = max(votes, key=votes.get)
-    # Only apply rotation for landscape orientations (90/270)
-    if best in (90, 270) and votes[best] > total * 0.8:
-        return best
-    return 0
 
 

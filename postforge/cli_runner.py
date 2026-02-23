@@ -48,7 +48,6 @@ def _auto_set_qt_resolution(ctxt: ps.Context) -> None:
     except Exception:
         return  # Can't determine screen size, keep default
 
-    max_w = int(screen_w * 0.60)
     max_h = int(screen_h * 0.85)
 
     pd = ctxt.gstate.page_device
@@ -58,10 +57,17 @@ def _auto_set_qt_resolution(ctxt: ps.Context) -> None:
     if page_w <= 0 or page_h <= 0:
         return
 
-    # DPI that would make the page fit exactly in the max window
-    dpi_for_width = max_w * 72.0 / page_w
-    dpi_for_height = max_h * 72.0 / page_h
-    dpi = int(min(dpi_for_width, dpi_for_height))
+    # Determine the post-rotation display height in points.  DSC orientation
+    # tells us before execution whether the page will be auto-rotated —
+    # same principle as pre-setting PageSize from EPS BoundingBox.
+    dsc_orient = pd.get(b'DSCOrientation')
+    if dsc_orient is not None and dsc_orient.val == b'Landscape' and page_w < page_h:
+        # After 90° rotation the shorter dimension becomes the display height
+        display_height_pts = min(page_w, page_h)
+    else:
+        display_height_pts = page_h
+
+    dpi = int(max_h * 72.0 / display_height_pts)
 
     # Clamp to reasonable range
     dpi = max(36, min(dpi, 9600))
@@ -272,6 +278,15 @@ def _configure_page_device(ctxt: ps.Context, args: argparse.Namespace, inputfile
                     page_size = ps.Array(ctxt.id)
                     page_size.setval([ps.Real(eps_w), ps.Real(eps_h)])
                     ctxt.gstate.page_device[b"PageSize"] = page_size
+
+        # Parse DSC orientation hint for DPI auto-calculation.  Landscape
+        # pages need a higher DPI because the shorter page dimension becomes
+        # the display height after auto-rotation.
+        if inputfiles and device == "qt":
+            dsc = parse_dsc_header(inputfiles[0])
+            if dsc.orientation:
+                ctxt.gstate.page_device[b'DSCOrientation'] = \
+                    ps.Name(dsc.orientation.encode('ascii'))
 
         # Override HWResolution if --resolution flag was provided
         if args.resolution:

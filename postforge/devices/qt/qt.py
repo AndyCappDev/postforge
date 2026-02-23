@@ -47,12 +47,13 @@ def _get_antialias_mode(pd: dict) -> int:
 
 from ...core import types as ps
 from ..common.cairo_renderer import render_display_list
+from ..common.orientation import detect_landscape
 
 # Check for PySide6 availability
 try:
     from PySide6.QtWidgets import QApplication, QMainWindow, QWidget
     from PySide6.QtCore import Qt
-    from PySide6.QtGui import QImage, QPainter, QKeyEvent, QWheelEvent, QMouseEvent, QCursor
+    from PySide6.QtGui import QImage, QPainter, QKeyEvent, QWheelEvent, QMouseEvent, QCursor, QTransform
     PYSIDE6_AVAILABLE = True
 except ImportError:
     PYSIDE6_AVAILABLE = False
@@ -302,9 +303,9 @@ def _ensure_window(page_width: float | None = None, page_height: float | None = 
     If the rendered image is smaller than what would fill the default window,
     the window shrinks to fit the image at 1:1 pixel size instead of enlarging it.
 
-    Width is capped at 60% of screen width and height at 85% of screen height,
-    so landscape content doesn't produce overly wide windows while portrait
-    content still uses most of the vertical space.
+    Portrait pages use 60% width / 85% height caps so windows stay narrow.
+    Landscape pages (after auto-rotation) use 85% width / 85% height so the
+    wider content gets adequate horizontal space.
 
     Args:
         page_width: Page width (any units, used for aspect ratio)
@@ -327,12 +328,15 @@ def _ensure_window(page_width: float | None = None, page_height: float | None = 
         screen_width = available.width()
         screen_height = available.height()
 
-        # Calculate maximum window size — 60% width, 85% height
-        max_width = int(screen_width * 0.60)
+        # Landscape pages get more horizontal space; portrait pages stay narrow
+        if page_width > page_height:
+            max_width = int(screen_width * 0.85)
+        else:
+            max_width = int(screen_width * 0.60)
         max_height = int(screen_height * 0.85)
 
         if image_width and image_height:
-            # Use exact image pixel dimensions, capped at max screen size
+            # Use image pixel dimensions, capped at max screen size
             win_width = image_width
             win_height = image_height
 
@@ -428,6 +432,31 @@ def _wait_for_keypress(ctxt: ps.Context) -> None:
         _app.processEvents()
 
 
+def _detect_page_rotation(pd: dict, display_list: list,
+                          width_pts: float, height_pts: float) -> int:
+    """Detect page rotation for landscape content on portrait pages.
+
+    Uses DSC ``%%Orientation`` when available (set by cli_runner from DSC
+    parsing), otherwise falls back to CTM heuristic analysis.  Only applies
+    to portrait pages — landscape MediaBox pages need no rotation.
+
+    Args:
+        pd: Page device dictionary.
+        display_list: Display list elements from the context.
+        width_pts: Page width in points.
+        height_pts: Page height in points.
+
+    Returns:
+        Rotation angle (0, 90, or 270).
+    """
+    if width_pts >= height_pts:
+        return 0
+    dsc_orient = pd.get(b'DSCOrientation')
+    if dsc_orient is not None and dsc_orient.val == b'Landscape':
+        return 90
+    return detect_landscape(display_list, width_pts, height_pts)
+
+
 def _render_to_window(ctxt: ps.Context, pd: dict) -> None:
     """Render the current display list to the Qt window.
 
@@ -457,43 +486,31 @@ def _render_to_window(ctxt: ps.Context, pd: dict) -> None:
     device_w = pd[b"MediaSize"].get(ps.Int(0))[1].val
     device_h = pd[b"MediaSize"].get(ps.Int(1))[1].val
 
-    # Cap render dimensions to avoid Cairo surface allocation failures
-    # on screen display. When the device resolution produces surfaces
-    # larger than this limit, render to a smaller surface and scale the
-    # Cairo context so the display list (in device coords) fits.
-    MAX_SURFACE_PIXELS = 16384
-    downscale = 1.0
-    render_w = device_w
-    render_h = device_h
-    if device_w > MAX_SURFACE_PIXELS or device_h > MAX_SURFACE_PIXELS:
-        downscale = MAX_SURFACE_PIXELS / max(device_w, device_h)
-        render_w = int(device_w * downscale)
-        render_h = int(device_h * downscale)
-
-    # Calculate page dimensions in points for window sizing (from actual HWResolution)
+    # Calculate page dimensions in points (from actual HWResolution)
     hw_dpi = pd[b"HWResolution"].get(ps.Int(0))[1].val
-    scale = hw_dpi / 72.0
-    _page_width = device_w / scale
-    _page_height = device_h / scale
+    dpi_scale = hw_dpi / 72.0
+    _page_width = device_w / dpi_scale
+    _page_height = device_h / dpi_scale
 
-    # Create Cairo surface at (possibly capped) render resolution
+    # Detect rotation for landscape content on portrait pages
+    page_rotate = _detect_page_rotation(
+        pd, ctxt.display_list, _page_width, _page_height)
+
+    # Create Cairo surface at device resolution (DPI was pre-computed by
+    # _auto_set_qt_resolution to fill ~85% of screen height)
+    render_w = int(device_w)
+    render_h = int(device_h)
     _surface = cairo.ImageSurface(cairo.FORMAT_RGB24, render_w, render_h)
     cc = cairo.Context(_surface)
 
     cc.identity_matrix()
-    # Scale Cairo context to map device coordinates into the capped surface
-    if downscale != 1.0:
-        cc.scale(downscale, downscale)
     # Convert PostScript flatness to Cairo tolerance (PS default 1.0 → Cairo default 0.1)
     cc.set_tolerance(ctxt.gstate.flatness / 10.0)
 
-    # Fill white background (in surface coordinates)
-    cc.save()
-    cc.identity_matrix()
+    # Fill white background
     cc.set_source_rgb(1.0, 1.0, 1.0)
     cc.rectangle(0, 0, render_w, render_h)
     cc.fill()
-    cc.restore()
 
     cc.set_antialias(_get_antialias_mode(pd))
 
@@ -503,12 +520,17 @@ def _render_to_window(ctxt: ps.Context, pd: dict) -> None:
     # Convert Cairo surface to QImage
     _qimage = _cairo_surface_to_qimage(_surface)
 
+    # Auto-rotate landscape content rendered on portrait pages
+    if page_rotate in (90, 270):
+        _qimage = _qimage.transformed(QTransform().rotate(page_rotate))
+        _page_width, _page_height = _page_height, _page_width
+
     # Reset view state for new page
     _zoom_level = 1.0
     _pan_x = 0
     _pan_y = 0
 
-    # Ensure window exists and update (use page dimensions in points for aspect ratio)
+    # Ensure window exists and update
     _ensure_window(_page_width, _page_height, _qimage.width(), _qimage.height())
 
     _canvas.update()
