@@ -62,6 +62,7 @@ class GraphicsState(PSObject):
         self.stroke_adjust = False
         self.overprint = False
         self.flatness = 1.0
+        self.smoothness = 1.0
         self.bbox = None  # user path bounding box set by setbbox
         self.halftone = None  # halftone dictionary set by sethalftone
         self.screen_params = None        # (freq, angle, proc_or_dict) from setscreen
@@ -105,7 +106,7 @@ class GraphicsState(PSObject):
         'color_space', 'color', 'transfer_function', 'black_generation',
         'undercolor_removal', 'font', 'line_width', 'line_cap', 'line_join',
         'miter_limit', 'dash_pattern', 'stroke_adjust', 'overprint',
-        'flatness', 'bbox', 'halftone', 'screen_params',
+        'flatness', 'smoothness', 'bbox', 'halftone', 'screen_params',
         'color_screen_params', 'color_transfer', 'color_rendering',
         'page_device', 'clip_path_version',
         '_current_pattern', 'saved'

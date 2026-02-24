@@ -481,6 +481,57 @@ def setflat(ctxt: ps.Context, ostack: ps.Stack) -> None:
 
     ostack.pop()
 
+def setsmoothness(ctxt: ps.Context, ostack: ps.Stack) -> None:
+    """
+    num **setsmoothness** -
+
+    sets the smoothness parameter in the graphics state to num, which must be a
+    number in the range 0.0 to 1.0. This parameter controls the quality of
+    smooth shading (color gradient fills between patches) produced by the
+    **shfill** operator and by Type 1, 2, and 3 shading patterns. Smaller values
+    result in smoother shading at the cost of more computation; larger values
+    produce faster but possibly less smooth shading.
+
+    If num is outside the range [0.0, 1.0], the nearest valid value is
+    substituted without error indication.
+
+    PLRM Third Edition, Section 7.10.2
+    Stack: num → -
+    **Errors**: **stackunderflow**, **typecheck**
+    **See Also**: **currentsmoothness**, **shfill**
+    """
+
+    if not len(ostack):
+        return ps_error.e(ctxt, ps_error.STACKUNDERFLOW, setsmoothness.__name__)
+
+    if ostack[-1].TYPE not in ps.NUMERIC_TYPES:
+        return ps_error.e(ctxt, ps_error.TYPECHECK, setsmoothness.__name__)
+
+    smoothness = min(max(float(ostack[-1].val), 0.0), 1.0)
+
+    ctxt.gstate.smoothness = smoothness
+
+    ostack.pop()
+
+
+def currentsmoothness(ctxt: ps.Context, ostack: ps.Stack) -> None:
+    """
+    - **currentsmoothness** num
+
+    returns the current value of the smoothness parameter in the graphics state.
+
+    PLRM Third Edition, Section 7.10.2
+    Stack: - → num
+    **Errors**: **stackoverflow**
+    **See Also**: **setsmoothness**, **shfill**
+    """
+
+    if ctxt.MaxOpStack and len(ostack) >= ctxt.MaxOpStack:
+        return ps_error.e(ctxt, ps_error.STACKOVERFLOW, currentsmoothness.__name__)
+
+    ostack.append(ps.Real(ctxt.gstate.smoothness))
+
+
 def setlinecap(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     int **setlinecap** -

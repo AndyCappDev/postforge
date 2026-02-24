@@ -206,6 +206,10 @@ def create_context(
     ctxt.random_seed = 0
     ctxt.random_rng = random.Random(0)
 
+    # language_level is derived from sysdict.ps `version` after init runs
+    # (set below, after exec_exec). Default to 2 in case init fails early.
+    ctxt.language_level = 2
+
     # ctxt.page_device = ps.Dict(-1, None, name="page_device", is_global=False)
 
     # create the inital graphics state
@@ -309,6 +313,16 @@ def create_context(
     if failed.val:
         ps.contexts[i] = None
         return None, "ps init failed"
+
+    # Derive language_level from the PostScript `version` string (sole source of truth).
+    # version is an Adobe-style 4-digit string: "2000" = Level 2, "3000"+ = Level 3.
+    version_obj = ps_dict.lookup(ctxt, ps.Name(b"version", is_global=ctxt.vm_alloc_mode))
+    if version_obj is not None and version_obj.TYPE == ps.T_STRING:
+        try:
+            version_num = int(version_obj.python_string())
+            ctxt.language_level = 3 if version_num >= 3000 else 2
+        except (ValueError, AttributeError):
+            pass  # Keep default of 2
 
     # Note: Initial save moved to job-level encapsulation in execjob()
     # Context initialization now complete without save

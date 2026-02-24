@@ -231,5 +231,23 @@ type /filetype eq} stopped
 123 /ASCIIHexDecode /filter [123 /ASCIIHexDecode /typecheck] assert
 
 
+%% =============================================================================
+%% ReusableStreamDecode Filter Tests
+%% =============================================================================
+
+%% ReusableStreamDecode: basic read %%
+% Create a string source, wrap in SubFileDecode, then ReusableStreamDecode
+(Hello) 0 (Hello) /SubFileDecode filter
+/ReusableStreamDecode filter
+5 string readstring pop
+(Hello) /eq [true] assert
+
+%% ReusableStreamDecode: read longer data %%
+(The quick brown fox) 0 (The quick brown fox) /SubFileDecode filter
+/ReusableStreamDecode filter
+19 string readstring pop
+(The quick brown fox) /eq [true] assert
+
+
 % Clean up temp file
 {(unit_tests/.filter_test_tmp.bin) deletefile} stopped {pop} if

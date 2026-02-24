@@ -410,6 +410,39 @@ currentcolorrendering type /dicttype eq [true] assert
 << /ColorRenderingType 1 /WhitePoint [0.9505 1 1.089] >> setcolorrendering
 currentcolorrendering /ColorRenderingType get 1 eq [true] assert
 
+%% setsmoothness / currentsmoothness %%
+% Default value is 1.0
+currentsmoothness 1.0 eq [true] assert
+
+% Basic set/get
+0.5 setsmoothness /currentsmoothness [0.5] assert
+0.0 setsmoothness /currentsmoothness [0.0] assert
+1.0 setsmoothness /currentsmoothness [1.0] assert
+
+% Clamping below 0
+-0.5 setsmoothness /currentsmoothness [0.0] assert
+
+% Clamping above 1
+2.0 setsmoothness /currentsmoothness [1.0] assert
+
+% Integer operand accepted
+0 setsmoothness /currentsmoothness [0.0] assert
+1 setsmoothness /currentsmoothness [1.0] assert
+
+% gsave/grestore preservation
+0.7 setsmoothness gsave 0.3 setsmoothness grestore
+/currentsmoothness [0.7] assert
+
+% Error conditions - typecheck
+(string) /setsmoothness [(string) /typecheck] assert
+
+% Error conditions - stackunderflow
+/setsmoothness [/stackunderflow] assert
+
+% Restore default
+1.0 setsmoothness
+
+
 %% screen_params preserved across gsave/grestore %%
 90 15 {pop} setscreen
 gsave

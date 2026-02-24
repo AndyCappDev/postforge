@@ -32,7 +32,7 @@
 | Filter | Status | Notes |
 |--------|--------|-------|
 | **CCITTFaxEncode** | Not implemented | Encode direction (rarely needed for rendering) |
-| **ReusableStreamDecode** | Not implemented | Name registered but no codec. Used for multi-pass stream reading. |
+| **ReusableStreamDecode** | COMPLETE | Implemented with full buffering and `setfileposition` seek support |
 
 ---
 
@@ -80,7 +80,6 @@ Most PLRM-defined page device keys (MediaClass, MediaColor, MediaWeight, MediaTy
 | Halftone Types 2-7 processing | Graphics | Only matters for physical print devices |
 | Transfer function application | Graphics | Only matters for physical print devices |
 | Pattern TilingType matrix adjustment | Graphics | Subtle rendering artifact |
-| ReusableStreamDecode filter | Filters | Rarely used |
 
 ---
 
@@ -94,7 +93,7 @@ Taking into account both operator presence AND functional completeness:
 | Font Rendering | 100% | ~98% | Hinting not applied (minimal visual impact) |
 | Font PDF Embedding | 100% | ~99% | Covers Type 1, Type 42, Type 0, CIDFont, CFF/Type1C |
 | Color Spaces | 100% | ~99% | ICCBased Tier 2 + DeviceCMYK Tier 3 (ICC via lcms2); PLRM fallback |
-| Filters | ~95% | ~95% | CCITTFaxDecode done; Encode not implemented |
+| Filters | ~97% | ~97% | CCITTFaxDecode + ReusableStreamDecode done; CCITTFaxEncode not implemented |
 | Images | 100% | ~98% | |
 | Halftones | 100% | ~30% | Only Type 1 actually processed |
 | Transfer/UCR/BG | 100% | 0% (stored only) | Values stored but never applied |

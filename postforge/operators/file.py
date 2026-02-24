@@ -396,6 +396,10 @@ def fileposition(ctxt: ps.Context, ostack: ps.Stack) -> None:
     if hasattr(file_obj, 'filter'):
         # Try to get position from the filter itself
         filter_obj = file_obj.filter
+        # ReusableStreamDecode supports random access via _pos
+        if hasattr(filter_obj, 'setfileposition') and hasattr(filter_obj, '_pos'):
+            ostack[-1] = ps.Int(filter_obj._pos)
+            return
         # SubFileDecodeFilter tracks byte_count in byte-count mode
         if hasattr(filter_obj, 'byte_count'):
             ostack[-1] = ps.Int(filter_obj.byte_count)
@@ -1265,8 +1269,17 @@ def setfileposition(ctxt: ps.Context, ostack: ps.Stack) -> None:
     if position < 0:
         return ps_error.e(ctxt, ps_error.RANGECHECK, setfileposition.__name__)
 
-    # Check if it's a FilterFile (has 'filter' attribute) - not positionable
+    # Check if it's a FilterFile (has 'filter' attribute)
+    # Most filters are not positionable, but ReusableStreamDecode supports seeking
     if hasattr(file_obj, 'filter'):
+        if hasattr(file_obj.filter, 'setfileposition'):
+            try:
+                file_obj.filter.setfileposition(position)
+                ostack.pop()  # position
+                ostack.pop()  # file
+                return
+            except (OSError, IOError, ValueError):
+                return ps_error.e(ctxt, ps_error.IOERROR, setfileposition.__name__)
         return ps_error.e(ctxt, ps_error.IOERROR, setfileposition.__name__)
 
     # Check for valid file handle

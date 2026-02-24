@@ -753,6 +753,8 @@ def create_filter(filter_name: bytes, data_source: ps.File | ps.String | ps.Arra
         return DCTEncodeFilter(source, params)
     elif filter_name == b'CCITTFaxDecode':
         return CCITTFaxDecodeFilter(source, params)
+    elif filter_name == b'ReusableStreamDecode':
+        return ReusableStreamDecodeFilter(source, params)
     else:
         return None  # Return None for unknown filters
 
@@ -899,4 +901,69 @@ class SubFileDecodeFilter(FilterBase):
         if not self.closed:
             if self.close_source:
                 super().close(ctxt)  # This will close the underlying source
+            self.closed = True
+
+
+class ReusableStreamDecodeFilter(FilterBase):
+    """ReusableStreamDecode filter - PLRM Level 3 reusable stream.
+
+    Reads all data from the underlying source into a buffer on first access,
+    then serves subsequent reads from the buffer.  Supports setfileposition
+    to allow random access (seeking) on the buffered data.
+    """
+
+    def __init__(self, data_source: DataSource, params: dict | ps.Dict | None = None) -> None:
+        super().__init__(data_source, params)
+        self._buffer = bytearray()
+        self._pos = 0
+        self._fully_read = False
+        self.close_source = False  # Default: don't close source
+
+        if params and isinstance(params, dict):
+            if b'CloseSource' in params:
+                close_source_obj = params[b'CloseSource']
+                if hasattr(close_source_obj, 'val'):
+                    self.close_source = bool(close_source_obj.val)
+                else:
+                    self.close_source = bool(close_source_obj)
+
+    def _ensure_buffered(self, ctxt: ps.Context) -> None:
+        """Read all remaining data from source into buffer if not yet done."""
+        if self._fully_read:
+            return
+        while True:
+            chunk = self.data_source.read_data(ctxt, 8192)
+            if not chunk:
+                break
+            self._buffer.extend(chunk)
+        self._fully_read = True
+
+    def read_data(self, ctxt: ps.Context, max_bytes: int | None = None) -> bytes:
+        """Read data from the buffered stream."""
+        self._ensure_buffered(ctxt)
+
+        if self._pos >= len(self._buffer):
+            self.eof_reached = True
+            return b''
+
+        end = len(self._buffer)
+        if max_bytes is not None:
+            end = min(self._pos + max_bytes, end)
+
+        data = bytes(self._buffer[self._pos:end])
+        self._pos = end
+        return data
+
+    def setfileposition(self, pos: int) -> None:
+        """Set the read position for random access."""
+        self._pos = max(0, min(pos, len(self._buffer)))
+        # Reset EOF flag since we may be seeking to valid data
+        if self._pos < len(self._buffer):
+            self.eof_reached = False
+
+    def close(self, ctxt: ps.Context) -> None:
+        """Close filter and optionally close source based on CloseSource parameter."""
+        if not self.closed:
+            if self.close_source:
+                super().close(ctxt)
             self.closed = True

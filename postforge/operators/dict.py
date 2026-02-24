@@ -237,6 +237,8 @@ def create_system_dict(ctxt: ps.Context, name: bytes) -> ps.Dict:
         ("sethalftone", ps.Operator, ps_halftone.sethalftone),
         ("setscreen", ps.Operator, ps_halftone.setscreen),
         ("setoverprint", ps.Operator, ps_gstate.setoverprint),
+        ("setsmoothness", ps.Operator, ps_gstate.setsmoothness),
+        ("currentsmoothness", ps.Operator, ps_gstate.currentsmoothness),
         ("setstrokeadjust", ps.Operator, ps_gstate.setstrokeadjust),
         ("settransfer", ps.Operator, ps_halftone.settransfer),
         ("setblackgeneration", ps.Operator, ps_halftone.setblackgeneration),

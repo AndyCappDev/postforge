@@ -386,6 +386,9 @@ def showpage(ctxt: ps.Context, ostack: ps.Stack, is_copy: bool = False) -> None:
         if not is_copy:
             # erase the current page (clear the display list)
             erasepage(ctxt, ostack)
+        elif ctxt.language_level >= 3:
+            # Level 3: copypage erases the page after transmitting
+            erasepage(ctxt, ostack)
 
         # Early termination: if all selected pages have been rendered,
         # reinitialize graphics state (matching what showpage normally

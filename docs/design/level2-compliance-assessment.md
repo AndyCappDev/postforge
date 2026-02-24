@@ -107,7 +107,7 @@ PostForge implements **~99.7%** of the PostScript Level 2 specification as defin
 | CCITTFaxEncode | -- | -- | Not implemented (rarely needed for rendering) |
 | SubFileDecode | N/A | Yes | COMPLETE |
 | NullEncode | Yes | N/A | COMPLETE |
-| ReusableStreamDecode | N/A | -- | REGISTERED (name accepted but no implementation) |
+| ReusableStreamDecode | N/A | Yes | COMPLETE (with `setfileposition` seek support) |
 
 ---
 
@@ -180,7 +180,7 @@ PostForge implements **~99.7%** of the PostScript Level 2 specification as defin
 | Color Spaces | 100% |
 | Patterns | 95% |
 | Images | 100% |
-| Filters | 95% |
+| Filters | 97% |
 | Resources | 100% |
 
 **Overall Level 2 Compliance: ~99.7%**
