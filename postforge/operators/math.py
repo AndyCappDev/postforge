@@ -556,7 +556,7 @@ def rand(ctxt: ps.Context, ostack: ps.Stack) -> None:
         return ps_error.e(ctxt, ps_error.STACKOVERFLOW, rand.__name__)
 
     # Generate random integer in PostScript range [0, MAX_POSTSCRIPT_INTEGER - 1]
-    ostack.append(ps.Int(random.randrange(ps.MAX_POSTSCRIPT_INTEGER)))
+    ostack.append(ps.Int(ctxt.random_rng.randrange(ps.MAX_POSTSCRIPT_INTEGER)))
 
 
 def rrand(ctxt: ps.Context, ostack: ps.Stack) -> None:
@@ -661,7 +661,7 @@ def srand(ctxt: ps.Context, ostack: ps.Stack) -> None:
         return ps_error.e(ctxt, ps_error.TYPECHECK, srand.__name__)
 
     ctxt.random_seed = ostack[-1].val
-    random.seed(ctxt.random_seed)
+    ctxt.random_rng = random.Random(ctxt.random_seed)
     ostack.pop()
 
 

@@ -201,9 +201,10 @@ def create_context(
     ctxt.ExecutionHistory = False  # Initialize context attribute
     ctxt.ExecutionHistorySize = 20  # Default history size
 
-    # Initialize PostScript random number generator with a random seed
-    ctxt.random_seed = random.randrange(ps.MAX_POSTSCRIPT_INTEGER)
-    random.seed(ctxt.random_seed)
+    # Initialize PostScript random number generator with a fixed seed
+    # for deterministic output (matches GhostScript behavior)
+    ctxt.random_seed = 0
+    ctxt.random_rng = random.Random(0)
 
     # ctxt.page_device = ps.Dict(-1, None, name="page_device", is_global=False)
 
