@@ -33,6 +33,26 @@ from .shading_ops import (_emit_shading_ref, _build_axial_shading,
                           _build_mesh_shading, _build_patch_shading)
 
 
+def _merge_bboxes(bboxes: list[tuple | None]) -> tuple | None:
+    """Compute the union of multiple bounding boxes.
+
+    Each bbox is (x0, y0, x1, y1) or None.  Returns None if all are None.
+    """
+    xmin = ymin = float('inf')
+    xmax = ymax = float('-inf')
+    any_valid = False
+    for bbox in bboxes:
+        if bbox is not None:
+            any_valid = True
+            xmin = min(xmin, bbox[0])
+            ymin = min(ymin, bbox[1])
+            xmax = max(xmax, bbox[2])
+            ymax = max(ymax, bbox[3])
+    if not any_valid:
+        return None
+    return (xmin, ymin, xmax, ymax)
+
+
 def generate_content_stream(display_list: ps.DisplayList,
                             height_device: float,
                             font_tracker: FontTracker,
@@ -95,6 +115,12 @@ def generate_content_stream(display_list: ps.DisplayList,
     # Pending Type 3 char codes for ActualText -> ToUnicode correlation
     type3_pending_codes: list[tuple] = []  # (char_code, font_key)
 
+    # Mesh/patch shading batching: consecutive same-CTM items combined
+    mesh_batch: list[ps.MeshShadingFill] = []
+    mesh_batch_ctm: tuple | None = None
+    patch_batch: list[ps.PatchShadingFill] = []
+    patch_batch_ctm: tuple | None = None
+
     def _flush_text_batch() -> None:
         nonlocal text_batch, text_batch_font
         if text_batch:
@@ -121,6 +147,46 @@ def generate_content_stream(display_list: ps.DisplayList,
             type3_batch_color = None
         type3_pending_codes = []
 
+    def _flush_mesh_batch() -> None:
+        nonlocal mesh_batch, mesh_batch_ctm, shading_counter
+        if not mesh_batch:
+            return
+        # Combine all triangles into one flat list
+        combined: list = []
+        for item in mesh_batch:
+            combined.extend(item.triangles)
+        # Merge bounding boxes (union of all non-None bboxes)
+        merged_bbox = _merge_bboxes([item.bbox for item in mesh_batch])
+        synthetic = ps.MeshShadingFill(combined, mesh_batch_ctm, merged_bbox)
+        sh_desc = _build_mesh_shading(synthetic)
+        if sh_desc is not None:
+            sh_name = f'/Sh{shading_counter}'
+            shading_counter += 1
+            shading_defs.append((sh_name, sh_desc))
+            _emit_shading_ref(lines, sh_name, mesh_batch_ctm)
+        mesh_batch = []
+        mesh_batch_ctm = None
+
+    def _flush_patch_batch() -> None:
+        nonlocal patch_batch, patch_batch_ctm, shading_counter
+        if not patch_batch:
+            return
+        # Combine all patches into one flat list
+        combined: list = []
+        for item in patch_batch:
+            combined.extend(item.patches)
+        # Merge bounding boxes
+        merged_bbox = _merge_bboxes([item.bbox for item in patch_batch])
+        synthetic = ps.PatchShadingFill(combined, patch_batch_ctm, merged_bbox)
+        sh_desc = _build_patch_shading(synthetic)
+        if sh_desc is not None:
+            sh_name = f'/Sh{shading_counter}'
+            shading_counter += 1
+            shading_defs.append((sh_name, sh_desc))
+            _emit_shading_ref(lines, sh_name, patch_batch_ctm)
+        patch_batch = []
+        patch_batch_ctm = None
+
     # The display list is in device space (Y=0 at top, Y increases downward)
     # but PDF uses Y=0 at bottom, Y increases upward. Apply a combined
     # device-to-points scale + Y-flip transform at the start.
@@ -136,6 +202,8 @@ def generate_content_stream(display_list: ps.DisplayList,
             _flush_type3_text()
             _flush_text_batch()
             _flush_invis_batch()
+            _flush_mesh_batch()
+            _flush_patch_batch()
             type3_suppress_invis = False
             current_path = item
             current_path_lines = _emit_path(item)
@@ -148,6 +216,8 @@ def generate_content_stream(display_list: ps.DisplayList,
             _flush_text_batch()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            _flush_mesh_batch()
+            _flush_patch_batch()
             type3_suppress_invis = False
             _emit_fill(lines, current_path_lines, item, gs)
             current_path = None
@@ -161,6 +231,8 @@ def generate_content_stream(display_list: ps.DisplayList,
             _flush_type3_text()
             _flush_text_batch()
             _flush_invis_batch()
+            _flush_mesh_batch()
+            _flush_patch_batch()
             type3_suppress_invis = False
             _emit_stroke(lines, current_path_lines, current_path, item, gs)
             current_path = None
@@ -171,6 +243,8 @@ def generate_content_stream(display_list: ps.DisplayList,
             _flush_text_batch()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            _flush_mesh_batch()
+            _flush_patch_batch()
             type3_suppress_invis = False
 
             if item.is_initclip:
@@ -198,6 +272,8 @@ def generate_content_stream(display_list: ps.DisplayList,
             _flush_type3_text()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            _flush_mesh_batch()
+            _flush_patch_batch()
             type3_suppress_invis = False
             # Batch consecutive same-font TextObjs into one BT/ET
             font_name = _resolve_text_font(item, font_tracker, embedded_fonts)
@@ -217,6 +293,8 @@ def generate_content_stream(display_list: ps.DisplayList,
             _flush_text_batch()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            _flush_mesh_batch()
+            _flush_patch_batch()
             type3_suppress_invis = False
             img_name, image_counter = _emit_image_xobject(
                 lines, item, image_defs, image_counter, gs)
@@ -226,6 +304,8 @@ def generate_content_stream(display_list: ps.DisplayList,
             _flush_text_batch()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            _flush_mesh_batch()
+            _flush_patch_batch()
             type3_suppress_invis = False
             if isinstance(item, ps.AxialShadingFill):
                 sh_desc = _build_axial_shading(item)
@@ -242,6 +322,8 @@ def generate_content_stream(display_list: ps.DisplayList,
             _flush_text_batch()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            _flush_mesh_batch()
+            _flush_patch_batch()
             type3_suppress_invis = False
             _emit_function_shading(lines, item)
 
@@ -250,26 +332,28 @@ def generate_content_stream(display_list: ps.DisplayList,
             _flush_text_batch()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            _flush_patch_batch()
             type3_suppress_invis = False
-            sh_desc = _build_mesh_shading(item)
-            if sh_desc is not None:
-                sh_name = f'/Sh{shading_counter}'
-                shading_counter += 1
-                shading_defs.append((sh_name, sh_desc))
-                _emit_shading_ref(lines, sh_name, item.ctm)
+            if mesh_batch and item.ctm == mesh_batch_ctm:
+                mesh_batch.append(item)
+            else:
+                _flush_mesh_batch()
+                mesh_batch = [item]
+                mesh_batch_ctm = item.ctm
 
         elif isinstance(item, ps.PatchShadingFill):
             _flush_type3_text()
             _flush_text_batch()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            _flush_mesh_batch()
             type3_suppress_invis = False
-            sh_desc = _build_patch_shading(item)
-            if sh_desc is not None:
-                sh_name = f'/Sh{shading_counter}'
-                shading_counter += 1
-                shading_defs.append((sh_name, sh_desc))
-                _emit_shading_ref(lines, sh_name, item.ctm)
+            if patch_batch and item.ctm == patch_batch_ctm:
+                patch_batch.append(item)
+            else:
+                _flush_patch_batch()
+                patch_batch = [item]
+                patch_batch_ctm = item.ctm
 
         elif isinstance(item, ps.ErasePage):
             pass  # No-op in PDF
@@ -282,6 +366,8 @@ def generate_content_stream(display_list: ps.DisplayList,
             _flush_text_batch()
             _flush_invis_batch()
             _close_aniso_batch(lines, gs)
+            _flush_mesh_batch()
+            _flush_patch_batch()
             type3_suppress_invis = False
             # PatternFill is not yet supported
             current_path = None
@@ -290,6 +376,8 @@ def generate_content_stream(display_list: ps.DisplayList,
         elif isinstance(item, ps.GlyphRef):
             _flush_text_batch()
             _close_aniso_batch(lines, gs)
+            _flush_mesh_batch()
+            _flush_patch_batch()
 
             # Try to emit as Type 3 font reference
             path_cache = global_resources.get_glyph_cache()
@@ -456,6 +544,10 @@ def generate_content_stream(display_list: ps.DisplayList,
 
     # Close any open anisotropic stroke batch
     _close_aniso_batch(lines, gs)
+
+    # Flush any pending mesh/patch shading batches
+    _flush_mesh_batch()
+    _flush_patch_batch()
 
     # Close any remaining clip groups
     while clip_depth > 0:
