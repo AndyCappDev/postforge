@@ -140,6 +140,7 @@ in the prompt.
 | `--pages` | Page range to output (e.g., `1-5`, `3`, `1-3,7,10-12`) |
 | `--antialias` | Anti-aliasing mode: `none`, `fast`, `good`, `best`, `gray`, `subpixel` (default: `gray`) |
 | `--text-as-paths` | Render text as path outlines instead of native text objects. Primarily affects PDF and SVG output; bitmap devices (PNG, TIFF, Qt) already render text as paths by default. |
+| `--lossless-images` | Use lossless compression for all images in PDF output (default uses JPEG for photographic images when smaller) |
 | `--multipage-tiff` | Combine all pages into a single multi-page TIFF file (only with tiff device) |
 | `--cmyk` | Output TIFF in CMYK color space using ICC profile conversion (only with tiff device) |
 
@@ -193,8 +194,13 @@ Renders each page to a PDF file with embedded fonts. Type 1, TrueType
 (Type 42), CID, and Type 3 fonts are embedded with subsetting.
 Use `--text-as-paths` to render text as path outlines instead of embedded fonts.
 
+By default, photographic images are compressed with JPEG when it produces a
+smaller result. Use `--lossless-images` to force lossless (Flate) compression
+for all images, which preserves exact pixel values at the cost of larger files.
+
 ```bash
 pf -d pdf document.ps
+pf -d pdf --lossless-images document.ps     # Lossless image compression
 ```
 
 ### SVG (`-d svg`)

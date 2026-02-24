@@ -79,9 +79,9 @@ def start(ctxt: ps.Context) -> None:
     pass
 
 
-_BBOX_RE = re.compile(rb'%%BoundingBox:\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)')
+_BBOX_RE = re.compile(rb'%%BoundingBox:\s*(-?\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)')
 _HIRES_BBOX_RE = re.compile(
-    rb'%%HiResBoundingBox:\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)'
+    rb'%%HiResBoundingBox:\s*(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)'
 )
 
 
