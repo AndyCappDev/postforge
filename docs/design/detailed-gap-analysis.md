@@ -1,6 +1,6 @@
 # PostForge Detailed Gap Analysis
 
-**Date:** 2026-02-11
+**Date:** 2026-02-24
 **Purpose:** Catalog remaining functional gaps beyond the high-level 99.7% operator coverage metric. Only incomplete or missing functionality is listed here.
 
 ---
@@ -16,6 +16,13 @@
 ---
 
 ## 2. Color Spaces
+
+### Implemented
+
+| Feature | Status | Detail |
+|---------|--------|--------|
+| **UseCIEColor** | COMPLETE | Device color spaces remapped through Default* CIE resources when `UseCIEColor` is true in page device (PLRM 6.2.5). Default resources: CIEBasedA (Gray), CIEBasedABC/sRGB (RGB), pass-through (CMYK). |
+| **ProcessColorModel** | COMPLETE | PLRM-standard name wired as fallback for `ColorModel` in `convert_to_device_color()`. All device PS files updated. |
 
 ### Remaining Gaps
 
@@ -62,6 +69,17 @@
 - TilingType-specific pixel-grid matrix adjustment not performed (may cause subtle seam artifacts)
 - PaintProc not clipped to BBox during pattern cell capture
 
+### Level 3 Trapping Operators
+
+`settrapparams`, `currenttrapparams`, `settrapzone` — **implemented as no-ops**. In-RIP trapping is for physical color separations only. Accepted without error to prevent document failures.
+
+### Level 3 Compatibility Features
+
+- **IdiomRecognition** user parameter (boolean, default true) — stored, no idiom matching (implementation-dependent per PLRM 3.12)
+- **AccurateScreens**, **HalftoneMode** user parameters — stored, device-dependent
+- **LicenseID** system parameter — stored, administrative
+- **Level 3 resource categories** registered: IdiomSet, ControlLanguage, Localization, PDL, HWOptions (empty, `findresource` returns `undefinedresource` for missing entries)
+
 ### setpagedevice Accepted-But-Ignored Keys
 
 Most PLRM-defined page device keys (MediaClass, MediaColor, MediaWeight, MediaType, InsertSheet, LeadingEdge, ManualFeed, Duplex, Tumble, Collate, NumCopies, etc.) are accepted without error but have no effect on output.
@@ -92,16 +110,16 @@ Taking into account both operator presence AND functional completeness:
 | Core Language | 100% | 100% | |
 | Font Rendering | 100% | ~98% | Hinting not applied (minimal visual impact) |
 | Font PDF Embedding | 100% | ~99% | Covers Type 1, Type 42, Type 0, CIDFont, CFF/Type1C |
-| Color Spaces | 100% | ~99% | ICCBased Tier 2 + DeviceCMYK Tier 3 (ICC via lcms2); PLRM fallback |
+| Color Spaces | 100% | ~99% | ICCBased Tier 2 + DeviceCMYK Tier 3 (ICC via lcms2); UseCIEColor + ProcessColorModel; PLRM fallback |
 | Filters | ~97% | ~97% | CCITTFaxDecode + ReusableStreamDecode done; CCITTFaxEncode not implemented |
 | Images | 100% | ~98% | |
 | Halftones | 100% | ~30% | Only Type 1 actually processed |
 | Transfer/UCR/BG | 100% | 0% (stored only) | Values stored but never applied |
 | Patterns/Forms | 100% | ~95% | Minor TilingType/BBox gaps |
 | Shading | 100% | 100% | |
-| Resources | 100% | 100% | |
-| Page Devices | 100% | ~70% | Core keys work; media params ignored |
+| Resources | 100% | 100% | Level 3 categories registered |
+| Page Devices | 100% | ~75% | Core keys + trapping stubs + ProcessColorModel; media params ignored |
 
-**Overall Functional Completeness: ~93%**
+**Overall Functional Completeness: ~94%**
 
 (vs 99.7% operator presence — the gap is in depth, not breadth)

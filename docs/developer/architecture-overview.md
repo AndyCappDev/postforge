@@ -316,7 +316,7 @@ per-page rendering state:
 | Color | `color_space`, `color`, `transfer_function`, `overprint` |
 | Line | `line_width`, `line_cap`, `line_join`, `miter_limit`, `dash_pattern` |
 | Font | `font` (current font dictionary) |
-| Other | `flatness`, `stroke_adjust`, `halftone`, `page_device` |
+| Other | `flatness`, `smoothness`, `stroke_adjust`, `halftone`, `page_device` |
 
 `gsave` copies the graphics state (via an optimized shallow-copy with selective
 deep-copy for mutable containers) and pushes it onto `g_stack`. `grestore` pops
@@ -418,6 +418,20 @@ Query operators (`currentgray`, `currentrgbcolor`, `currentcmykcolor`) convert
 the current color to the requested device space on the fly using standard PLRM
 conversion formulas (NTSC weighting for gray, etc.).
 
+### UseCIEColor Substitution
+
+When the `UseCIEColor` page device parameter is true, device color space
+operators (`setgray`, `setrgbcolor`, `setcmykcolor`, `setcolorspace`) intercept
+the color space selection and substitute CIE-based default color spaces. The
+substitution looks up `DefaultGray`, `DefaultRGB`, or `DefaultCMYK` from the
+`ColorSpace` resource category. If the corresponding Default\* resource is
+defined (via `defineresource`), it replaces the device color space with the
+CIE-based space. If no Default\* resource is found, the device color space is
+used as a fallback. Default color space resource files are in
+`postforge/resources/ColorSpace/` — `DefaultGray.ps` (CIEBasedA with D65),
+`DefaultRGB.ps` (CIEBasedABC with sRGB primaries), and `DefaultCMYK.ps`
+(pass-through to DeviceCMYK).
+
 ### Color Conversion at Rendering Time
 
 Color conversion is *lazy* — `setcolor` stores the color in the graphics
@@ -431,10 +445,12 @@ builds a display list element:
    their decode/matrix/XYZ pipeline, and ICCBased spaces apply an lcms2
    transform.
 3. The resulting color values are stored in the display list element (`Fill`,
-   `Stroke`, etc.). When a `/ColorModel` is set in the page device (e.g.,
-   `/DeviceRGB` for Cairo-based raster devices), colors are converted to that
-   model. When no `/ColorModel` is set (the PDF device), original device color
-   spaces (CMYK, Gray, RGB) are preserved.
+   `Stroke`, etc.). When a `/ColorModel` or `/ProcessColorModel` is set in the
+   page device (e.g., `/DeviceRGB` for Cairo-based raster devices), colors are
+   converted to that model. `ProcessColorModel` is the PLRM-standard name
+   (Level 3); `ColorModel` is checked first for backward compatibility. When
+   neither is set (the PDF device), original device color spaces (CMYK, Gray,
+   RGB) are preserved.
 4. The rendering device consumes these colors — Cairo-based devices receive
    RGB, while the PDF device emits the appropriate PDF color operators for
    whatever color space was used.
@@ -606,9 +622,10 @@ category:
 | `CIDFont/` | CID-keyed font definitions |
 | `CMap/` | Character code to CID mapping tables |
 | `Encoding/` | Character encoding vectors |
-| `ColorSpace/`, `ColorRendering/` | Color space definitions |
+| `ColorSpace/`, `ColorRendering/` | Color space definitions (including Default* CIE spaces) |
 | `Form/`, `Pattern/`, `Halftone/` | Graphics resources |
 | `ProcSet/` | Procedure sets |
+| `IdiomSet/`, `ControlLanguage/`, etc. | Level 3 resource categories (registered, empty) |
 | `Init/` | Initialization scripts (sysdict.ps, resource categories) |
 | `OutputDevice/` | Device configuration dictionaries |
 

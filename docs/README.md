@@ -15,6 +15,6 @@
 - [StandardFile System](developer/architecture/standardfile-system.md) — Stdin/stdout proxy architecture
 
 ## Design Documents
-- [Level 2 Compliance Assessment](design/level2-compliance-assessment.md)
+- [Compliance Assessment](design/compliance-assessment.md)
 - [Detailed Gap Analysis](design/detailed-gap-analysis.md)
 - [Documentation Overhaul PRD](design/prd-documentation-overhaul.md)

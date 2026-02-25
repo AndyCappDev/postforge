@@ -239,6 +239,10 @@ def create_system_dict(ctxt: ps.Context, name: bytes) -> ps.Dict:
         ("setoverprint", ps.Operator, ps_gstate.setoverprint),
         ("setsmoothness", ps.Operator, ps_gstate.setsmoothness),
         ("currentsmoothness", ps.Operator, ps_gstate.currentsmoothness),
+        # Level 3 trapping operators (PLRM Section 6.3 — no-ops for screen/file devices)
+        ("settrapparams", ps.Operator, ps_gstate.settrapparams),
+        ("currenttrapparams", ps.Operator, ps_gstate.currenttrapparams),
+        ("settrapzone", ps.Operator, ps_gstate.settrapzone),
         ("setstrokeadjust", ps.Operator, ps_gstate.setstrokeadjust),
         ("settransfer", ps.Operator, ps_halftone.settransfer),
         ("setblackgeneration", ps.Operator, ps_halftone.setblackgeneration),

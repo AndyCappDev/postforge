@@ -628,4 +628,123 @@ icc_long /setcolorspace [icc_long /rangecheck] assert
 %% setcmykcolor error: typecheck %%
 0.1 0.2 0.3 (bad) /setcmykcolor [0.1 0.2 0.3 (bad) /typecheck] assert
 
+%% =============================================================================
+%% UseCIEColor page device parameter tests (PLRM 6.2.5)
+%% =============================================================================
+
+%% --- Baseline: UseCIEColor absent/false — no remapping ---
+0.5 setgray
+/currentcolorspace [[/DeviceGray]] assert
+
+%% --- Fallback: UseCIEColor true but no Default* resources in VM ---
+%% Must fall back to device space, not error
+<< /UseCIEColor true >> setpagedevice
+0.5 setgray
+/currentcolorspace [[/DeviceGray]] assert              % Asserts fallback, not just "no error"
+1.0 0.0 0.0 setrgbcolor
+/currentcolorspace [[/DeviceRGB]] assert               % RGB fallback too
+0.1 0.2 0.3 0.4 setcmykcolor
+/currentcolorspace [[/DeviceCMYK]] assert              % CMYK fallback too
+
+%% Turn off UseCIEColor while defining resources (avoid interference)
+<< /UseCIEColor false >> setpagedevice
+
+%% --- Define Default* CIE resources via defineresource ---
+/DefaultRGB [
+    /CIEBasedABC <<
+        /WhitePoint [0.9505 1.0 1.089]
+        /RangeABC [0.0 1.0 0.0 1.0 0.0 1.0]
+        /MatrixABC [
+            0.4124 0.2126 0.0193
+            0.3576 0.7152 0.1192
+            0.1805 0.0722 0.9505
+        ]
+    >>
+] /ColorSpace defineresource pop
+
+/DefaultGray [
+    /CIEBasedA <<
+        /WhitePoint [0.9505 1.0 1.089]
+        /RangeA [0.0 1.0]
+        /MatrixA [0.9505 1.0 1.089]
+    >>
+] /ColorSpace defineresource pop
+
+%% DefaultCMYK: pass-through [/DeviceCMYK] — CMYK→CIE is complex and
+%% implementation-dependent per PLRM. The lookup path is verified by
+%% confirming that the resource IS found (vs. fallback when no resource).
+/DefaultCMYK [/DeviceCMYK] /ColorSpace defineresource pop
+
+%% --- Now enable UseCIEColor and test remapping ---
+<< /UseCIEColor true >> setpagedevice
+1.0 0.0 0.0 setrgbcolor
+currentcolorspace 0 get /CIEBasedABC eq
+not { (UseCIEColor: setrgbcolor should remap to CIEBasedABC) print } if
+/currentcolor [1.0 0.0 0.0] assert                    % Color values preserved
+
+%% --- setgray remapping: space changes, color value preserved ---
+0.5 setgray
+currentcolorspace 0 get /CIEBasedA eq
+not { (UseCIEColor: setgray should remap to CIEBasedA) print } if
+/currentcolor [0.5] assert                             % Color value preserved
+
+%% --- setcmykcolor with DefaultCMYK as pass-through [/DeviceCMYK] ---
+%% DefaultCMYK IS defined (as pass-through), so the lookup succeeds but
+%% the result is still DeviceCMYK. Color values must be preserved.
+0.1 0.2 0.3 0.4 setcmykcolor
+currentcolorspace 0 get /DeviceCMYK eq
+not { (UseCIEColor: setcmykcolor with pass-through DefaultCMYK should be DeviceCMYK) print } if
+/currentcolor [0.1 0.2 0.3 0.4] assert                % Color values preserved
+
+%% --- setcolorspace remapping for all three device spaces ---
+[/DeviceRGB] setcolorspace
+currentcolorspace 0 get /CIEBasedABC eq
+not { (UseCIEColor: setcolorspace [/DeviceRGB] should remap to CIEBasedABC) print } if
+
+[/DeviceGray] setcolorspace
+currentcolorspace 0 get /CIEBasedA eq
+not { (UseCIEColor: setcolorspace [/DeviceGray] should remap to CIEBasedA) print } if
+
+[/DeviceCMYK] setcolorspace
+currentcolorspace 0 get /DeviceCMYK eq
+not { (UseCIEColor: setcolorspace [/DeviceCMYK] with pass-through default should stay DeviceCMYK) print } if
+
+%% --- Non-device spaces must NOT be remapped ---
+%% Separation: tint transform takes 1 tint → 3 RGB values
+[/Separation /CustomColor /DeviceRGB {1.0 exch sub dup dup}] setcolorspace
+currentcolorspace 0 get /Separation eq
+not { (UseCIEColor: Separation space should NOT be remapped) print } if
+
+[/Indexed /DeviceRGB 2 <FF0000 00FF00 0000FF>] setcolorspace
+currentcolorspace 0 get /Indexed eq
+not { (UseCIEColor: Indexed space should NOT be remapped) print } if
+
+[/CIEBasedABC << /WhitePoint [0.9505 1 1.089] >>] setcolorspace
+currentcolorspace 0 get /CIEBasedABC eq
+not { (UseCIEColor: CIEBasedABC space should NOT be remapped) print } if
+
+%% --- Disable UseCIEColor — reverts to device spaces ---
+<< /UseCIEColor false >> setpagedevice
+0.5 setgray
+/currentcolorspace [[/DeviceGray]] assert
+1.0 0.0 0.0 setrgbcolor
+/currentcolorspace [[/DeviceRGB]] assert
+0.1 0.2 0.3 0.4 setcmykcolor
+/currentcolorspace [[/DeviceCMYK]] assert
+
+%% =============================================================================
+%% ProcessColorModel page device parameter tests (PLRM 6.2)
+%% =============================================================================
+
+%% ProcessColorModel can be set without error
+<< /ProcessColorModel /DeviceRGB >> /setpagedevice [] assert
+
+%% ProcessColorModel is stored in page device
+currentpagedevice /ProcessColorModel get /DeviceRGB eq
+not { (ProcessColorModel should be stored in page device) print } if
+
+%% Note: ProcessColorModel's effect on color conversion happens in the rendering
+%% pipeline (convert_to_device_color), which cannot be tested from PostScript.
+%% The color conversion is verified by rendering tests (e.g. samples/tiger.ps).
+
 % Test completed - use the standard unittest framework summary

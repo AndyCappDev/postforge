@@ -454,3 +454,27 @@ grestore
 currentscreen pop /og_ang exch def /og_freq exch def
 og_ang 15 eq [true] assert
 og_freq 90 eq [true] assert
+
+
+%% =============================================================================
+%% settrapparams / currenttrapparams / settrapzone (Level 3 trapping stubs)
+%% =============================================================================
+
+%% settrapparams accepts a dict without error
+<< /TrapWidth 0.5 >> /settrapparams [] assert
+
+%% settrapparams with empty dict
+<< >> /settrapparams [] assert
+
+%% settrapparams error: stackunderflow
+/settrapparams [/stackunderflow] assert
+
+%% settrapparams error: typecheck (non-dict operand)
+42 /settrapparams [42 /typecheck] assert
+(string) /settrapparams [(string) /typecheck] assert
+
+%% currenttrapparams returns a dict
+{currenttrapparams type} [/dicttype] assert
+
+%% settrapzone runs without error (no operands needed)
+/settrapzone [] assert

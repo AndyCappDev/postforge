@@ -1,16 +1,16 @@
-# PostForge Level 2 Compliance Assessment
+# PostForge Compliance Assessment
 
-**Date:** 2026-02-09
-**Reference:** PostScript Language Reference Manual, Second Edition (PLRM2)
-**Methodology:** Systematic cross-reference of PLRM2 Chapter 8 operator summary and Chapters 3-6 feature specifications against PostForge source code (both Python `postforge/operators/*.py` and PostScript `postforge/resources/*.ps` implementations).
+**Date:** 2026-02-24
+**Reference:** PostScript Language Reference Manual, Second Edition (PLRM2) and Third Edition (PLRM3)
+**Methodology:** Systematic cross-reference of PLRM Chapter 8 operator summaries and Chapters 3-6 feature specifications against PostForge source code (both Python `postforge/operators/*.py` and PostScript `postforge/resources/*.ps` implementations).
 
 ---
 
 ## Summary
 
-PostForge implements **~99.7%** of the PostScript Level 2 specification as defined in the PLRM Second Edition. All 22 operator categories are at 100% except Errors (96% — only `interrupt` missing; DPS-only errors excluded from scope). Core language mechanics, the type system, graphics operations, file I/O, VM management, font handling, resource management, and interpreter parameters are all fully implemented. Binary token encoding is complete: all token types 132-149 and binary object sequences (128-131) are fully supported for both reading and writing. The only remaining gaps are in specialized areas: the `interrupt` error, CCITTFaxEncode filter, and minor pattern spec details.
+PostForge implements **~99.7%** of the PostScript Level 2 specification and the majority of Level 3 features. All 22 Level 2 operator categories are at 100% except Errors (96% — only `interrupt` missing; DPS-only errors excluded from scope). Level 3 additions include UseCIEColor, ProcessColorModel, smoothness, trapping operators, additional resource categories, and compatibility parameters. The LanguageLevel is currently declared as 2 (`sysdict.ps`); bumping to 3 is deferred pending final verification.
 
-**Note:** Display PostScript (DPS) operators are explicitly excluded from this assessment as they are a separate extension not required for Level 2 compliance.
+**Note:** Display PostScript (DPS) operators are explicitly excluded from this assessment as they are a separate extension not required for compliance.
 
 ---
 
@@ -184,3 +184,113 @@ PostForge implements **~99.7%** of the PostScript Level 2 specification as defin
 | Resources | 100% |
 
 **Overall Level 2 Compliance: ~99.7%**
+
+---
+
+## 8. Level 3 Features
+
+Level 3 is a strict superset of Level 2. All Level 2 behavior is preserved.
+The features below are additions specified in the PLRM Third Edition.
+
+### Level 3 Operators
+
+| Category | Operators | Status |
+|----------|-----------|--------|
+| Graphics State | `setsmoothness`, `currentsmoothness` | COMPLETE |
+| Clipping | `clipsave`, `cliprestore` | COMPLETE |
+| Font | `composefont` | COMPLETE |
+| Painting | `shfill` (all 7 shading types) | COMPLETE |
+| Color | `findcolorrendering` | COMPLETE |
+| Show | `glyphshow` (name + integer forms) | COMPLETE |
+| Trapping | `settrapparams`, `currenttrapparams`, `settrapzone` | COMPLETE (no-ops — physical device feature) |
+
+### Level 3 Color Spaces
+
+| Feature | Status | Details |
+|---------|--------|---------|
+| CIEBasedDEF | COMPLETE | 3-component CIE with decode table |
+| CIEBasedDEFG | COMPLETE | 4-component CIE with 4D lookup table |
+| ICCBased | COMPLETE | Tier 2 (lcms2 via Pillow) with device space fallback |
+| DeviceN | COMPLETE | N-component with tint transform |
+| UseCIEColor | COMPLETE | Device spaces remapped through Default* CIE resources (PLRM 6.2.5) |
+| ProcessColorModel | COMPLETE | PLRM-standard name wired as fallback for ColorModel |
+
+### Level 3 Filters
+
+| Filter | Status | Details |
+|--------|--------|---------|
+| FlateDecode/Encode | COMPLETE | zlib-based compression |
+| SubFileDecode | COMPLETE | Substring-delimited subfile |
+| ReusableStreamDecode | COMPLETE | Seekable buffered stream with `setfileposition` |
+| CCITTFaxDecode | COMPLETE | Group 3/4 fax decoding |
+| CCITTFaxEncode | NOT IMPLEMENTED | Encode direction (PLRM makes encode filters optional) |
+
+### Level 3 Font Support
+
+| Feature | Status | Details |
+|---------|--------|---------|
+| Type 0 composite (CID) | COMPLETE | CIDFont + CMap resources |
+| Type 42 (TrueType) | COMPLETE | sfnts-based TrueType |
+| CFF (Type 2) | COMPLETE | OpenType/CFF charstrings |
+| Type 3 masked images | COMPLETE | MaskColor color-key masking |
+| Function Types 0, 2, 3 | COMPLETE | Sampled, Exponential, Stitching |
+
+### Level 3 Page Device Parameters
+
+| Parameter | Status | Details |
+|-----------|--------|---------|
+| UseCIEColor | COMPLETE | CIE substitution for device color spaces |
+| ProcessColorModel | COMPLETE | Device native color model |
+| Trapping params | COMPLETE | settrapparams/currenttrapparams (no-ops) |
+| Physical media keys | COMPLETE | Accepted without error (implementation-dependent) |
+| Separation keys | COMPLETE | Accepted without error (implementation-dependent) |
+
+### Level 3 Resource Categories
+
+| Category | Status | Details |
+|----------|--------|---------|
+| IdiomSet | REGISTERED | Empty — idiom matching is implementation-dependent |
+| ControlLanguage | REGISTERED | Empty |
+| Localization | REGISTERED | Empty |
+| PDL | REGISTERED | Empty |
+| HWOptions | REGISTERED | Empty |
+| FontSet | REGISTERED | CFF font loading |
+
+### Level 3 User/System Parameters
+
+| Parameter | Type | Status | Details |
+|-----------|------|--------|---------|
+| IdiomRecognition | User | COMPLETE | Boolean, default true |
+| AccurateScreens | User | COMPLETE | Boolean, default false |
+| HalftoneMode | User | COMPLETE | Integer, default 0 |
+| LicenseID | System | COMPLETE | String, default empty |
+
+### Level 3 Behavior Changes
+
+| Feature | Status | Details |
+|---------|--------|---------|
+| `copypage` erases page | COMPLETE | Gated on `language_level >= 3` |
+| `language_level` attribute | COMPLETE | Derived from `version` in sysdict.ps |
+
+### Not Applicable
+
+| Feature | Reason |
+|---------|--------|
+| Type 4 Calculator Functions | PDF-only feature (PDF Reference 3.9.4), not in PLRM |
+| Type 14 (Chameleon) Fonts | Proprietary Adobe format, no public spec |
+| Halftone Types 6, 10, 16 | Threshold arrays for physical devices — accepted, no rendering needed |
+
+### LanguageLevel Bump — DEFERRED
+
+The `LanguageLevel` system parameter remains at 2 (`sysdict.ps`). All Level 3
+features are implemented as additive enhancements. Bumping to 3 requires
+comprehensive regression testing with real-world Level 3 documents.
+
+---
+
+## 9. Overall Compliance
+
+| Level | Operator Coverage | Feature Coverage | Status |
+|-------|------------------|-----------------|--------|
+| Level 2 | 368/369 (99.7%) | ~99.7% | Production-ready |
+| Level 3 | All new operators implemented | Most features complete | LanguageLevel bump deferred |

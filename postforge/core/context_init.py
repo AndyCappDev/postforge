@@ -68,6 +68,8 @@ def init_system_params() -> dict[str, Any]:
         "Revision": 1,
         "SystemParamsPassword": "0",  # Default SystemPassword
         "StartJobPassword": "0",  # Default password for startjob/exitserver operators (PLRM Section 3.7.7)
+        # Level 3 system parameters (PLRM Section 6.1)
+        "LicenseID": "",  # Administrative parameter — implementation-dependent
         # Cache size limits (PLRM Table C.2 - system parameters)
         "MaxFontCache": 67108864,
         "MaxFormCache": 131072,
@@ -193,6 +195,10 @@ def create_context(
     userparams.put(ps.Name(b"JobName"), ps.String(ctxt.id, 0, 0, is_global=False))
     userparams.put(ps.Name(b"ExecutionHistory"), ps.Bool(False))  # Disabled by default for performance
     userparams.put(ps.Name(b"ExecutionHistorySize"), ps.Int(20))  # Default history size
+    # Level 3 user parameters (PLRM Section 6.1)
+    userparams.put(ps.Name(b"IdiomRecognition"), ps.Bool(True))  # PLRM 3.12: implementation-dependent
+    userparams.put(ps.Name(b"AccurateScreens"), ps.Bool(False))  # PLRM: device-dependent halftone control
+    userparams.put(ps.Name(b"HalftoneMode"), ps.Int(0))  # PLRM: halftone mode selection
     ctxt.lvm.put(ps.Name(b"UserParams"), userparams)
     # set the User Params for easy access
     ctxt.MaxDictStack = 0

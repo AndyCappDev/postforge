@@ -752,7 +752,10 @@ def convert_to_device_color(ctxt: ps.Context, gs_color: list, gs_color_space: li
 
     device_color_model = ctxt.gstate.page_device.get(b"ColorModel")
     if not device_color_model:
-        return source_color  # No ColorModel key, return as-is
+        # Fall back to ProcessColorModel (PLRM standard name)
+        device_color_model = ctxt.gstate.page_device.get(b"ProcessColorModel")
+    if not device_color_model:
+        return source_color  # No color model key, return as-is
 
     # Get source color space name
     source_space = gs_color_space[0] if isinstance(gs_color_space, list) else gs_color_space

@@ -126,3 +126,26 @@ found_nonmatch [0] assert
 
 %% resourceforall - error conditions %%
 /resourceforall [/stackunderflow] assert
+
+
+%% =============================================================================
+%% Level 3 resource categories (registration verification)
+%% =============================================================================
+
+%% IdiomSet category is registered
+{/IdiomSet /Category findresource pop true} [true] assert
+
+%% ControlLanguage category is registered
+{/ControlLanguage /Category findresource pop true} [true] assert
+
+%% Localization category is registered
+{/Localization /Category findresource pop true} [true] assert
+
+%% PDL category is registered
+{/PDL /Category findresource pop true} [true] assert
+
+%% HWOptions category is registered
+{/HWOptions /Category findresource pop true} [true] assert
+
+%% FontSet category is registered (was already present, but verify)
+{/FontSet /Category findresource pop true} [true] assert

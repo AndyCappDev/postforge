@@ -13,6 +13,89 @@ from ..core import color_space
 from ..core.color_space import ColorSpaceEngine
 
 
+# UseCIEColor Default* resource mapping: device space → resource name
+_USECICOLOR_MAP = {
+    "DeviceGray": b"DefaultGray",
+    "DeviceRGB": b"DefaultRGB",
+    "DeviceCMYK": b"DefaultCMYK",
+}
+
+
+def _lookup_default_colorspace(ctxt: ps.Context, device_space: str) -> list | None:
+    """Look up DefaultGray/DefaultRGB/DefaultCMYK from ColorSpace resources.
+
+    Called when UseCIEColor is true in the page device to find a CIE-based
+    substitute for a device color space (PLRM Section 6.2.5).
+
+    Checks local VM first (if in local alloc mode), then global VM.
+    Returns the color space array if found, None if not found (caller
+    should fall back to the device color space).
+    """
+    resource_name = _USECICOLOR_MAP.get(device_space)
+    if resource_name is None:
+        return None
+
+    # Check local VM resource dict first (if not in global alloc mode)
+    if not ctxt.vm_alloc_mode:
+        local_res = ctxt.lvm.val.get(b"resource")
+        if local_res is not None:
+            cs_dict = local_res.val.get(b"ColorSpace")
+            if cs_dict is not None:
+                instance = cs_dict.val.get(resource_name)
+                if instance is not None:
+                    return _ps_array_to_color_space(instance)
+
+    # Check global VM resource dict
+    gvm = ps.global_resources.get_gvm()
+    if gvm is not None:
+        global_res = gvm.val.get(b"resource")
+        if global_res is not None:
+            cs_dict = global_res.val.get(b"ColorSpace")
+            if cs_dict is not None:
+                instance = cs_dict.val.get(resource_name)
+                if instance is not None:
+                    return _ps_array_to_color_space(instance)
+
+    return None
+
+
+def _ps_array_to_color_space(instance: ps.PSObject) -> list | None:
+    """Convert a PostScript color space resource instance to a Python list.
+
+    ColorSpace resources are arrays like [/CIEBasedABC << ... >>].
+    Returns a Python list suitable for assignment to gstate.color_space,
+    or None if the instance is not a valid color space array.
+    """
+    if instance.TYPE not in ps.ARRAY_TYPES:
+        return None
+    if instance.length == 0:
+        return None
+
+    # Build the Python list, keeping PS objects for parameters
+    result = []
+    for i in range(instance.length):
+        element = instance.val[instance.start + i]
+        if i == 0 and element.TYPE == ps.T_NAME:
+            name_str = element.val.decode('ascii') if isinstance(element.val, bytes) else element.val
+            result.append(name_str)
+        else:
+            result.append(element)
+    return result
+
+
+def _is_use_cie_color(ctxt: ps.Context) -> bool:
+    """Check if UseCIEColor is true in the current page device."""
+    page_device = getattr(ctxt.gstate, 'page_device', None)
+    if not page_device:
+        return False
+    use_cie = page_device.get(b"UseCIEColor")
+    if use_cie is None:
+        return False
+    # Handle both PS Bool objects and raw Python bools
+    val = use_cie.val if hasattr(use_cie, 'val') else use_cie
+    return bool(val)
+
+
 def setgray(ctxt: ps.Context, ostack: ps.Stack) -> None:
     """
     num **setgray** -
@@ -50,7 +133,15 @@ def setgray(ctxt: ps.Context, ostack: ps.Stack) -> None:
     gray = max(0.0, min(1.0, gray))
 
     # 4. CRITICAL: Set color space to DeviceGray and single component
-    ctxt.gstate.color_space = ["DeviceGray"]  # Must be array per PLRM
+    # UseCIEColor: substitute DefaultGray if available (PLRM 6.2.5)
+    if _is_use_cie_color(ctxt):
+        cie_space = _lookup_default_colorspace(ctxt, "DeviceGray")
+        if cie_space is not None:
+            ctxt.gstate.color_space = cie_space
+        else:
+            ctxt.gstate.color_space = ["DeviceGray"]
+    else:
+        ctxt.gstate.color_space = ["DeviceGray"]  # Must be array per PLRM
     ctxt.gstate.color = [gray]                # Single component, not [gray,gray,gray]!
 
     # 5. Pop operand only after successful completion
@@ -420,8 +511,16 @@ def setcolorspace(ctxt: ps.Context, ostack: ps.Stack) -> None:
         # Device color spaces - simple validation
         if len(color_space_array) != 1:
             return ps_error.e(ctxt, ps_error.RANGECHECK, setcolorspace.__name__)
-        # Set color space and initial color
-        ctxt.gstate.color_space = color_space_array
+        # UseCIEColor: substitute Default* space if available (PLRM 6.2.5)
+        if _is_use_cie_color(ctxt):
+            cie_space = _lookup_default_colorspace(ctxt, space_name)
+            if cie_space is not None:
+                ctxt.gstate.color_space = cie_space
+            else:
+                ctxt.gstate.color_space = color_space_array
+        else:
+            ctxt.gstate.color_space = color_space_array
+        # Initial color stays the same per PLRM ("does not alter the current color values")
         ctxt.gstate.color = color_space.ColorSpaceEngine.get_default_color(color_space_array)
 
     elif space_name == "Separation":
@@ -1224,7 +1323,15 @@ def setrgbcolor(ctxt: ps.Context, ostack: ps.Stack) -> None:
     blue = max(0.0, min(1.0, blue))
 
     # 4. CRITICAL: Set color space to DeviceRGB and RGB components
-    ctxt.gstate.color_space = ["DeviceRGB"]  # Must be array per PLRM
+    # UseCIEColor: substitute DefaultRGB if available (PLRM 6.2.5)
+    if _is_use_cie_color(ctxt):
+        cie_space = _lookup_default_colorspace(ctxt, "DeviceRGB")
+        if cie_space is not None:
+            ctxt.gstate.color_space = cie_space
+        else:
+            ctxt.gstate.color_space = ["DeviceRGB"]
+    else:
+        ctxt.gstate.color_space = ["DeviceRGB"]  # Must be array per PLRM
     ctxt.gstate.color = [red, green, blue]   # Three RGB components
 
     # 5. Pop operands only after successful completion
@@ -1280,7 +1387,15 @@ def setcmykcolor(ctxt: ps.Context, ostack: ps.Stack) -> None:
     black = max(0.0, min(1.0, black))
 
     # 4. CRITICAL: Set color space to DeviceCMYK and CMYK components per PLRM
-    ctxt.gstate.color_space = ["DeviceCMYK"]  # Must be array per PLRM
+    # UseCIEColor: substitute DefaultCMYK if available (PLRM 6.2.5)
+    if _is_use_cie_color(ctxt):
+        cie_space = _lookup_default_colorspace(ctxt, "DeviceCMYK")
+        if cie_space is not None:
+            ctxt.gstate.color_space = cie_space
+        else:
+            ctxt.gstate.color_space = ["DeviceCMYK"]
+    else:
+        ctxt.gstate.color_space = ["DeviceCMYK"]  # Must be array per PLRM
     ctxt.gstate.color = [cyan, magenta, yellow, black]   # Four CMYK components
 
     # 5. Pop operands only after successful completion

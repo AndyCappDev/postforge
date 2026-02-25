@@ -258,7 +258,7 @@ most rendering tasks.*
 - [Profiling](docs/developer/profiling.md) — Performance and memory analysis
 
 ### Design
-- [Level 2 Compliance Assessment](docs/design/level2-compliance-assessment.md)
+- [Compliance Assessment](docs/design/compliance-assessment.md)
 - [Detailed Gap Analysis](docs/design/detailed-gap-analysis.md)
 - [Sample Gallery](docs/samples.md)
 - [Background](docs/background.md) — Author history and how PostForge came to be

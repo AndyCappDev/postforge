@@ -999,3 +999,65 @@ def setgstate(ctxt: ps.Context, ostack: ps.Stack) -> None:
     except Exception as e:
         return ps_error.e(ctxt, ps_error.VMERROR, setgstate.__name__)
 
+
+# ============================================================================
+# In-RIP Trapping operators (PLRM Section 6.3, Level 3)
+#
+# These operators control color trapping on physical print devices.
+# PostForge renders to screen/file formats where trapping has no meaning.
+# Accept without error to prevent document failures.
+# ============================================================================
+
+
+def settrapparams(ctxt: ps.Context, ostack: ps.Stack) -> None:
+    """
+    dict **settrapparams** -
+
+    Sets trapping parameters from the entries in dict. The request dictionary
+    contains a subset of the possible trapping parameters. In-RIP trapping
+    is for physical color separations only — no-op for screen/file devices.
+
+    PLRM Section 6.3 (Trapping Support)
+    Errors: stackunderflow, typecheck
+    """
+    if not len(ostack):
+        return ps_error.e(ctxt, ps_error.STACKUNDERFLOW, settrapparams.__name__)
+
+    if ostack[-1].TYPE != ps.T_DICT:
+        return ps_error.e(ctxt, ps_error.TYPECHECK, settrapparams.__name__)
+
+    # Accept and discard — trapping is not applicable for screen/file output
+    ostack.pop()
+
+
+def currenttrapparams(ctxt: ps.Context, ostack: ps.Stack) -> None:
+    """
+    - **currenttrapparams** dict
+
+    Returns a dictionary reflecting the current trapping parameters.
+    In-RIP trapping is for physical color separations only — returns
+    an empty dictionary for screen/file devices.
+
+    PLRM Section 6.3 (Trapping Support)
+    Errors: stackoverflow
+    """
+    if ctxt.MaxOpStack and len(ostack) >= ctxt.MaxOpStack:
+        return ps_error.e(ctxt, ps_error.STACKOVERFLOW, currenttrapparams.__name__)
+
+    # Return empty dict — no trapping parameters for screen/file devices
+    ostack.append(ps.Dict(ctxt.id, None, is_global=ctxt.vm_alloc_mode))
+
+
+def settrapzone(ctxt: ps.Context, ostack: ps.Stack) -> None:
+    """
+    - **settrapzone** -
+
+    Establishes a trapping zone from the current path and graphics state.
+    Implicitly performs a newpath. In-RIP trapping is for physical color
+    separations only — no-op for screen/file devices.
+
+    PLRM Section 6.3 (Trapping Support)
+    """
+    # Accept and discard — trapping is not applicable for screen/file output
+    pass
+

@@ -208,3 +208,46 @@ mark -5 /setucacheparams [null -5 /rangecheck] dup 0 mark put assert
 
 % setsystemparams error: typecheck (non-dict)
 123 /setsystemparams [123 /typecheck] assert
+
+
+%% =============================================================================
+%% Level 3 user parameters
+%% =============================================================================
+
+%% IdiomRecognition exists and defaults to true
+{currentuserparams /IdiomRecognition get} [true] assert
+
+%% IdiomRecognition can be set to false
+<< /IdiomRecognition false >> setuserparams
+{currentuserparams /IdiomRecognition get} [false] assert
+
+%% Restore IdiomRecognition to true
+<< /IdiomRecognition true >> setuserparams
+
+%% AccurateScreens exists and defaults to false
+{currentuserparams /AccurateScreens get} [false] assert
+
+%% AccurateScreens can be set to true
+<< /AccurateScreens true >> setuserparams
+{currentuserparams /AccurateScreens get} [true] assert
+
+%% Restore AccurateScreens to false
+<< /AccurateScreens false >> setuserparams
+
+%% HalftoneMode exists and defaults to 0
+{currentuserparams /HalftoneMode get} [0] assert
+
+%% HalftoneMode can be set
+<< /HalftoneMode 1 >> setuserparams
+{currentuserparams /HalftoneMode get} [1] assert
+
+%% Restore HalftoneMode to 0
+<< /HalftoneMode 0 >> setuserparams
+
+
+%% =============================================================================
+%% Level 3 system parameters
+%% =============================================================================
+
+%% LicenseID exists in system params
+{currentsystemparams /LicenseID known} [true] assert
