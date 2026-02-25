@@ -2,8 +2,8 @@
 
 ## Introduction
 
-PostForge is a Python implementation of a PostScript interpreter that provides
-**strict Level 2 compatibility** while implementing Level 3 features. It can
+PostForge is a Python implementation of a PostScript interpreter that implements
+**PostScript Level 3**. It can
 render PostScript files to PNG, PDF, SVG, TIFF, or display them in an interactive
 Qt window.
 

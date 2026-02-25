@@ -102,10 +102,10 @@ def process(items: list[str], config: dict[str, int] | None = None) -> str | Non
 
 Cython `.pyx` files are excluded (different typing semantics).
 
-### Level 2 Compatibility
+### Backward Compatibility
 
-PostForge maintains strict Level 2 compatibility. Level 3 features are welcome
-as additive enhancements, but they must never break existing Level 2 programs.
+PostForge implements PostScript Level 3, which is a strict superset of Level 2.
+All changes must preserve backward compatibility with Level 2 programs.
 
 For the full set of conventions see the
 [Architecture Overview](architecture-overview.md).
@@ -238,7 +238,7 @@ Reviewers will check for:
 - **Complete error handling** — Every error condition from the PLRM is covered
 - **Validate-before-pop** — No stack corruption on error paths
 - **Test coverage** — Normal operation, error conditions, and boundary cases
-- **No Level 2 regressions** — Existing PostScript programs still work
+- **No regressions** — Existing PostScript programs still work
 
 ## Test Integrity Policy
 

@@ -10,17 +10,17 @@
 
 ## About
 
-PostForge is a complete PostScript interpreter that faithfully implements the
-PostScript Level 2 specification while adding selected Level 3 enhancements.
-It reads PostScript files and produces PNG images, PDF documents, SVG files,
-TIFF images, or renders them in an interactive Qt display window.
+PostForge is a complete PostScript interpreter that implements the
+PostScript Level 3 specification. It reads PostScript files and produces
+PNG images, PDF documents, SVG files, TIFF images, or renders them in an
+interactive Qt display window.
 
 PostForge is designed as an open-source alternative to GhostScript for use
 cases where Python integration, transparency, and debuggability matter more
 than raw speed. Its modular architecture makes it well suited for education,
 PostScript development, and embedding in Python workflows.
 
-The interpreter covers the full Level 2 specification and includes PDF font
+The interpreter covers the full Level 3 specification and includes PDF font
 embedding/subsetting, ICC color management, and a Cython-accelerated execution loop.
 
 ## Sample Output
@@ -46,8 +46,8 @@ See the [sample gallery](docs/samples.md) for larger rendered examples.
 
 ## Features
 
-- **Full Level 2 Implementation** — Strict Level 2 compatibility with
-  selected Level 3 enhancements that don't break Level 2 programs
+- **Full Level 3 Implementation** — Complete PostScript Level 3 compliance
+  with full backward compatibility for Level 2 programs
 - **Interactive Executive Mode** — Built-in PostScript command line for live
   exploration, debugging, and experimentation
 - **Cython-Accelerated Execution** — Optional Cython-compiled execution loop
@@ -226,20 +226,20 @@ PostForge and GhostScript serve different needs:
 |---|---|---|
 | **Language** | Python | C |
 | **Architecture** | Open, modular, readable | Monolithic, optimized for speed |
-| **Best for** | Debugging, education, Python integration, development | Production rendering, printer drivers, full Level 3 |
+| **Best for** | Debugging, education, Python integration, development | Production rendering, printer drivers |
 | **Speed** | Interpreted (with optional Cython) | Fast native execution |
-| **PostScript Level** | Level 2 complete, selected Level 3 | Full Level 3 |
+| **PostScript Level** | Level 3 | Level 3 |
 | **License** | AGPL-3.0 | AGPL-3.0 |
 
 **Choose PostForge** when you want to understand what a PostScript program is
 doing, embed an interpreter in a Python application, develop or debug
 PostScript code, or learn how PostScript works.
 
-**Choose GhostScript** when you need maximum rendering speed, full Level 3
-compliance, printer support, or a battle-tested production tool.
+**Choose GhostScript** when you need maximum rendering speed, printer support,
+or a battle-tested production tool.
 
 *That said, don't be fooled by "written in Python" — PostForge is a serious
-interpreter with full Level 2 compliance, 2,500+ unit tests, and production-quality
+interpreter with full Level 3 compliance, 2,500+ unit tests, and production-quality
 output. It handles complex real-world PostScript files and is plenty fast for
 most rendering tasks.*
 

@@ -8,7 +8,7 @@
 
 ## Summary
 
-PostForge implements **~99.7%** of the PostScript Level 2 specification and the majority of Level 3 features. All 22 Level 2 operator categories are at 100% except Errors (96% — only `interrupt` missing; DPS-only errors excluded from scope). Level 3 additions include UseCIEColor, ProcessColorModel, smoothness, trapping operators, additional resource categories, and compatibility parameters. The LanguageLevel is currently declared as 2 (`sysdict.ps`); bumping to 3 is deferred pending final verification.
+PostForge implements **~99.7%** of the PostScript Level 2 specification and declares **LanguageLevel 3**. All 22 Level 2 operator categories are at 100% except Errors (96% — only `interrupt` missing; DPS-only errors excluded from scope). Level 3 additions include UseCIEColor, ProcessColorModel, smoothness, trapping operators, additional resource categories, and compatibility parameters.
 
 **Note:** Display PostScript (DPS) operators are explicitly excluded from this assessment as they are a separate extension not required for compliance.
 
@@ -280,11 +280,10 @@ The features below are additions specified in the PLRM Third Edition.
 | Type 14 (Chameleon) Fonts | Proprietary Adobe format, no public spec |
 | Halftone Types 6, 10, 16 | Threshold arrays for physical devices — accepted, no rendering needed |
 
-### LanguageLevel Bump — DEFERRED
+### LanguageLevel Bump — COMPLETE
 
-The `LanguageLevel` system parameter remains at 2 (`sysdict.ps`). All Level 3
-features are implemented as additive enhancements. Bumping to 3 requires
-comprehensive regression testing with real-world Level 3 documents.
+`sysdict.ps` updated: `version` set to `(3000)`, `languagelevel` set to `3`.
+Verified with full test suite (ps_tests) and visual regression tests.
 
 ---
 
@@ -293,4 +292,4 @@ comprehensive regression testing with real-world Level 3 documents.
 | Level | Operator Coverage | Feature Coverage | Status |
 |-------|------------------|-----------------|--------|
 | Level 2 | 368/369 (99.7%) | ~99.7% | Production-ready |
-| Level 3 | All new operators implemented | Most features complete | LanguageLevel bump deferred |
+| Level 3 | All new operators implemented | All features complete | LanguageLevel 3 declared |
